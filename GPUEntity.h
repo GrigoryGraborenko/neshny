@@ -5,7 +5,7 @@
 
 struct MemberSpec {
 
-	enum MemberType {
+	enum Type {
 		T_UNKNOWN,
 		T_INT,
 		T_UINT,
@@ -15,7 +15,7 @@ struct MemberSpec {
 		T_VEC4
 	};
 
-	static QString GetGPUTypeSyntax(MemberType type) {
+	static QString GetGPUType(Type type) {
 		if (type == MemberSpec::T_INT) {
 			return "int";
 		} else if (type == MemberSpec::T_UINT) {
@@ -32,7 +32,7 @@ struct MemberSpec {
 		return QString();
 	}
 
-	static int GetGPUTypeSizeBytes(MemberType type) {
+	static int GetGPUTypeSizeBytes(Type type) {
 		if (type == MemberSpec::T_VEC2) {
 			return sizeof(float) * 2;
 		} else if (type == MemberSpec::T_VEC3) {
@@ -43,7 +43,7 @@ struct MemberSpec {
 		return sizeof(int);
 	}
 
-	static QString GetGPUGetSyntax(MemberType type, int index) {
+	static QString GetGPUGetSyntax(Type type, int index) {
 		if (type == MemberSpec::T_INT) {
 			return QString("floatBitsToInt(%2_LOOKUP(base, %1))").arg(index).arg("%1");
 		} else if (type == MemberSpec::T_UINT) {
@@ -61,7 +61,7 @@ struct MemberSpec {
 	}
 
 	QString		p_Name;
-	MemberType	p_Type;
+	Type		p_Type;
 	int			p_Size;
 	bool		p_IsID = false;
 };
@@ -94,7 +94,7 @@ public:
 		QString name = member.getName();
 		using CurrentMemberType = meta::get_member_type<decltype(member)>;
 
-		MemberSpec::MemberType type = MemberSpec::T_UNKNOWN;
+		MemberSpec::Type type = MemberSpec::T_UNKNOWN;
 		bool is_id = false;
 		if constexpr (std::is_same<CurrentMemberType, int>::value) {
 			type = MemberSpec::T_INT;
@@ -125,7 +125,7 @@ private:
 };
 
 template<typename T>
-void SerializeSpecs(StructInfo& info, QString get_base_str) {
+void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 	Serialiser<T> serializeFunc(info.p_Members);
 	meta::doForAllMembers<T>(serializeFunc);
 
@@ -134,7 +134,7 @@ void SerializeSpecs(StructInfo& info, QString get_base_str) {
 	QStringList lines;
 	read_only_lines += "struct %1 {";
 	for (auto member : info.p_Members) {
-		read_only_lines += QString("\t%1 %2;").arg(MemberSpec::GetGPUTypeSyntax(member.p_Type)).arg(member.p_Name);
+		read_only_lines += QString("\t%1 %2;").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name);
 	}
 	read_only_lines += "};";
 
@@ -146,7 +146,7 @@ void SerializeSpecs(StructInfo& info, QString get_base_str) {
 	for (auto member : info.p_Members) {
 		QString get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index);
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
-		functions += QString("%1 Get%3%2(int index) {\n").arg(MemberSpec::GetGPUTypeSyntax(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
+		functions += QString("%1 Get%3%2(int index) {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		pos_index += member.p_Size / sizeof(float);
 	}
 	read_only_lines += "\treturn result;\n}";
@@ -177,7 +177,7 @@ void SerializeSpecs(StructInfo& info, QString get_base_str) {
 			value_mod_str = QString("\t%5_SET(base, %1, value.x); %5_SET(base, %2, value.y); %5_SET(base, %3, value.z); %5_SET(base, %4, value.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg("%1");
 		}
 		lines += mod_str;
-		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(member.p_Name).arg(MemberSpec::GetGPUTypeSyntax(member.p_Type)).arg("%1") + get_base_str + QString("\n%1\n}").arg(value_mod_str);
+		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type)).arg("%1") + get_base_str + QString("\n%1\n}").arg(value_mod_str);
 
 		pos_index += member.p_Size / sizeof(float);
 	}
@@ -192,11 +192,11 @@ void SerializeSpecs(StructInfo& info, QString get_base_str) {
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class GPUBuffer {
+class GPUEntity {
 
 public:
 
-	enum class Mode {
+	enum class StoreMode {
 		TEXTURE
 		,SSBO
 	};
@@ -207,23 +207,23 @@ public:
 	};
 
 	// TODO: figure out better way of passing in T, perhaps template entire class
-	template <typename T> GPUBuffer(QString name, Mode mode, DeleteMode delete_mode, int T::* id_ptr, QString id_name) :
-			m_Mode(mode)
+	template <typename T> GPUEntity(QString name, StoreMode store_mode, DeleteMode delete_mode, int T::* id_ptr, QString id_name) :
+			m_StoreMode(store_mode)
 			,m_DeleteMode(delete_mode)
 			,m_Name(name)
 			,m_NumDataFloats(sizeof(T) / sizeof(float))
 			,m_IDName(id_name)
 		{
-		QString get_base_str = (m_Mode == Mode::SSBO) ? 
+		QString get_base_str = (m_StoreMode == StoreMode::SSBO) ?
 			QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name)
 			:
 			"\tint y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));\n\tivec2 base = ivec2(index - y * BUFFER_TEX_SIZE, y * FLOATS_PER_%1);";
 
-		SerializeSpecs<T>(m_Specs, get_base_str);
+		SerializeStructInfo<T>(m_Specs, get_base_str);
 
 		QStringList insertion;
 		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
-		if (m_Mode == Mode::SSBO) {
+		if (m_StoreMode == StoreMode::SSBO) {
 			insertion += QString("#define %1_LOOKUP(base, index) (b_%1.i[(base) + (index)])").arg(m_Name);
 			insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
 		} else {
@@ -232,7 +232,7 @@ public:
 		}
 		m_GPUInsertion = insertion.join("\n");
 	}
-	~GPUBuffer(void) { Destroy(); }
+	~GPUEntity(void) { Destroy(); }
 
 	bool						Init					( void );
 	void						Clear					( void );
@@ -245,7 +245,7 @@ public:
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopy			( void );
 
-	inline Mode					GetMode					( void ) const { return m_Mode; }
+	inline StoreMode			GetStoreMode			( void ) const { return m_StoreMode; }
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline GLuint				GetTex					( void ) const { return m_Texture; }
@@ -264,7 +264,7 @@ protected:
 
 	void						Destroy(void);
 
-	Mode						m_Mode;
+	StoreMode					m_StoreMode;
 	DeleteMode					m_DeleteMode;
 	QString						m_Name;
 	StructInfo					m_Specs;

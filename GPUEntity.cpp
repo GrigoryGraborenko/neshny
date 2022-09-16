@@ -1,9 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GPUBuffer::Init(void) {
+bool GPUEntity::Init(void) {
 
-	if (m_Mode == Mode::SSBO) {
+	if (m_StoreMode == StoreMode::SSBO) {
 		m_SSBO = new GLSSBO(BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float)); // TODO: what is the deal with this size? should be somewhat specified
 	} else {
 		if (m_Texture) {
@@ -32,7 +32,7 @@ bool GPUBuffer::Init(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::Clear(void) {
+void GPUEntity::Clear(void) {
 	m_CurrentCount = 0;
 	m_MaxIndex = 0;
 	m_NextId = 0;
@@ -40,7 +40,7 @@ void GPUBuffer::Clear(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::Destroy(void) {
+void GPUEntity::Destroy(void) {
 	Clear();
 	if (m_Texture) {
 		glDeleteTextures(1, &m_Texture);
@@ -57,7 +57,7 @@ void GPUBuffer::Destroy(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int GPUBuffer::AddInstance(void* data) {
+int GPUEntity::AddInstance(void* data) {
 
 	int id = m_NextId;
 	*((int*)data) = id; // todo: can this be a specified position
@@ -85,7 +85,7 @@ int GPUBuffer::AddInstance(void* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO& control_buffer) {
+void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO& control_buffer) {
 
 	// todo: for each death, take index d from alive and copy it
 	//return;
@@ -121,13 +121,13 @@ void GPUBuffer::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::ProcessStableDeaths(int death_count) {
+void GPUEntity::ProcessStableDeaths(int death_count) {
 	m_CurrentCount -= death_count;
 	m_FreeCount += death_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::ProcessMoveCreates(int new_count, int new_next_id) {
+void GPUEntity::ProcessMoveCreates(int new_count, int new_next_id) {
 	// todo: for each creation, copy data out if it's asked for
 	m_CurrentCount = new_count;
 	m_MaxIndex = new_count;
@@ -135,7 +135,7 @@ void GPUBuffer::ProcessMoveCreates(int new_count, int new_next_id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUBuffer::ProcessStableCreates(int new_max_index, int new_next_id, int new_free_count) {
+void GPUEntity::ProcessStableCreates(int new_max_index, int new_next_id, int new_free_count) {
 	// todo: for each creation, copy data out if it's asked for
 
 	int added_num = m_FreeCount - new_free_count;
@@ -146,12 +146,12 @@ void GPUBuffer::ProcessStableCreates(int new_max_index, int new_next_id, int new
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString GPUBuffer::GetDebugInfo(void) {
+QString GPUEntity::GetDebugInfo(void) {
 	return QString("# %1 mx %2 id %3 free %4").arg(m_CurrentCount).arg(m_MaxIndex).arg(m_NextId).arg(m_FreeCount);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<unsigned char[]> GPUBuffer::MakeCopy(void) {
+std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int size = m_MaxIndex * entity_size;

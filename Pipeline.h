@@ -13,9 +13,9 @@ public:
 	inline static DebugGPU&	Singleton			( void ) { static DebugGPU debug; return debug; }
 
 	static inline int		GetMaxFrames		( void ) { return Singleton().m_MaxFrames; }
-	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::MemberType type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
-	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::MemberType::T_UNKNOWN); }
-	static inline void		Checkpoint			( QString stage, class GPUBuffer& entity ) { Singleton().ICheckpoint(stage, entity); }
+	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
+	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
+	static inline void		Checkpoint			( QString stage, class GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
 
 	void					RenderImGui			( InterfaceBufferViewer& data );
 
@@ -37,9 +37,9 @@ private:
 							DebugGPU			( void ) {}
 							~DebugGPU			( void ) {}
 
-	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::MemberType type );
-	void					ICheckpoint			( QString stage, class GPUBuffer& entity );
-	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::MemberType type );
+	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
+	void					ICheckpoint			( QString stage, class GPUEntity& entity );
+	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 
 	int						m_MaxFrames = 100;
 	std::unordered_map<QString, CheckpointList>	m_Frames;
@@ -61,7 +61,7 @@ class CommonPipeline {
 
 public:
 
-								CommonPipeline		( GPUBuffer& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+								CommonPipeline		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~CommonPipeline		( void ) {}
 
 protected:
@@ -96,7 +96,7 @@ protected:
 		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
 	);
 
-	GPUBuffer&					m_Entity;
+	GPUEntity&					m_Entity;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
@@ -110,13 +110,13 @@ protected:
 class PipelineStage : public CommonPipeline {
 
 public:
-								PipelineStage		( GPUBuffer& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_buffer, GLSSBO* destruction_buffer = nullptr );
+								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_buffer, GLSSBO* destruction_buffer = nullptr );
 								~PipelineStage		( void ) {}
 
-	PipelineStage&				AddEntity			( GPUBuffer& entity );
-	PipelineStage&				AddCreatableEntity	( GPUBuffer& entity );
+	PipelineStage&				AddEntity			( GPUEntity& entity );
+	PipelineStage&				AddCreatableEntity	( GPUEntity& entity );
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
-	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::MemberType array_type, bool read_only = true );
+	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
 	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
@@ -128,14 +128,14 @@ public:
 private:
 
 	struct AddedEntity {
-		GPUBuffer&	p_Entity;
+		GPUEntity&	p_Entity;
 		bool		p_Creatable;
 	};
 
 	struct AddedSSBO {
 		GLSSBO&					p_Buffer;
 		QString					p_Name;
-		MemberSpec::MemberType	p_Type;
+		MemberSpec::Type		p_Type;
 		bool					p_ReadOnly;
 	};
 
@@ -159,10 +159,10 @@ class EntityRender : public CommonPipeline {
 
 public:
 
-								EntityRender		( GPUBuffer& entity, QString shader_name, const std::vector<QString>& shader_defines = {} );
+								EntityRender		( GPUEntity& entity, QString shader_name, const std::vector<QString>& shader_defines = {} );
 								~EntityRender		( void ) {}
 
-	EntityRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::MemberType array_type );
+	EntityRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type );
 	void						Render				( GLBuffer* buffer, std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
@@ -176,7 +176,7 @@ private:
 	struct AddedSSBO {
 		GLSSBO&					p_Buffer;
 		QString					p_Name;
-		MemberSpec::MemberType	p_Type;
+		MemberSpec::Type		p_Type;
 	};
 
 	std::vector<AddedSSBO>		m_SSBOs;
