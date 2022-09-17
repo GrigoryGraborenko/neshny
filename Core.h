@@ -31,9 +31,67 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+struct Token {
+	Token(std::function<void()> destruction, bool valid = true) : p_DestructFunc(destruction) {}
+	Token() : p_DestructFunc(), p_Valid(false) {}
+	~Token(void) { p_DestructFunc(); }
+	inline bool IsValid(void) { return p_Valid; }
+private:
+	std::function<void()>	p_DestructFunc;
+	bool					p_Valid;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class WorkerThreadPool {
+public:
+
+					WorkerThreadPool	( void ) {}
+	void			Start				( int thread_count = 1 );
+	void			Stop				( void );
+
+	void			DoTask				( std::function<void*()> task, std::function<void(void* result)> callback );
+	void			Sync				( void );
+
+private:
+
+	struct ThreadInfo {
+		std::thread*	m_Thread;
+		bool			m_StopRequested = false;
+	};
+
+	struct Task {
+		std::function<void*()>				p_Task;
+		std::function<void(void* result)>	p_Callback;
+		void*								p_Result = nullptr;
+	};
+
+	std::mutex				m_Lock;
+	std::vector<ThreadInfo>	m_Threads;
+	std::deque<Task*>		m_Tasks;
+	std::vector<Task*>		m_FinishedTasks;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class Core {
 
 public:
+
+	enum class ResourceState {
+		PENDING
+		,DONE
+		,ERROR
+	};
+
+	struct Resource {
+		ResourceState	m_State = ResourceState::PENDING;
+		unsigned char*	m_Data = nullptr;
+		int				m_DataLength = 0;
+		QString			m_Error;
+	};
 
 	inline static Core&					Singleton				( void ) { static Core core; return core; }
 
@@ -45,6 +103,7 @@ public:
 	GLShader*							GetComputeShader		( QString name, QString insertion = QString() );
 	GLBuffer*							GetBuffer				( QString name );
 	GLTexture*							GetTexture				( QString name, bool skybox = false );
+	static const Resource&				GetResource				( QString path ) { return Singleton().IGetResource(path); }
 
 	void								UnloadAllShaders		( void );
 
@@ -61,7 +120,9 @@ private:
 										Core					( void );
 										~Core					( void );
 
+	const Resource&						IGetResource			( QString path );
 	void								IRenderEditor			( void );
+
 #ifdef _DEBUG
 	inline std::vector<QString>			GetShaderPrefixes		( void ) { return { "../src/Shaders/", "../src/Neshny/Shaders/" }; }
 #else
@@ -72,8 +133,10 @@ private:
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLTexture*>		m_Textures;
 	std::map<QString, GLShader*>		m_ComputeShaders;
+	std::map<QString, Resource>			m_Resources;
 
 	QFile								m_LogFile;
 
 	InterfaceCore						m_Interface;
+	WorkerThreadPool					m_ResourceThreads;
 };

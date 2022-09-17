@@ -5,15 +5,90 @@ Core* g_StaticInstance = nullptr;
 #define EDITOR_INTERFACE_FILENAME "interface.bin"
 
 ////////////////////////////////////////////////////////////////////////////////
+void WorkerThreadPool::Start(int thread_count) {
+	if (thread_count <= 0) {
+		return;
+	}
+	m_Threads.reserve(thread_count);
+	for (int i = 0; i < thread_count; i++) {
+
+		m_Threads.push_back({});
+		ThreadInfo& info = m_Threads.back();
+		info.m_Thread = new std::thread([&info, &lock = m_Lock, &tasks = m_Tasks, &finished = m_FinishedTasks]() {
+			while (true) {
+				lock.lock();
+				if (info.m_StopRequested) {
+					lock.unlock();
+					break;
+				}
+				if (!tasks.empty()) {
+					Task* task = tasks.front();
+					tasks.pop_front();
+					lock.unlock();
+					task->p_Result = task->p_Task();
+					lock.lock();
+					finished.push_back(task);
+					lock.unlock();
+					continue;
+				}
+				lock.unlock();
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+			}
+		});
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WorkerThreadPool::Stop(void) {
+	{
+		const std::lock_guard<std::mutex> lock(m_Lock);
+		for (auto& thread : m_Threads) {
+			thread.m_StopRequested = true;
+		}
+	}
+	for (auto& thread : m_Threads) {
+		thread.m_Thread->join();
+		delete thread.m_Thread;
+	}
+	m_Threads.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WorkerThreadPool::DoTask(std::function<void*()> task, std::function<void(void* result)> callback) {
+	const std::lock_guard<std::mutex> lock(m_Lock);
+	m_Tasks.push_back(new Task{ task, callback });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WorkerThreadPool::Sync(void) {
+	m_Lock.lock();
+	std::vector<Task*> finished = m_FinishedTasks;
+	m_FinishedTasks.clear();
+	m_Lock.unlock();
+	for (auto task_ptr : finished) {
+		task_ptr->p_Callback(task_ptr->p_Result);
+		delete task_ptr;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 Core::Core(void) {
 
 	std::ifstream in;
 	in.open(EDITOR_INTERFACE_FILENAME, std::ifstream::in | std::ifstream::binary);
 	FromBinary<InterfaceCore>(in, m_Interface);
+
+	m_ResourceThreads.Start(1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 Core::~Core(void) {
+
+	m_ResourceThreads.Stop();
 
 	std::ofstream out;
 	out.open(EDITOR_INTERFACE_FILENAME, std::ofstream::out | std::ofstream::binary);
@@ -175,6 +250,8 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
+
+		m_ResourceThreads.Sync();
 	}
 
 	//delete engine;
@@ -416,6 +493,38 @@ GLTexture* Core::GetTexture(QString name, bool skybox) {
 	}
 	m_Textures.insert_or_assign(name, tex);
 	return tex;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const Core::Resource& Core::IGetResource(QString path) {
+
+	auto found = m_Resources.find(path);
+	if (found != m_Resources.end()) {
+		return found->second;
+	}
+	Resource& resource = m_Resources.insert_or_assign(path, Resource{}).first->second;
+
+	m_ResourceThreads.DoTask([path]() -> void* {
+
+		QFile file(path);
+		if (!file.open(QIODevice::ReadOnly)) {
+			return new Resource{ ResourceState::ERROR, nullptr, 0, file.errorString() };
+		}
+		qint64 size = file.size();
+		unsigned char* data = new unsigned char[size];
+		qint64 read_size = file.read((char*)data, size);
+		if (read_size != size) {
+			delete[] data;
+			return new Resource{ ResourceState::ERROR, nullptr, 0, QString("Could not read entire file, expected %1 bytes, read %2").arg(size).arg(read_size) };
+		}
+		return new Resource{ ResourceState::DONE, data, (int)size, QString() };
+	}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
+		Resource* tmp_resource = (Resource*)ptr;
+		resource = *tmp_resource;
+		delete tmp_resource;
+	});
+
+	return resource;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
