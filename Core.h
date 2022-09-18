@@ -76,6 +76,16 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+class Resource {
+public:
+	virtual				~Resource		( void ) {}
+	virtual bool		Init			( unsigned char* data, int length, QString& err ) = 0;
+protected:
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class Core {
 
 public:
@@ -86,10 +96,9 @@ public:
 		,ERROR
 	};
 
-	struct Resource {
+	struct ResourceContainer {
 		ResourceState	m_State = ResourceState::PENDING;
-		unsigned char*	m_Data = nullptr;
-		int				m_DataLength = 0;
+		Resource*		m_Resource = nullptr;
 		QString			m_Error;
 	};
 
@@ -103,7 +112,8 @@ public:
 	GLShader*							GetComputeShader		( QString name, QString insertion = QString() );
 	GLBuffer*							GetBuffer				( QString name );
 	GLTexture*							GetTexture				( QString name, bool skybox = false );
-	static const Resource&				GetResource				( QString path ) { return Singleton().IGetResource(path); }
+	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
+	static const ResourceContainer&		GetResource				( QString path ) { return Singleton().IGetResource<T>(path); }
 
 	void								UnloadAllShaders		( void );
 
@@ -120,7 +130,8 @@ private:
 										Core					( void );
 										~Core					( void );
 
-	const Resource&						IGetResource			( QString path );
+	template<class T>
+	const ResourceContainer&			IGetResource			( QString path );
 	void								IRenderEditor			( void );
 
 #ifdef _DEBUG
@@ -133,7 +144,7 @@ private:
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLTexture*>		m_Textures;
 	std::map<QString, GLShader*>		m_ComputeShaders;
-	std::map<QString, Resource>			m_Resources;
+	std::map<QString, ResourceContainer> m_Resources;
 
 	QFile								m_LogFile;
 

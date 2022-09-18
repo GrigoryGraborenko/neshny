@@ -90,6 +90,11 @@ Core::~Core(void) {
 
 	m_ResourceThreads.Stop();
 
+	for (auto& resource : m_Resources) {
+		delete resource.second.m_Resource;
+	}
+	m_Resources.clear();
+
 	std::ofstream out;
 	out.open(EDITOR_INTERFACE_FILENAME, std::ofstream::out | std::ofstream::binary);
 	ToBinary<InterfaceCore>(out, m_Interface);
@@ -496,30 +501,33 @@ GLTexture* Core::GetTexture(QString name, bool skybox) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const Core::Resource& Core::IGetResource(QString path) {
+template<class T>
+const Core::ResourceContainer& Core::IGetResource(QString path) {
 
 	auto found = m_Resources.find(path);
 	if (found != m_Resources.end()) {
 		return found->second;
 	}
-	Resource& resource = m_Resources.insert_or_assign(path, Resource{}).first->second;
+	ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
 
 	m_ResourceThreads.DoTask([path]() -> void* {
 
 		QFile file(path);
 		if (!file.open(QIODevice::ReadOnly)) {
-			return new Resource{ ResourceState::ERROR, nullptr, 0, file.errorString() };
+			return new ResourceContainer{ ResourceState::ERROR, nullptr, file.errorString() };
 		}
-		qint64 size = file.size();
-		unsigned char* data = new unsigned char[size];
-		qint64 read_size = file.read((char*)data, size);
-		if (read_size != size) {
-			delete[] data;
-			return new Resource{ ResourceState::ERROR, nullptr, 0, QString("Could not read entire file, expected %1 bytes, read %2").arg(size).arg(read_size) };
+		auto data = file.readAll();
+		T* result = new T();
+		QString err;
+		bool valid = result->Init((unsigned char*)data.data(), data.size(), err);
+		if (!valid) {
+			delete result;
+			return new ResourceContainer{ ResourceState::ERROR, nullptr, err };
 		}
-		return new Resource{ ResourceState::DONE, data, (int)size, QString() };
+
+		return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };
 	}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
-		Resource* tmp_resource = (Resource*)ptr;
+		ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
 		resource = *tmp_resource;
 		delete tmp_resource;
 	});
