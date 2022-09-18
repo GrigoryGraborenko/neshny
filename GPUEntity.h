@@ -234,6 +234,16 @@ public:
 	}
 	~GPUEntity(void) { Destroy(); }
 
+	template <typename T> void Extract(std::vector<T>& items) {
+		if (m_MaxIndex <= 0) {
+			return;
+		}
+		items.resize(m_MaxIndex);
+		unsigned char* ptr = (unsigned char*)&(items[0]);
+		MakeCopyIn(ptr, m_MaxIndex * m_NumDataFloats * sizeof(float));
+	}
+
+
 	bool						Init					( void );
 	void						Clear					( void );
 
@@ -262,7 +272,9 @@ public:
 
 protected:
 
-	void						Destroy(void);
+	void						MakeCopyIn				( unsigned char* ptr, int size );
+
+	void						Destroy					( void );
 
 	StoreMode					m_StoreMode;
 	DeleteMode					m_DeleteMode;

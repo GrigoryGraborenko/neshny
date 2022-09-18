@@ -155,23 +155,33 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int size = m_MaxIndex * entity_size;
+	unsigned char* ptr = new unsigned char[size];
+	MakeCopyIn(ptr, size);
+	auto result = std::shared_ptr<unsigned char[]>(ptr);
+	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::MakeCopyIn(unsigned char* ptr, int size) {
+
+	const int entity_size = m_NumDataFloats * sizeof(float);
 	if (m_SSBO) {
-		unsigned char* ptr = new unsigned char[size];
 		glGetNamedBufferSubData(m_SSBO->Get(), 0, size, ptr);
-		auto result = std::shared_ptr<unsigned char[]>(ptr);
-		return result;
+		return;
 	}
+	// todo: this is untested
 
 	const int row_size = BUFFER_TEX_SIZE * entity_size;
 	const int rows = (int)ceil((double)m_MaxIndex / BUFFER_TEX_SIZE);
-	unsigned char* ptr = new unsigned char[size];
 
 	unsigned char* row_ptr = new unsigned char[row_size];
 
+	/*
 	int entire_size = BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float);
 	unsigned char* entire_ptr = new unsigned char[entire_size];
 	glGetTextureImage(m_Texture, 0, GL_RED, GL_FLOAT, entire_size, entire_ptr);
 	delete[] entire_ptr;
+	*/
 
 	//GLenum err;
 	//while ((err = glGetError()) != GL_NO_ERROR)
@@ -202,8 +212,6 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 	}
 
 	delete[] row_ptr;
-	auto result = std::shared_ptr<unsigned char[]>(ptr);
-	return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
