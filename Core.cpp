@@ -502,11 +502,11 @@ GLTexture* Core::GetTexture(QString name, bool skybox) {
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
-const Core::ResourceContainer& Core::IGetResource(QString path) {
+const Core::ResourceResult<T> Core::IGetResource(QString path) {
 
 	auto found = m_Resources.find(path);
 	if (found != m_Resources.end()) {
-		return found->second;
+		return ResourceResult<T>(found->second);
 	}
 	ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
 
@@ -532,7 +532,7 @@ const Core::ResourceContainer& Core::IGetResource(QString path) {
 		delete tmp_resource;
 	});
 
-	return resource;
+	return ResourceResult<T>(resource);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

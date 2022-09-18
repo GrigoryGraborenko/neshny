@@ -98,7 +98,16 @@ public:
 
 	struct ResourceContainer {
 		ResourceState	m_State = ResourceState::PENDING;
-		Resource*		m_Resource = nullptr;
+		Resource* m_Resource = nullptr;
+		QString			m_Error;
+	};
+
+	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
+	struct ResourceResult {
+		ResourceResult(const ResourceContainer& container) : m_State(container.m_State), m_Resource((T*)container.m_Resource), m_Error(container.m_Error) {}
+		T* operator->() const { return m_Resource; }
+		ResourceState	m_State = ResourceState::PENDING;
+		T*				m_Resource = nullptr;
 		QString			m_Error;
 	};
 
@@ -113,7 +122,7 @@ public:
 	GLBuffer*							GetBuffer				( QString name );
 	GLTexture*							GetTexture				( QString name, bool skybox = false );
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
-	static const ResourceContainer&		GetResource				( QString path ) { return Singleton().IGetResource<T>(path); }
+	static const ResourceResult<T>		GetResource				( QString path ) { return Singleton().IGetResource<T>(path); }
 
 	void								UnloadAllShaders		( void );
 
@@ -131,7 +140,7 @@ private:
 										~Core					( void );
 
 	template<class T>
-	const ResourceContainer&			IGetResource			( QString path );
+	const ResourceResult<T>				IGetResource			( QString path );
 	void								IRenderEditor			( void );
 
 #ifdef _DEBUG
