@@ -2,7 +2,7 @@
 
 Core* g_StaticInstance = nullptr;
 
-#define EDITOR_INTERFACE_FILENAME "interface.bin"
+#define EDITOR_INTERFACE_FILENAME "interface.json"
 
 ////////////////////////////////////////////////////////////////////////////////
 void WorkerThreadPool::Start(int thread_count) {
@@ -78,9 +78,24 @@ void WorkerThreadPool::Sync(void) {
 ////////////////////////////////////////////////////////////////////////////////
 Core::Core(void) {
 
+
+	QFile file(EDITOR_INTERFACE_FILENAME);
+	if (file.open(QIODevice::ReadOnly)) {
+		Json::ParseError err;
+		Json::FromJson<InterfaceCore>(file.readAll(), m_Interface, err);
+		if (m_Interface.p_Version != INTERFACE_SAVE_VERSION) {
+			m_Interface = InterfaceCore{};
+		}
+	}
+
+	/*
 	std::ifstream in;
 	in.open(EDITOR_INTERFACE_FILENAME, std::ifstream::in | std::ifstream::binary);
 	FromBinary<InterfaceCore>(in, m_Interface);
+	if (m_Interface.p_Version != INTERFACE_SAVE_VERSION) {
+		m_Interface = InterfaceCore{};
+	}
+	*/
 
 	m_ResourceThreads.Start(1);
 }
@@ -95,11 +110,22 @@ Core::~Core(void) {
 	}
 	m_Resources.clear();
 
+	QFile file(EDITOR_INTERFACE_FILENAME);
+	if (file.open(QIODevice::WriteOnly)) {
+		Json::ParseError err;
+		QByteArray data = Json::ToJson<InterfaceCore>(m_Interface, err);
+		if (!err) {
+			file.write(data);
+		}
+	}
+
+	/*
 	std::ofstream out;
 	out.open(EDITOR_INTERFACE_FILENAME, std::ofstream::out | std::ofstream::binary);
 	ToBinary<InterfaceCore>(out, m_Interface);
 	out.flush();
 	out.close();
+	*/
 }
 
 #ifdef SDL_h_
@@ -143,6 +169,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	int unfocus_timeout = 0;
 
 	engine->Init();
+	m_Ticks = 0;
 
 	// Main loop
 	bool done = false;
@@ -202,7 +229,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		qint64 nanos = frame_timer.nsecsElapsed();
 		frame_timer.restart();
-		engine->Tick(nanos);
+		engine->Tick(nanos, m_Ticks++);
 
 		///////////////////////////////////////////// render engine
 

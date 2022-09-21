@@ -1,18 +1,57 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#define INTERFACE_SAVE_VERSION 1
+struct InterfaceCollapsible {
+	QString		p_Name;
+	bool		p_Open = false;
+	bool		p_Enabled = true;
+};
+
 struct InterfaceShaderViewer {
 	bool	p_Visible = false;
+	std::vector<InterfaceCollapsible> p_Items;
 };
 
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
+	std::vector<InterfaceCollapsible> p_Items;
 };
 
 struct InterfaceCore {
+	int						p_Version = INTERFACE_SAVE_VERSION;
 	InterfaceShaderViewer	p_ShaderView;
 	InterfaceBufferViewer	p_BufferView;
 };
+
+namespace meta {
+	template<> inline auto registerMembers<InterfaceCore>() {
+		return members(
+			member("Version", &InterfaceCore::p_Version)
+			,member("ShaderView", &InterfaceCore::p_ShaderView)
+			,member("BufferView", &InterfaceCore::p_BufferView)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceShaderViewer>() {
+		return members(
+			member("Visible", &InterfaceShaderViewer::p_Visible)
+			,member("Items", &InterfaceShaderViewer::p_Items)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceBufferViewer>() {
+		return members(
+			member("Visible", &InterfaceBufferViewer::p_Visible)
+			,member("Items", &InterfaceBufferViewer::p_Items)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceCollapsible>() {
+		return members(
+			member("Name", &InterfaceCollapsible::p_Name)
+			,member("Open", &InterfaceCollapsible::p_Open)
+			,member("Enabled", &InterfaceCollapsible::p_Enabled)
+		);
+	}
+}
 
 class IEngine {
 public:
@@ -24,7 +63,7 @@ public:
 	virtual void					Key			( int key, bool is_down ) = 0;
 
 	virtual void					Init		( void ) = 0;
-	virtual void					Tick		( qint64 delta_nanoseconds ) = 0;
+	virtual void					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
 	virtual void					Render		( int width, int height ) = 0;
 };
 
@@ -129,6 +168,7 @@ public:
 	static void							DispatchMultiple		( GLShader* prog, int count, bool mem_barrier = true );
 
 	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
+	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }
 
 
 	inline const std::map<QString, GLShader*>&	GetShaders				( void ) { return m_Shaders; }
@@ -154,6 +194,8 @@ private:
 	std::map<QString, GLTexture*>		m_Textures;
 	std::map<QString, GLShader*>		m_ComputeShaders;
 	std::map<QString, ResourceContainer> m_Resources;
+
+	int									m_Ticks = 0;
 
 	QFile								m_LogFile;
 

@@ -25,6 +25,7 @@ private:
 		QString								p_Stage;
 		QString								p_Info;
 		int									p_Count = 0;
+		int									p_Tick = -1;
 		bool								p_UsingFreeList = false;
 		std::shared_ptr<unsigned char[]>	p_Data;
 	};
@@ -51,7 +52,7 @@ private:
 class ShaderViewEditor {
 public:
 	static void				RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
-	static void				RenderShader		( QString name, GLShader* shader, bool is_compute );
+	static void				RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute );
 };
 
 ////////////////////////////////////////////////////////////////////////////////

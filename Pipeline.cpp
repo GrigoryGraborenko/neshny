@@ -5,13 +5,13 @@ void DebugGPU::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, in
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
 	auto mem = buffer.MakeCopy(count * item_size);
-	IStoreCheckpoint(name, { stage, "", count, false, mem }, info, type);
+	IStoreCheckpoint(name, { stage, "", count, Core::GetTicks(), false, mem }, info, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void DebugGPU::ICheckpoint(QString stage, GPUEntity& buffer) {
 	auto mem = buffer.MakeCopy();
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,21 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 	for (auto buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
 		auto header = (buffer.first + (frames.empty() ? "" : frames.begin()->p_Info) + "###" + buffer.first).toLocal8Bit();
-		if (ImGui::CollapsingHeader(header.data())) {
+
+		InterfaceCollapsible* found = nullptr;
+		for (auto& item: data.p_Items) {
+			if (item.p_Name == buffer.first) {
+				found = &item;
+				break;
+			}
+		}
+		if (!found) {
+			data.p_Items.push_back({ buffer.first, false, false });
+			found = &(data.p_Items.back());
+		}
+
+		ImGui::SetNextItemOpen(found->p_Open);
+		if (found->p_Open = ImGui::CollapsingHeader(header.data())) {
 
 			int max_frames = std::min((int)frames.size(), MAX_COLS);
 			int max_count = 0;
@@ -163,17 +177,17 @@ void ShaderViewEditor::RenderImGui(InterfaceShaderViewer& data) {
 	auto compute_shaders = Core::Singleton().GetComputeShaders();
 
 	for (auto& shader : compute_shaders) {
-		RenderShader(shader.first, shader.second, true);
+		RenderShader(data, shader.first, shader.second, true);
 	}
 	for (auto& shader : shaders) {
-		RenderShader(shader.first, shader.second, false);
+		RenderShader(data, shader.first, shader.second, false);
 	}
 
 	ImGui::End();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ShaderViewEditor::RenderShader(QString name, GLShader* shader, bool is_compute) {
+void ShaderViewEditor::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute) {
 
 	if (shader->IsValid()) {
 		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.15f, 0.3f, 1.0));
@@ -185,7 +199,21 @@ void ShaderViewEditor::RenderShader(QString name, GLShader* shader, bool is_comp
 		ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1.0f, 0.0f, 0.0f, 1.0));
 	}
 
-	if (ImGui::CollapsingHeader(name.toLocal8Bit().data())) {
+	InterfaceCollapsible* found = nullptr;
+	for (auto& item : data.p_Items) {
+		if (item.p_Name == name) {
+			found = &item;
+			break;
+		}
+	}
+	if (!found) {
+		data.p_Items.push_back({ name, false, false });
+		found = &(data.p_Items.back());
+	}
+
+	ImGui::SetNextItemOpen(found->p_Open);
+
+	if (found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data())) {
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {
 			ImGui::TextUnformatted(src.m_Type.toLocal8Bit().data());
