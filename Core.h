@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#define INTERFACE_SAVE_VERSION 1
+#define INTERFACE_SAVE_VERSION 1 // todo: start incrementing this on release
 struct InterfaceCollapsible {
 	QString		p_Name;
 	bool		p_Open = false;
@@ -15,11 +15,14 @@ struct InterfaceShaderViewer {
 
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
+	bool	p_AllEnabled = false;
+	int		p_TimeSlider = 0; // do not save this
 	std::vector<InterfaceCollapsible> p_Items;
 };
 
 struct InterfaceCore {
 	int						p_Version = INTERFACE_SAVE_VERSION;
+	bool					p_ShowImGuiDemo = false;
 	InterfaceShaderViewer	p_ShaderView;
 	InterfaceBufferViewer	p_BufferView;
 };
@@ -28,6 +31,7 @@ namespace meta {
 	template<> inline auto registerMembers<InterfaceCore>() {
 		return members(
 			member("Version", &InterfaceCore::p_Version)
+			,member("ShowImGuiDemo", &InterfaceCore::p_ShowImGuiDemo)
 			,member("ShaderView", &InterfaceCore::p_ShaderView)
 			,member("BufferView", &InterfaceCore::p_BufferView)
 		);
@@ -41,6 +45,7 @@ namespace meta {
 	template<> inline auto registerMembers<InterfaceBufferViewer>() {
 		return members(
 			member("Visible", &InterfaceBufferViewer::p_Visible)
+			,member("AllEnabled", &InterfaceBufferViewer::p_AllEnabled)
 			,member("Items", &InterfaceBufferViewer::p_Items)
 		);
 	}
@@ -63,7 +68,7 @@ public:
 	virtual void					Key			( int key, bool is_down ) = 0;
 
 	virtual void					Init		( void ) = 0;
-	virtual void					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
+	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
 	virtual void					Render		( int width, int height ) = 0;
 };
 
@@ -161,7 +166,9 @@ public:
 	GLBuffer*							GetBuffer				( QString name );
 	GLTexture*							GetTexture				( QString name, bool skybox = false );
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
-	static const ResourceResult<T>		GetResource				( QString path ) { return Singleton().IGetResource<T>(path); }
+	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
+	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
+	static inline int					GetTimeSlider			( void ) { return Singleton().m_Interface.p_BufferView.p_TimeSlider; }
 
 	void								UnloadAllShaders		( void );
 
@@ -182,6 +189,8 @@ private:
 	template<class T>
 	const ResourceResult<T>				IGetResource			( QString path );
 	void								IRenderEditor			( void );
+	bool								IIsBufferEnabled		( QString name );
+
 
 #ifdef _DEBUG
 	inline std::vector<QString>			GetShaderPrefixes		( void ) { return { "../src/Shaders/", "../src/Neshny/Shaders/" }; }

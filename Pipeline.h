@@ -19,6 +19,8 @@ public:
 
 	void					RenderImGui			( InterfaceBufferViewer& data );
 
+	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
+
 private:
 
 	struct CheckpointData {
@@ -33,6 +35,7 @@ private:
 	struct CheckpointList {
 		std::vector<MemberSpec>		p_Members;
 		std::deque<CheckpointData>	p_Frames;
+		int							p_StructSize = 0;
 	};
 
 							DebugGPU			( void ) {}
@@ -41,9 +44,11 @@ private:
 	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
 	void					ICheckpoint			( QString stage, class GPUEntity& entity );
 	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
+	std::shared_ptr<GLSSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
+
 
 	int						m_MaxFrames = 100;
-	std::unordered_map<QString, CheckpointList>	m_Frames;
+	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
 };
 
 ////////////////////////////////////////////////////////////////////////////////

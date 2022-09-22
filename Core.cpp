@@ -229,7 +229,9 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		qint64 nanos = frame_timer.nsecsElapsed();
 		frame_timer.restart();
-		engine->Tick(nanos, m_Ticks++);
+		if (engine->Tick(nanos, m_Ticks)) {
+			m_Ticks++;
+		}
 
 		///////////////////////////////////////////// render engine
 
@@ -253,8 +255,6 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
 		ImGui::NewFrame();
-
-		//ImGui::ShowDemoWindow();
 
 		ImGui::SetNextWindowPos(ImVec2(-2, -2), ImGuiCond_Always);
 		ImGui::SetNextWindowSize(ImVec2(width + 4, height + 4), ImGuiCond_Always);
@@ -306,9 +306,29 @@ void Core::IRenderEditor(void) {
 	if (ImGui::Button(m_Interface.p_ShaderView.p_Visible ? "Hide shader view" : "Show shader view")) {
 		m_Interface.p_ShaderView.p_Visible = !m_Interface.p_ShaderView.p_Visible;
 	}
+	ImGui::SameLine();
+	if (ImGui::Button(m_Interface.p_ShowImGuiDemo ? "Hide ImGUI demo" : "Show ImGUI demo")) {
+		m_Interface.p_ShowImGuiDemo = !m_Interface.p_ShowImGuiDemo;
+	}
+	if (m_Interface.p_ShowImGuiDemo) {
+		ImGui::ShowDemoWindow();
+	}
 
 	DebugGPU::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewEditor::RenderImGui(m_Interface.p_ShaderView);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Core::IIsBufferEnabled(QString name) {
+	if (m_Interface.p_BufferView.p_AllEnabled) {
+		return true;
+	}
+	for (auto& buff : m_Interface.p_BufferView.p_Items) {
+		if (buff.p_Name == name) {
+			return buff.p_Enabled;
+		}
+	}
+	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

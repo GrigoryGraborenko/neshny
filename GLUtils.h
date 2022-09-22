@@ -95,6 +95,7 @@ protected:
 class GLSSBO {
 public:
 													GLSSBO			( int size = 0 );
+													GLSSBO			( int size, unsigned char* data );
 	virtual 										~GLSSBO			( void );
 
 	void											EnsureSize		( int size, bool clear_after = true );

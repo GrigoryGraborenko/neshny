@@ -4,13 +4,20 @@
 void DebugGPU::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
-	auto mem = buffer.MakeCopy(count * item_size);
+
+	std::shared_ptr<unsigned char[]> mem = nullptr;
+	if (Core::IsBufferEnabled(name)) {
+		mem = buffer.MakeCopy(count * item_size);
+	}
 	IStoreCheckpoint(name, { stage, "", count, Core::GetTicks(), false, mem }, info, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void DebugGPU::ICheckpoint(QString stage, GPUEntity& buffer) {
-	auto mem = buffer.MakeCopy();
+	std::shared_ptr<unsigned char[]> mem = nullptr;
+	if (Core::IsBufferEnabled(buffer.GetName())) {
+		mem = buffer.MakeCopy();
+	}
 	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 }
 
@@ -19,11 +26,31 @@ void DebugGPU::IStoreCheckpoint(QString name, CheckpointData data, const StructI
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
 		existing = m_Frames.insert_or_assign(name, info ? CheckpointList{ info->p_Members } : CheckpointList{ { MemberSpec{ "", type, MemberSpec::GetGPUTypeSizeBytes(type) } } }).first;
+		existing->second.p_StructSize = 0;
+		for (const auto& member : existing->second.p_Members) {
+			existing->second.p_StructSize += member.p_Size;
+		}
 	}
 	existing->second.p_Frames.push_front(data);
 	while (existing->second.p_Frames.size() > m_MaxFrames) {
 		existing->second.p_Frames.pop_back();
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<GLSSBO> DebugGPU::IGetStoredFrameAt(QString name, int tick, int& count) {
+
+	auto existing = m_Frames.find(name);
+	if (existing == m_Frames.end()) {
+		return nullptr;
+	}
+	for (auto& frame : existing->second.p_Frames) {
+		if (frame.p_Tick == tick) {
+			count = frame.p_Count;
+			return std::make_shared<GLSSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
+		}
+	}
+	return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,16 +60,36 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 		return;
 	}
 
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 200));
+	int curr_tick = Core::GetTicks();
+	int min_stored_tick = curr_tick;
+	for (const auto& buffer: m_Frames) {
+		for (const auto& frame : buffer.second.p_Frames) {
+			if (frame.p_Data) {
+				min_stored_tick = std::min(frame.p_Tick, min_stored_tick);
+			}
+		}
+	}
 
 	ImGui::Begin("DebugGPUWindow", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 
+	ImGui::Checkbox("All", &data.p_AllEnabled);
+	ImGui::SameLine();
+
+	int max_rewind = curr_tick - min_stored_tick;
+	ImGui::SliderInt("Rewind", &data.p_TimeSlider, 0, max_rewind);
+	ImGui::SameLine();
+	ImGui::Text("%i", max_rewind);
+
+	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+
+	const int size_banner = 50;
+	ImGui::SetCursorPos(ImVec2(2, size_banner));
+	ImGui::BeginChild("BufferList", ImVec2(space_available.x - 4, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 200));
+
 	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
-
-	ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-
 	const int MAX_COLS = 50;
-	for (auto buffer : m_Frames) {
+	for (auto& buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
 		auto header = (buffer.first + (frames.empty() ? "" : frames.begin()->p_Info) + "###" + buffer.first).toLocal8Bit();
 
@@ -57,6 +104,17 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 			data.p_Items.push_back({ buffer.first, false, false });
 			found = &(data.p_Items.back());
 		}
+
+		auto check_header = ("###" + buffer.first).toLocal8Bit();
+
+		if (data.p_AllEnabled) {
+			ImGui::BeginDisabled();
+		}
+		ImGui::Checkbox(check_header, &found->p_Enabled);
+		if (data.p_AllEnabled) {
+			ImGui::EndDisabled();
+		}
+		ImGui::SameLine();
 
 		ImGui::SetNextItemOpen(found->p_Open);
 		if (found->p_Open = ImGui::CollapsingHeader(header.data())) {
@@ -131,7 +189,7 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 
 						for (int column = 0; column < max_frames; column++) {
 							auto& col = frames[column];
-							if (real_count >= col.p_Count) {
+							if ((real_count >= col.p_Count) || (!col.p_Data)) {
 								continue;
 							}
 							ImGui::TableSetColumnIndex(column + 1);
@@ -159,9 +217,10 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 			}
 		}
 	}
+	ImGui::PopStyleColor();
+	ImGui::EndChild();
 
 	ImGui::End();
-	ImGui::PopStyleColor();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -559,7 +618,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	////////////////////////////////////////////////////
 
 	if (m_DestroyBuffer) {
-		DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_DestroyBuffer, MemberSpec::Type::T_INT);
+		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_DestroyBuffer, MemberSpec::Type::T_INT);
 	}
 
 	if (m_ControlBuffer) {
@@ -594,13 +653,13 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	}
 
 	if (m_ControlBuffer) {
-		DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
+		//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
 	}
 	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::SSBO) {
-		//DebugGPU::Checkpoint("PostRun", m_Entity);
+		DebugGPU::Checkpoint("PostRun", m_Entity);
 	}
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-		DebugGPU::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
+		//DebugGPU::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
 	}
 }
 
@@ -630,6 +689,14 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	std::vector<std::pair<QString, int>> integer_vars;
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
+	int time_slider = Core::GetTimeSlider();
+
+	int num_entities = m_Entity.GetMaxIndex();
+	std::shared_ptr<GLSSBO> replace = nullptr;
+
+	if (time_slider > 0) {
+		replace = DebugGPU::GetStoredFrameAt(m_Entity.GetName(), Core::GetTicks() - time_slider, num_entities);
+	}
 
 	for (auto str : m_ShaderDefines) {
 		insertion += QString("#define %1").arg(str);
@@ -643,11 +710,11 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 		insertion_images += QString("layout(binding = 0, r32f) uniform image2D i_%2Tex;").arg(m_Entity.GetName());
 	} else {
 		int buffer_index = insertion_buffers.size();
-		ssbo_binds.push_back({ m_Entity.GetSSBO(), buffer_index });
+		ssbo_binds.push_back({ replace.get() ? replace.get() : m_Entity.GetSSBO(), buffer_index });
 		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { float i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
 	}
 	insertion_uniforms += QString("uniform int u%1Count;").arg(m_Entity.GetName());
-	integer_vars.push_back({ QString("u%1Count").arg(m_Entity.GetName()), m_Entity.GetMaxIndex() });
+	integer_vars.push_back({ QString("u%1Count").arg(m_Entity.GetName()), num_entities });
 	insertion += m_Entity.GetGPUInsertion();
 	insertion += m_Entity.GetSpecs().p_GPUReadOnlyInsertion;
 
@@ -691,6 +758,6 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	}
 
 	////////////////////////////////////////////////////
-	buffer->DrawInstanced(m_Entity.GetMaxIndex());
+	buffer->DrawInstanced(num_entities);
 	////////////////////////////////////////////////////
 }

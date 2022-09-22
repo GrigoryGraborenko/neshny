@@ -453,6 +453,14 @@ GLSSBO::GLSSBO(int size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+GLSSBO::GLSSBO(int size, unsigned char* data) {
+	glGenBuffers(1, &m_Buffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_Buffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size, data, GL_DYNAMIC_DRAW);
+	m_Size = size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 GLSSBO::~GLSSBO(void) {
 	glDeleteBuffers(1, &m_Buffer);
 	m_Buffer = 0;
