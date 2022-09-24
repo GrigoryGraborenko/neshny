@@ -6,18 +6,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class DebugGPU {
+class BufferViewer {
 
 public:
 
-	inline static DebugGPU&	Singleton			( void ) { static DebugGPU debug; return debug; }
+	inline static BufferViewer&	Singleton			( void ) { static BufferViewer debug; return debug; }
 
-	static inline int		GetMaxFrames		( void ) { return Singleton().m_MaxFrames; }
-	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
-	static inline void		Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
-	static inline void		Checkpoint			( QString stage, class GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
+	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
+	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
+	static inline void			Checkpoint			( QString stage, class GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
 
-	void					RenderImGui			( InterfaceBufferViewer& data );
+	void						RenderImGui			( InterfaceBufferViewer& data );
 
 	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
@@ -38,16 +37,14 @@ private:
 		int							p_StructSize = 0;
 	};
 
-							DebugGPU			( void ) {}
-							~DebugGPU			( void ) {}
+							BufferViewer		( void ) {}
+							~BufferViewer		( void ) {}
 
 	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
 	void					ICheckpoint			( QString stage, class GPUEntity& entity );
 	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	std::shared_ptr<GLSSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
 
-
-	int						m_MaxFrames = 100;
 	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
 };
 
@@ -56,8 +53,8 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 class ShaderViewEditor {
 public:
-	static void				RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
-	static void				RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute );
+	static void						RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search );
 };
 
 ////////////////////////////////////////////////////////////////////////////////

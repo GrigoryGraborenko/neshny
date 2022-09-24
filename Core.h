@@ -9,13 +9,15 @@ struct InterfaceCollapsible {
 };
 
 struct InterfaceShaderViewer {
-	bool	p_Visible = false;
+	bool			p_Visible = false;
+	std::string		p_Search = "";
 	std::vector<InterfaceCollapsible> p_Items;
 };
 
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
 	bool	p_AllEnabled = false;
+	int		p_MaxFrames = 100;
 	int		p_TimeSlider = 0; // do not save this
 	std::vector<InterfaceCollapsible> p_Items;
 };
@@ -39,6 +41,7 @@ namespace meta {
 	template<> inline auto registerMembers<InterfaceShaderViewer>() {
 		return members(
 			member("Visible", &InterfaceShaderViewer::p_Visible)
+			,member("Search", &InterfaceShaderViewer::p_Search)
 			,member("Items", &InterfaceShaderViewer::p_Items)
 		);
 	}
@@ -46,6 +49,7 @@ namespace meta {
 		return members(
 			member("Visible", &InterfaceBufferViewer::p_Visible)
 			,member("AllEnabled", &InterfaceBufferViewer::p_AllEnabled)
+			,member("MaxFrames", &InterfaceBufferViewer::p_MaxFrames)
 			,member("Items", &InterfaceBufferViewer::p_Items)
 		);
 	}
@@ -168,7 +172,7 @@ public:
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
 	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
-	static inline int					GetTimeSlider			( void ) { return Singleton().m_Interface.p_BufferView.p_TimeSlider; }
+	static inline const InterfaceCore&	GetInterfaceData		( void ) { return Singleton().m_Interface; }
 
 	void								UnloadAllShaders		( void );
 
@@ -190,7 +194,6 @@ private:
 	const ResourceResult<T>				IGetResource			( QString path );
 	void								IRenderEditor			( void );
 	bool								IIsBufferEnabled		( QString name );
-
 
 #ifdef _DEBUG
 	inline std::vector<QString>			GetShaderPrefixes		( void ) { return { "../src/Shaders/", "../src/Neshny/Shaders/" }; }

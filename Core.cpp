@@ -314,7 +314,7 @@ void Core::IRenderEditor(void) {
 		ImGui::ShowDemoWindow();
 	}
 
-	DebugGPU::Singleton().RenderImGui(m_Interface.p_BufferView);
+	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewEditor::RenderImGui(m_Interface.p_ShaderView);
 }
 

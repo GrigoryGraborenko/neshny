@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-void DebugGPU::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
+void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
 
@@ -13,7 +13,7 @@ void DebugGPU::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, in
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void DebugGPU::ICheckpoint(QString stage, GPUEntity& buffer) {
+void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 	std::shared_ptr<unsigned char[]> mem = nullptr;
 	if (Core::IsBufferEnabled(buffer.GetName())) {
 		mem = buffer.MakeCopy();
@@ -22,7 +22,7 @@ void DebugGPU::ICheckpoint(QString stage, GPUEntity& buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void DebugGPU::IStoreCheckpoint(QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {
+void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
 		existing = m_Frames.insert_or_assign(name, info ? CheckpointList{ info->p_Members } : CheckpointList{ { MemberSpec{ "", type, MemberSpec::GetGPUTypeSizeBytes(type) } } }).first;
@@ -31,14 +31,15 @@ void DebugGPU::IStoreCheckpoint(QString name, CheckpointData data, const StructI
 			existing->second.p_StructSize += member.p_Size;
 		}
 	}
+	int max_frames = Core::GetInterfaceData().p_BufferView.p_MaxFrames;
 	existing->second.p_Frames.push_front(data);
-	while (existing->second.p_Frames.size() > m_MaxFrames) {
+	while (existing->second.p_Frames.size() > max_frames) {
 		existing->second.p_Frames.pop_back();
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<GLSSBO> DebugGPU::IGetStoredFrameAt(QString name, int tick, int& count) {
+std::shared_ptr<GLSSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
 
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
@@ -54,7 +55,7 @@ std::shared_ptr<GLSSBO> DebugGPU::IGetStoredFrameAt(QString name, int tick, int&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
+void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 
 	if (!data.p_Visible) {
 		return;
@@ -71,20 +72,25 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 	}
 
 	ImGui::Begin("DebugGPUWindow", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 
 	ImGui::Checkbox("All", &data.p_AllEnabled);
 	ImGui::SameLine();
 
 	int max_rewind = curr_tick - min_stored_tick;
+	ImGui::SetNextItemWidth(100);
+	ImGui::InputInt("Max Frames", &data.p_MaxFrames);
+	ImGui::SameLine();
+
+	ImGui::SetNextItemWidth(300);
 	ImGui::SliderInt("Rewind", &data.p_TimeSlider, 0, max_rewind);
 	ImGui::SameLine();
 	ImGui::Text("%i", max_rewind);
 
-	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 
 	const int size_banner = 50;
-	ImGui::SetCursorPos(ImVec2(2, size_banner));
-	ImGui::BeginChild("BufferList", ImVec2(space_available.x - 4, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::SetCursorPos(ImVec2(8, size_banner));
+	ImGui::BeginChild("BufferList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 200));
 
 	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
@@ -144,7 +150,7 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 
 				ImGui::TableSetupColumn("-", ImGuiTableColumnFlags_WidthFixed, struct_types.empty() ? 50 : 100);
 				for (int column = 0; column < max_frames; column++) {
-					auto head_name = QString("%1 %2").arg(frames[column].p_Stage).arg(column).toLocal8Bit();
+					auto head_name = QString("%1 %2 [%3]").arg(frames[column].p_Stage).arg(column).arg(frames[column].p_Tick).toLocal8Bit();
 					ImGui::TableSetupColumn(head_name, ImGuiTableColumnFlags_WidthFixed, 100);
 				}
 
@@ -219,7 +225,6 @@ void DebugGPU::RenderImGui(InterfaceBufferViewer& data) {
 	}
 	ImGui::PopStyleColor();
 	ImGui::EndChild();
-
 	ImGui::End();
 }
 
@@ -231,23 +236,44 @@ void ShaderViewEditor::RenderImGui(InterfaceShaderViewer& data) {
 	}
 
 	ImGui::Begin("Shader Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+
+	bool all_close = ImGui::Button("<<");
+	ImGui::SameLine();
+	bool all_open = ImGui::Button(">>");
+	ImGui::SameLine();
+
+	ImGui::SetNextItemWidth(300);
+	ImGui::InputText("Search", &data.p_Search);
+	QString search = QString();
+	if (!data.p_Search.empty()) {
+		search = data.p_Search.c_str();
+	}
+
+	const int size_banner = 50;
+	ImGui::SetCursorPos(ImVec2(8, size_banner));
+	ImGui::BeginChild("ShaderList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	auto shaders = Core::Singleton().GetShaders();
 	auto compute_shaders = Core::Singleton().GetComputeShaders();
 
 	for (auto& shader : compute_shaders) {
-		RenderShader(data, shader.first, shader.second, true);
+		auto info = RenderShader(data, shader.first, shader.second, true, search);
+		info->p_Open = (info->p_Open || all_open) && (!all_close);
 	}
 	for (auto& shader : shaders) {
-		RenderShader(data, shader.first, shader.second, false);
+		auto info = RenderShader(data, shader.first, shader.second, false, search);
+		info->p_Open = (info->p_Open || all_open) && (!all_close);
 	}
-
+	ImGui::EndChild();
 	ImGui::End();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ShaderViewEditor::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute) {
+InterfaceCollapsible* ShaderViewEditor::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search) {
 
+	const int context_lines = 4;
+	const int number_width = 50;
 	if (shader->IsValid()) {
 		ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.15f, 0.3f, 1.0));
 		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.0f, 0.2f, 0.4f, 1.0));
@@ -282,25 +308,56 @@ void ShaderViewEditor::RenderShader(InterfaceShaderViewer& data, QString name, G
 			if (!src.m_Error.isNull()) {
 				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), src.m_Error.toLocal8Bit().data());
 			}
+			if (search.isNull()) {
+				for (int line = 0; line < lines.size(); line++) {
+					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), QString("%1").arg(line).toLocal8Bit().data());
+					ImGui::SameLine();
+					ImGui::SetCursorPosX(number_width);
+					ImGui::TextUnformatted(lines[line].toLocal8Bit().data());
+				}
+			} else {
 
-			for(int line = 0; line < lines.size(); line++) {
-				ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), QString("%1").arg(line).toLocal8Bit().data());
-				ImGui::SameLine();
-				ImGui::SetCursorPosX(50);
-				ImGui::TextUnformatted(lines[line].toLocal8Bit().data());
+				int context_countdown = 0;
+				int last_line = 0;
+				int num_lines = lines.size();
+				int match_count = 0;
+				std::deque<bool> look_ahead_match;
+
+				for(int line = 0; line < num_lines; line++) {
+					while (look_ahead_match.size() <= context_lines) {
+						int ahead = line + (int)look_ahead_match.size();
+						bool found = (ahead < num_lines) && lines[ahead].contains(search, Qt::CaseInsensitive);
+						match_count += found ? 1 : 0;
+						look_ahead_match.push_back(found);
+					}
+					bool found = false;
+					if (!look_ahead_match.empty()) {
+						found = look_ahead_match[0];
+						look_ahead_match.pop_front();
+					}
+					context_countdown = found ? context_lines + 1 : context_countdown - 1;
+
+					if ((match_count <= 0) && (context_countdown <= 0)) {
+						continue;
+					}
+					if (last_line != (line - 1)) {
+						ImGui::Separator();
+					}
+					auto line_num_str = QString("%1").arg(line).toLocal8Bit();
+					auto line_str = lines[line].toLocal8Bit();
+					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.data());
+					ImGui::SameLine();
+					ImGui::SetCursorPosX(number_width);
+					ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), line_str.data());
+					last_line = line;
+
+					match_count -= found ? 1 : 0;
+				}
 			}
-
-			/*
-			auto txt = src.m_Source.toLocal8Bit();
-			ImGuiInputTextFlags flags = ImGuiInputTextFlags_AllowTabInput;
-			//flags |= ImGuiInputTextFlags_ReadOnly;
-			ImGui::InputTextMultiline("##source", txt.data(), txt.size(), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * lines.size()), flags);
-			*/
-
-			//ImGui::TextUnformatted(src.m_Source.toLocal8Bit().data());
 		}
 	}
 	ImGui::PopStyleColor(3);
+	return found;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -645,7 +702,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		if ((m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && m_DestroyBuffer && (entity_deaths > 0)) {
 			m_Entity.ProcessMoveDeaths(entity_deaths, *m_DestroyBuffer, *m_ControlBuffer);
 			if (true) {
-				DebugGPU::Checkpoint(QString("%1 Death Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
+				BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
 			}
 		} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			m_Entity.ProcessStableDeaths(entity_deaths);
@@ -656,7 +713,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
 	}
 	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::SSBO) {
-		DebugGPU::Checkpoint("PostRun", m_Entity);
+		//DebugGPU::Checkpoint("PostRun", m_Entity);
 	}
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 		//DebugGPU::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
@@ -689,13 +746,13 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	std::vector<std::pair<QString, int>> integer_vars;
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
-	int time_slider = Core::GetTimeSlider();
+	int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 
 	int num_entities = m_Entity.GetMaxIndex();
 	std::shared_ptr<GLSSBO> replace = nullptr;
 
 	if (time_slider > 0) {
-		replace = DebugGPU::GetStoredFrameAt(m_Entity.GetName(), Core::GetTicks() - time_slider, num_entities);
+		replace = BufferViewer::GetStoredFrameAt(m_Entity.GetName(), Core::GetTicks() - time_slider, num_entities);
 	}
 
 	for (auto str : m_ShaderDefines) {
