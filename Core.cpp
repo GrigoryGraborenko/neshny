@@ -3,6 +3,7 @@
 Core* g_StaticInstance = nullptr;
 
 #define EDITOR_INTERFACE_FILENAME "interface.json"
+//#define EDITOR_INTERFACE_FILENAME "interface.bin"
 
 ////////////////////////////////////////////////////////////////////////////////
 void WorkerThreadPool::Start(int thread_count) {
@@ -81,21 +82,16 @@ Core::Core(void) {
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
+
+		//QDataStream in(&file);
+		//in >> m_Interface;
+
 		Json::ParseError err;
 		Json::FromJson<InterfaceCore>(file.readAll(), m_Interface, err);
 		if (m_Interface.p_Version != INTERFACE_SAVE_VERSION) {
 			m_Interface = InterfaceCore{};
 		}
 	}
-
-	/*
-	std::ifstream in;
-	in.open(EDITOR_INTERFACE_FILENAME, std::ifstream::in | std::ifstream::binary);
-	FromBinary<InterfaceCore>(in, m_Interface);
-	if (m_Interface.p_Version != INTERFACE_SAVE_VERSION) {
-		m_Interface = InterfaceCore{};
-	}
-	*/
 
 	m_ResourceThreads.Start(1);
 }
@@ -112,20 +108,16 @@ Core::~Core(void) {
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::WriteOnly)) {
+		
 		Json::ParseError err;
 		QByteArray data = Json::ToJson<InterfaceCore>(m_Interface, err);
 		if (!err) {
 			file.write(data);
 		}
-	}
 
-	/*
-	std::ofstream out;
-	out.open(EDITOR_INTERFACE_FILENAME, std::ofstream::out | std::ofstream::binary);
-	ToBinary<InterfaceCore>(out, m_Interface);
-	out.flush();
-	out.close();
-	*/
+		//QDataStream out(&file);
+		//out << m_Interface;
+	}
 }
 
 #ifdef SDL_h_

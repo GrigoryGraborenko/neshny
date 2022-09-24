@@ -6,6 +6,9 @@ template <typename T>
 struct is_optional< std::optional<T> > : std::true_type {};
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// JSON Serialization/Deserialization
+////////////////////////////////////////////////////////////////////////////////
 namespace Json {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -475,4 +478,272 @@ inline void FromJson(const QByteArray& data, T& obj, ParseError &err) noexcept {
     }
 }
 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Binary Serialization/Deserialization
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+template <typename T, typename = std::enable_if_t<meta::isRegistered<T>()>>
+QDataStream &operator<<(QDataStream &out, const T &obj) {
+    meta::doForAllMembers<T>(
+        [&out, &obj](auto &member) {
+            if (out.status() != QDataStream::Status::Ok) {
+                return;
+            }
+            QByteArray temp_storage;
+            QDataStream temp_out(&temp_storage, QIODevice::WriteOnly);
+
+            if constexpr (meta::is_optional<meta::get_member_type<decltype(member)>>::value) {
+                if (member.canGetConstRef()) {
+                    auto& optionalVal = member.get(obj);
+                    if(optionalVal) {
+                        temp_out << *member.get(obj);
+                        if (temp_out.status() != QDataStream::Status::Ok) {
+                            qDebug() << "ToBinary: error parsing member " << member.getName();
+                            return;
+                        }
+                    } else {
+                        qint8 is_null = true;
+                        temp_out << is_null;
+                    }
+                } else if (member.hasGetter()) {
+                    auto optionalVal = member.getCopy(obj);
+                    if(optionalVal) {
+                        temp_out << *member.get(obj);
+                        if (temp_out.status() != QDataStream::Status::Ok) {
+                            qDebug() << "ToBinary: error parsing member " << member.getName();
+                            return;
+                        }
+                    } else {
+                        qint8 is_null = true;
+                        temp_out << is_null;
+                    }
+                }
+            } else {
+                if (member.canGetConstRef()) {
+                    temp_out << member.get(obj);
+                    if (temp_out.status() != QDataStream::Status::Ok) {
+                        qDebug() << "ToBinary: error parsing member " << member.getName();
+                        return;
+                    }
+                } else if (member.hasGetter()) {
+                    temp_out << member.getCopy(obj);
+                    if (temp_out.status() != QDataStream::Status::Ok) {
+                        qDebug() << "ToBinary: error parsing member " << member.getName();
+                        return;
+                    }
+                } else {
+                    qDebug() << "ToBinary: no getter or member-accessor for member " << member.getName();
+                    return;
+                }
+            }
+            out.writeRawData(temp_storage.data(), temp_storage.size());
+        }
+    );
+
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template <typename T, typename = std::enable_if_t<meta::isRegistered<T>()>>
+QDataStream &operator>>(QDataStream &in, T &obj) {
+    meta::doForAllMembers<T>(
+        [&in, &obj](auto &member) {
+            if (in.status() != QDataStream::Status::Ok) {
+                return;
+            }
+
+            if constexpr (meta::is_optional<meta::get_member_type<decltype(member)>>::value) {
+                if (member.canGetRef()) {
+                    qint8 is_null = false;
+                    in >> is_null;
+                    if (!is_null) {
+                        using MemberT = typename meta::get_member_type<decltype(member)>::value_type;
+                        MemberT membType;
+                        in >> membType;
+                        if (in.status() != QDataStream::Status::Ok) {
+                            qDebug() << "FromBinary: error parsing member " << member.getName();
+                            return;
+                        }
+                        member.getRef(obj).emplace(std::move(membType));
+                    }
+                } else {
+                    qDebug() << "FromBinary: cannot get reference to std::optional member " << member.getName();
+                    return;
+                }
+            } else {
+                using MemberT = meta::get_member_type<decltype(member)>;
+                if (member.hasSetter() || member.hasPtr()) {
+                    MemberT membType;
+                    in >> membType;
+                    if (in.status() != QDataStream::Status::Ok) {
+                        qDebug() << "FromBinary: error parsing member " << member.getName();
+                        return;
+                    }
+
+                    if (member.hasSetter()) {
+                        if constexpr (std::is_trivially_move_constructible<MemberT>::value) {
+                            member.set(obj, std::move(membType));
+                        } else {
+                            member.set(obj, membType);
+                        }
+                    } else if constexpr (std::is_same<MemberT, std::string>::value) {
+                        member.set(obj, membType.c_str());
+                    } else {
+                        auto member_ptr = member.getPtr();
+                        obj.*member_ptr = membType;
+                    }
+                } else if (member.canGetRef()) {
+                    MemberT membType;
+                    in >> membType;
+                    if (in.status() != QDataStream::Status::Ok) {
+                        qDebug() << "FromBinary: error parsing member " << member.getName();
+                        return;
+                    }
+
+                    if constexpr (std::is_trivially_move_constructible<MemberT>::value) {
+                        member.getRef(obj) = std::move(membType);
+                    } else if constexpr (std::is_copy_assignable<MemberT>::value) {
+                        member.getRef(obj) = membType;
+                    } else {
+                        qDebug() << "FromBinary: member " << member.getName() << " needs a reference setter function registered with MetaStuff";
+                        return;
+                    }
+                } else {
+                    qDebug() << "FromBinary: cannot deserialize read only member " << member.getName();
+                    return;
+                }
+            }
+        }
+    );
+
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream &operator<<(QDataStream &out, const std::vector<T> &args) {
+    out << (unsigned int)args.size();
+    for (const auto& val: args) {
+        out << val;
+    }
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream &operator>>(QDataStream &in, std::vector<T> &args) {
+    unsigned int length = 0;
+    in >> length;
+    args.clear();
+    args.reserve(length);
+    for (unsigned int i = 0; i < length; i++) {
+        T obj;
+        in >> obj;
+        if (in.status() != QDataStream::Ok) {
+            args.clear();
+            break;
+        }
+        args.push_back(obj);
+    }
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream &operator<<(QDataStream &out, const std::list<T> &args) {
+    out << (unsigned int)args.size();
+    for (const auto& val : args) {
+        out << val;
+    }
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream &operator>>(QDataStream &in, std::list<T> &args) {
+    unsigned int length = 0;
+    in >> length;
+    args.clear();
+    for (unsigned int i = 0; i < length; i++) {
+        T obj;
+        in >> obj;
+        if (in.status() != QDataStream::Ok) {
+            args.clear();
+            break;
+        }
+        args.push_back(obj);
+    }
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename K, typename V>
+inline QDataStream &operator<<(QDataStream &out, const std::unordered_map<K, V> &args) {
+    out << (unsigned int)args.size();
+    for (const auto& [key, val]: args) {
+        out << key;
+        out << val;
+    }
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename K, typename V>
+inline QDataStream &operator>>(QDataStream &in, std::unordered_map<K, V> &args) {
+    unsigned int length = 0;
+    in >> length;
+    args.clear();
+    for (unsigned int i = 0; i < length; i++) {
+        K key;
+        V val;
+        in >> key;
+        in >> val;
+        if (in.status() != QDataStream::Ok) {
+            args.clear();
+            break;
+        }
+        args.insert(std::pair(key, val));
+    }
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+inline QDataStream &operator<<(QDataStream &out, const std::string &args) {
+    if (args.empty()) {
+        out << (unsigned int)0;
+        return out;
+    }
+    out << (unsigned int)(args.size() + 1);
+    out.writeRawData(args.data(), (int)args.size() + 1);
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+inline QDataStream &operator>>(QDataStream &in, std::string &args) {
+    unsigned int length = 0;
+    in >> length;
+    args.clear();
+    args.reserve(length);
+    in.readRawData(args.data(), length);
+    if (in.status() != QDataStream::Ok)
+    {
+        args.clear();
+        return in;
+    }
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+inline QDataStream &operator<<(QDataStream &out, const long &args) {
+    out << (qint64)(args);
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+inline QDataStream &operator>>(QDataStream &in, long &args) {
+    in >> (qint64&)args;
+    return in;
 }
