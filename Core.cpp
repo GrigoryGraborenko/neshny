@@ -79,7 +79,6 @@ void WorkerThreadPool::Sync(void) {
 ////////////////////////////////////////////////////////////////////////////////
 Core::Core(void) {
 
-
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
 
@@ -299,6 +298,18 @@ void Core::IRenderEditor(void) {
 		m_Interface.p_ShaderView.p_Visible = !m_Interface.p_ShaderView.p_Visible;
 	}
 	ImGui::SameLine();
+	if (ImGui::Button(m_Interface.p_ResourceView.p_Visible ? "Hide resource view" : "Show resource view")) {
+		m_Interface.p_ResourceView.p_Visible = !m_Interface.p_ResourceView.p_Visible;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(m_Interface.p_Scrapbook2D.p_Visible ? "Hide 2D scrapbook" : "Show 2D scrapbook")) {
+		m_Interface.p_Scrapbook2D.p_Visible = !m_Interface.p_Scrapbook2D.p_Visible;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(m_Interface.p_Scrapbook3D.p_Visible ? "Hide 3D scrapbook" : "Show 3D scrapbook")) {
+		m_Interface.p_Scrapbook3D.p_Visible = !m_Interface.p_Scrapbook3D.p_Visible;
+	}
+	ImGui::SameLine();
 	if (ImGui::Button(m_Interface.p_ShowImGuiDemo ? "Hide ImGUI demo" : "Show ImGUI demo")) {
 		m_Interface.p_ShowImGuiDemo = !m_Interface.p_ShowImGuiDemo;
 	}
@@ -307,7 +318,10 @@ void Core::IRenderEditor(void) {
 	}
 
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
-	ShaderViewEditor::RenderImGui(m_Interface.p_ShaderView);
+	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
+	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
+	Scrapbook::RenderImGui(m_Interface.p_Scrapbook2D);
+	Scrapbook::RenderImGui(m_Interface.p_Scrapbook3D);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

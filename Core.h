@@ -8,12 +8,6 @@ struct InterfaceCollapsible {
 	bool		p_Enabled = true;
 };
 
-struct InterfaceShaderViewer {
-	bool			p_Visible = false;
-	std::string		p_Search = "";
-	std::vector<InterfaceCollapsible> p_Items;
-};
-
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
 	bool	p_AllEnabled = false;
@@ -22,11 +16,32 @@ struct InterfaceBufferViewer {
 	std::vector<InterfaceCollapsible> p_Items;
 };
 
+struct InterfaceShaderViewer {
+	bool			p_Visible = false;
+	std::string		p_Search = "";
+	std::vector<InterfaceCollapsible> p_Items;
+};
+
+struct InterfaceResourceViewer {
+	bool			p_Visible = false;
+};
+
+struct InterfaceScrapbook2D {
+	bool			p_Visible = false;
+};
+
+struct InterfaceScrapbook3D {
+	bool			p_Visible = false;
+};
+
 struct InterfaceCore {
 	int						p_Version = INTERFACE_SAVE_VERSION;
 	bool					p_ShowImGuiDemo = false;
-	InterfaceShaderViewer	p_ShaderView;
 	InterfaceBufferViewer	p_BufferView;
+	InterfaceShaderViewer	p_ShaderView;
+	InterfaceResourceViewer	p_ResourceView;
+	InterfaceScrapbook2D	p_Scrapbook2D;
+	InterfaceScrapbook3D	p_Scrapbook3D;
 };
 
 namespace meta {
@@ -34,15 +49,11 @@ namespace meta {
 		return members(
 			member("Version", &InterfaceCore::p_Version)
 			,member("ShowImGuiDemo", &InterfaceCore::p_ShowImGuiDemo)
-			,member("ShaderView", &InterfaceCore::p_ShaderView)
 			,member("BufferView", &InterfaceCore::p_BufferView)
-		);
-	}
-	template<> inline auto registerMembers<InterfaceShaderViewer>() {
-		return members(
-			member("Visible", &InterfaceShaderViewer::p_Visible)
-			,member("Search", &InterfaceShaderViewer::p_Search)
-			,member("Items", &InterfaceShaderViewer::p_Items)
+			,member("ShaderView", &InterfaceCore::p_ShaderView)
+			,member("ResourceView", &InterfaceCore::p_ResourceView)
+			,member("Scrapbook2D", &InterfaceCore::p_Scrapbook2D)
+			,member("Scrapbook3D", &InterfaceCore::p_Scrapbook3D)
 		);
 	}
 	template<> inline auto registerMembers<InterfaceBufferViewer>() {
@@ -53,6 +64,30 @@ namespace meta {
 			,member("Items", &InterfaceBufferViewer::p_Items)
 		);
 	}
+	template<> inline auto registerMembers<InterfaceShaderViewer>() {
+		return members(
+			member("Visible", &InterfaceShaderViewer::p_Visible)
+			,member("Search", &InterfaceShaderViewer::p_Search)
+			,member("Items", &InterfaceShaderViewer::p_Items)
+		);
+	}
+
+	template<> inline auto registerMembers<InterfaceResourceViewer>() {
+		return members(
+			member("Visible", &InterfaceResourceViewer::p_Visible)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceScrapbook2D>() {
+		return members(
+			member("Visible", &InterfaceScrapbook2D::p_Visible)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceScrapbook3D>() {
+		return members(
+			member("Visible", &InterfaceScrapbook3D::p_Visible)
+		);
+	}
+
 	template<> inline auto registerMembers<InterfaceCollapsible>() {
 		return members(
 			member("Name", &InterfaceCollapsible::p_Name)
@@ -173,14 +208,34 @@ public:
 	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
 	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
 	static inline const InterfaceCore&	GetInterfaceData		( void ) { return Singleton().m_Interface; }
+	static inline const std::map<QString, ResourceContainer>	GetResources	( void ) { return Singleton().m_Resources; }
 
 	void								UnloadAllShaders		( void );
 
 	static void							DispatchMultiple		( GLShader* prog, int count, bool mem_barrier = true );
+	template <class T>
+	static bool							SaveBinary				( const T& item, QString filename ) {
+		QFile file(filename);
+		if (!file.open(QIODevice::WriteOnly)) {
+			return false;
+		}
+		QDataStream out(&file);
+		out << item;
+		return true;
+	}
+	template <class T>
+	static bool							LoadBinary				( T& item, QString filename ) {
+		QFile file(filename);
+		if (!file.open(QIODevice::ReadOnly)) {
+			return false;
+		}
+		QDataStream in(&file);
+		in >> item;
+		return true;
+	}
 
 	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }
-
 
 	inline const std::map<QString, GLShader*>&	GetShaders				( void ) { return m_Shaders; }
 	inline const std::map<QString, GLShader*>&	GetComputeShaders		( void ) { return m_ComputeShaders; }
