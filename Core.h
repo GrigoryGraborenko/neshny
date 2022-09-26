@@ -44,6 +44,56 @@ struct InterfaceCore {
 	InterfaceScrapbook3D	p_Scrapbook3D;
 };
 
+struct Camera3DOrbit {
+
+	QMatrix4x4				GetViewMatrix				( void ) const {
+		QMatrix4x4 viewMatrix;
+		viewMatrix.translate(0, 0, -p_Zoom);
+		viewMatrix.rotate(p_VerticalDegrees, 1, 0, 0);
+		viewMatrix.rotate(p_HorizontalDegrees, 0, 1, 0);
+		viewMatrix.translate(float(-p_Pos.x), float(-p_Pos.y), float(-p_Pos.z));
+		return viewMatrix;
+	}
+	QMatrix4x4				GetViewPerspectiveMatrix	( int width, int height ) const {
+		QMatrix4x4 perspectiveMatrix;
+		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
+		return perspectiveMatrix * GetViewMatrix();
+	}
+
+	Triple		p_Pos;
+	double		p_Zoom = 100.0;
+	float		p_HorizontalDegrees = 0.0f;
+	float		p_VerticalDegrees = 0.0f;
+	float		p_FovDegrees = 60.0f;
+	float		p_NearPlane = 0.1f;
+	float		p_FarPlane = 1000.0f;
+};
+
+struct Camera3DFPS {
+	QMatrix4x4 GetViewMatrix(void) const {
+		QMatrix4x4 viewMatrix;
+		viewMatrix.rotate(p_Direction);
+		viewMatrix.translate(float(-p_Pos.x), float(-p_Pos.y), float(-p_Pos.z));
+		return viewMatrix;
+	}
+	QMatrix4x4 GetViewPerspectiveMatrix(int width, int height) const {
+		QMatrix4x4 perspectiveMatrix;
+		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
+		return perspectiveMatrix * GetViewMatrix();
+	}
+	void GetDirections(Triple* forward = nullptr, Triple* up = nullptr, Triple* side = nullptr) {
+		auto inv = p_Direction.inverted();
+		if (forward) { *forward = inv * QVector3D(0, 0, -1); forward->normalize(); }
+		if (up) { *up = inv * QVector3D(0, 1, 0); up->normalize(); }
+		if (side) { *side = inv * QVector3D(1, 0, 0); side->normalize(); }
+	}
+	Triple		p_Pos;
+	QQuaternion	p_Direction = QQuaternion();
+	float		p_FovDegrees = 60;
+	float		p_NearPlane = 0.1f;
+	float		p_FarPlane = 1000.0f;
+};
+
 namespace meta {
 	template<> inline auto registerMembers<InterfaceCore>() {
 		return members(
