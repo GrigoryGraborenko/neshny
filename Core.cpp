@@ -164,6 +164,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	// Main loop
 	bool done = false;
+	bool fullscreen_hover = true;
 	while (!done)
 	{
 		int mouse_dx = 0;
@@ -198,7 +199,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 			} else if (event.type == SDL_MOUSEMOTION) {
 				mouse_dx = event.motion.xrel;
 				mouse_dy = event.motion.yrel;
-				engine->MouseMove(QVector2D(mouse_dx, mouse_dy));
+				engine->MouseMove(QVector2D(mouse_dx, mouse_dy), !fullscreen_hover);
 			} else if (event.type == SDL_KEYDOWN) {
 				if (event.key.keysym.sym == SDLK_ESCAPE) {
 					done = true;
@@ -264,6 +265,15 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		engine->Render(width, height);
 
+		ImGui::SetCursorPos(ImVec2(0, 0));
+		ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
+		if (fullscreen_hover = ImGui::IsItemHovered()) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.MouseWheel != 0.0f) {
+				engine->MouseWheel(io.MouseWheel > 0.0f);
+			}
+		}
+
 		ImGui::End();
 		/////////////////////////////////////////////
 
@@ -317,11 +327,25 @@ void Core::IRenderEditor(void) {
 		ImGui::ShowDemoWindow();
 	}
 
+	/*
+	auto debug_strs = DebugRender::GetStrings();
+	for (auto str : debug_strs) {
+		auto byte_str = str.toLocal8Bit();
+		ImGui::Text(byte_str.data());
+	}
+	auto debug_persist_strs = DebugRender::GetPersistantStrings();
+	for (auto str : debug_persist_strs) {
+		auto byte_key_str = str.first.toLocal8Bit();
+		auto byte_val_str = str.second.toLocal8Bit();
+		ImGui::Text(byte_val_str.data());
+	}
+	*/
+
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
-	Scrapbook::RenderImGui(m_Interface.p_Scrapbook2D);
-	Scrapbook::RenderImGui(m_Interface.p_Scrapbook3D);
+	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
+	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

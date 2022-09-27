@@ -1,6 +1,93 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale) {
+
+	Core& core = Core::Singleton();
+
+	glDepthMask(GL_FALSE);
+	glDisable(GL_CULL_FACE);
+
+	GLShader* debug_prog = core.GetShader("Debug");
+	debug_prog->UseProgram();
+	GLBuffer* line_buffer = core.GetBuffer("DebugLine");
+	line_buffer->UseBuffer(debug_prog);
+
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+
+	for (auto it = m_Lines.begin(); it != m_Lines.end(); it++) {
+		if (it->p_OnTop) {
+			glDisable(GL_DEPTH_TEST);
+		} else {
+			glEnable(GL_DEPTH_TEST);
+		}
+		Triple da = (it->p_A - offset) * scale;
+		Triple db = (it->p_B - offset) * scale;
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform3f(debug_prog->GetUniform("uPosA"), da.x, da.y, da.z);
+		glUniform3f(debug_prog->GetUniform("uPosB"), db.x, db.y, db.z);
+		line_buffer->Draw();
+	}
+
+	for (auto it = m_Points.begin(); it != m_Points.end(); it++) {
+
+		if (it->p_OnTop) {
+			glDisable(GL_DEPTH_TEST);
+		} else {
+			glEnable(GL_DEPTH_TEST);
+		}
+		Triple dpos = (it->p_Pos - offset) * scale;
+
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform3f(debug_prog->GetUniform("uPosA"), dpos.x, dpos.y, dpos.z);
+		for (int i = 0; i < 2; i++) {
+			Triple off = (it->p_Pos - offset + Triple(Random() - 0.5, Random() - 0.5, Random() - 0.5) * DEBUG_POINT_SIZE) * scale;
+			glUniform3f(debug_prog->GetUniform("uPosB"), off.x, off.y, off.z);
+			line_buffer->Draw();
+		}
+		if (it->p_Str.size() <= 0) {
+			continue;
+		}
+		QVector3D result = view_perspective * QVector3D(dpos.x, dpos.y, dpos.z);
+		if (result.z() > 1) {
+			continue;
+		}
+		int x = (int)floor((result.x() + 1.0) * 0.5 * width);
+		int y = (int)floor((1.0 - result.y()) * 0.5 * height);
+		ImGui::SetCursorPos(ImVec2(x, y));
+		ImGui::Text(it->p_Str.c_str());
+	}
+
+	debug_prog = core.GetShader("DebugTriangle");
+	debug_prog->UseProgram();
+	GLBuffer* buffer = core.GetBuffer("DebugTriangle");
+	buffer->UseBuffer(debug_prog);
+
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendEquation(GL_FUNC_ADD);
+
+	for (auto it = m_Triangles.begin(); it != m_Triangles.end(); it++) {
+
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+
+		Triple da = (it->p_A - offset) * scale;
+		Triple db = (it->p_B - offset) * scale;
+		Triple dc = (it->p_C - offset) * scale;
+
+		glUniform3f(debug_prog->GetUniform("uPosA"), da.x, da.y, da.z);
+		glUniform3f(debug_prog->GetUniform("uPosB"), db.x, db.y, db.z);
+		glUniform3f(debug_prog->GetUniform("uPosC"), dc.x, dc.y, dc.z);
+		buffer->Draw();
+	}
+
+	glDisable(GL_BLEND);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
@@ -392,7 +479,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Scrapbook::RenderImGui(InterfaceScrapbook2D& data) {
+void Scrapbook2D::RenderImGui(InterfaceScrapbook2D& data) {
 
 	if (!data.p_Visible) {
 		return;
@@ -415,7 +502,7 @@ void Scrapbook::RenderImGui(InterfaceScrapbook2D& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Scrapbook::RenderImGui(InterfaceScrapbook3D& data) {
+void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	if (!data.p_Visible) {
 		return;
@@ -423,13 +510,59 @@ void Scrapbook::RenderImGui(InterfaceScrapbook3D& data) {
 
 	ImGui::Begin("3D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+	const int size_banner = 50;
+	m_Width = space_available.x - 8;
+	m_Height = space_available.y - size_banner;
 
 	ImGui::Text("content");
-	//const int size_banner = 50;
-	//ImGui::SetCursorPos(ImVec2(8, size_banner));
-	//ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	//ImGui::EndChild();
+
+	{
+		auto token = ActivateRTT();
+
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glViewport(0, 0, m_Width, m_Height);
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+
+		double d = 10;
+		for (int i = 0; i < 100; i++) {
+			AddLine(Triple(Random(-d, d), Random(-d, d), Random(-d, d)), Triple(Random(-d, d), Random(-d, d), Random(-d, d)), QVector4D(1.0, 1.0, 1.0, 1.0), true);
+		}
+		AddLine(Triple(0, 0, 0), Triple(10, 0, 0), QVector4D(1, 0, 0, 1), true);
+		AddLine(Triple(0, 0, 0), Triple(0, 10, 0), QVector4D(0, 1, 0, 1), true);
+		AddLine(Triple(0, 0, 0), Triple(0, 0, 10), QVector4D(0, 0, 1, 1), true);
+
+		auto vp = GetViewPerspectiveMatrix();
+		IRender3DDebug(vp, m_Width, m_Height, Triple(0, 0, 0), 1.0);
+		IClear();
+	}
+
+	ImVec2 im_pos(8, size_banner);
+	ImVec2 im_size(m_Width, m_Height);
+	ImGui::SetCursorPos(im_pos);
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex();
+	ImGui::Image(tex_id, im_size);
+
+	ImGui::SetCursorPos(im_pos);
+	ImGui::InvisibleButton("##FullScreen", im_size);
+	if (ImGui::IsItemHovered()) {
+		const double ZOOM_SPEED = 0.1;
+		const double ANGLE_SPEED = 0.2;
+
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.MouseWheel != 0.0f) {
+			bool up = io.MouseWheel > 0.0f;
+			m_Cam.p_Zoom *= 1.0 + (up ? -1 : 1) * ZOOM_SPEED;
+		}
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+			m_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
+			m_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
+		}
+//#error move debug container and render into own neshny file. reuse for this. also add red green blue axis renders
+	}
+
 	ImGui::End();
 
 }

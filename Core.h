@@ -152,7 +152,7 @@ public:
 	virtual							~IEngine() {}
 
 	virtual void					MouseButton	( int button, bool is_down ) = 0;
-	virtual void					MouseMove	( QVector2D delta ) = 0;
+	virtual void					MouseMove	( QVector2D delta, bool occluded ) = 0;
 	virtual void					MouseWheel	( bool up ) = 0;
 	virtual void					Key			( int key, bool is_down ) = 0;
 
