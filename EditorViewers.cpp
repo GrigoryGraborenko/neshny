@@ -85,6 +85,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	}
 
 	glDisable(GL_BLEND);
+	glDepthMask(GL_TRUE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,6 +503,14 @@ void Scrapbook2D::RenderImGui(InterfaceScrapbook2D& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+auto Scrapbook3D::ActivateRTT(void) {
+	auto& self = Singleton();
+	bool reset = self.m_NeedsReset;
+	self.m_NeedsReset = false;
+	return self.m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, self.m_Width, self.m_Height, reset);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	if (!data.p_Visible) {
@@ -516,34 +525,27 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	ImGui::Text("content");
 
-
 	{
 		auto token = ActivateRTT();
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glViewport(0, 0, m_Width, m_Height);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		double d = 10;
-		for (int i = 0; i < 100; i++) {
-			AddLine(Triple(Random(-d, d), Random(-d, d), Random(-d, d)), Triple(Random(-d, d), Random(-d, d), Random(-d, d)), QVector4D(1.0, 1.0, 1.0, 1.0), true);
-		}
-		AddLine(Triple(0, 0, 0), Triple(10, 0, 0), QVector4D(1, 0, 0, 1), true);
-		AddLine(Triple(0, 0, 0), Triple(0, 10, 0), QVector4D(0, 1, 0, 1), true);
-		AddLine(Triple(0, 0, 0), Triple(0, 0, 10), QVector4D(0, 0, 1, 1), true);
+		const double size_grid = 10.0;
+		AddLine(Triple(0, 0, 0), Triple(size_grid, 0, 0), QVector4D(1, 0, 0, 1));
+		AddLine(Triple(0, 0, 0), Triple(0, size_grid, 0), QVector4D(0, 1, 0, 1));
+		AddLine(Triple(0, 0, 0), Triple(0, 0, size_grid), QVector4D(0, 0, 1, 1));
 
 		auto vp = GetViewPerspectiveMatrix();
 		IRender3DDebug(vp, m_Width, m_Height, Triple(0, 0, 0), 1.0);
 		IClear();
+		m_NeedsReset = true;
 	}
 
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);
 	ImGui::SetCursorPos(im_pos);
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex();
-	ImGui::Image(tex_id, im_size);
+	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);
@@ -560,7 +562,6 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 			m_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
 			m_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
 		}
-//#error move debug container and render into own neshny file. reuse for this. also add red green blue axis renders
 	}
 
 	ImGui::End();

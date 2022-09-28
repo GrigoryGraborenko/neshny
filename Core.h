@@ -88,7 +88,7 @@ struct Camera3DFPS {
 		if (side) { *side = inv * QVector3D(1, 0, 0); side->normalize(); }
 	}
 	Triple		p_Pos;
-	QQuaternion	p_Direction = QQuaternion();
+	QQuaternion	p_Direction = QQuaternion(0.0f, 0.0f, 0.0f, 1.0f);
 	float		p_FovDegrees = 60;
 	float		p_NearPlane = 0.1f;
 	float		p_FarPlane = 1000.0f;

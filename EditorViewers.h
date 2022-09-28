@@ -158,8 +158,13 @@ public:
 
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
-	auto						ActivateRTT					( void ) { return Singleton().m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, m_Width, m_Height); }
-	QMatrix4x4					GetViewPerspectiveMatrix	( void ) { return Singleton().m_Cam.GetViewPerspectiveMatrix(m_Width, m_Height); }
+	static auto					ActivateRTT					( void );
+	static QMatrix4x4			GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_Cam.GetViewPerspectiveMatrix(self.m_Width, self.m_Height); }
+
+	static inline void			Line						( Triple a, Triple b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
+	static inline void			Point						( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
+	static inline void			Point						( Triple pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
+	static inline void			Triangle					( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
 
 	static void					RenderImGui					( InterfaceScrapbook3D& data ) { Singleton().IRenderImGui(data); }
 
@@ -170,6 +175,7 @@ private:
 	RTT							m_RTT;
 	int							m_Width = 32;
 	int							m_Height = 32;
+	bool						m_NeedsReset = true;
 
 	Camera3DOrbit				m_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
 };

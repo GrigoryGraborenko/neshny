@@ -219,7 +219,7 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int size) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token RTT::Activate(Mode mode, int width, int height) {
+Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 
 	GLint draw_fbo;
 	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
@@ -277,10 +277,16 @@ Token RTT::Activate(Mode mode, int width, int height) {
 	} else {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 	}
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	if (clear) {
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	}
 
+	//GLint prev_view[4];
+	//glGetIntegerv(GL_VIEWPORT, prev_view);
+	glViewport(0, 0, width, height);
 	return Token([draw_fbo]() {
 		glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+		//glViewport(prev_view[0], prev_view[1], prev_view[2], prev_view[3]);
 	});
 }
 

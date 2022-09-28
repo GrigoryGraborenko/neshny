@@ -312,7 +312,7 @@ public:
 								RTT			( void ) {}
 								~RTT		( void ) { Destroy(); }
 
-	Token						Activate	( Mode mode, int width, int height );
+	Token						Activate	( Mode mode, int width, int height, bool clear = true );
 
 	inline GLuint				GetColorTex	( void ) { return m_ColorTex; }
 	inline GLuint				GetDepthTex	( void ) { return m_DepthTex; }
