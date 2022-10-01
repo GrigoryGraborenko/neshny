@@ -240,7 +240,7 @@ public:
 	enum class ResourceState {
 		PENDING
 		,DONE
-		,ERROR
+		,IN_ERROR
 	};
 
 	struct ResourceContainer {

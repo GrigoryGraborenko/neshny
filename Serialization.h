@@ -25,7 +25,7 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-QString JsonValueTypeName(QJsonValue::Type type) {
+inline QString JsonValueTypeName(QJsonValue::Type type) {
     switch(type) {
         case QJsonValue::Null: return "Null";
         case QJsonValue::Bool: return "Bool";

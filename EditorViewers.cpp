@@ -467,7 +467,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 		QString state = "Pending";
 		if (resource.second.m_State == Core::ResourceState::DONE) {
 			state = "Done";
-		} else if (resource.second.m_State == Core::ResourceState::ERROR) {
+		} else if (resource.second.m_State == Core::ResourceState::IN_ERROR) {
 			state = "Error - " + resource.second.m_Error;
 		}
 		QByteArray info = QString("%1: %2").arg(resource.first).arg(state).toLocal8Bit();

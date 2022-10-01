@@ -591,7 +591,7 @@ const Core::ResourceResult<T> Core::IGetResource(QString path) {
 
 		QFile file(path);
 		if (!file.open(QIODevice::ReadOnly)) {
-			return new ResourceContainer{ ResourceState::ERROR, nullptr, file.errorString() };
+			return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, file.errorString() };
 		}
 		auto data = file.readAll();
 		T* result = new T();
@@ -599,7 +599,7 @@ const Core::ResourceResult<T> Core::IGetResource(QString path) {
 		bool valid = result->Init((unsigned char*)data.data(), data.size(), err);
 		if (!valid) {
 			delete result;
-			return new ResourceContainer{ ResourceState::ERROR, nullptr, err };
+			return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 		}
 
 		return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };

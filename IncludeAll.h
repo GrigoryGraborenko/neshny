@@ -16,5 +16,16 @@
 #include <thread>
 #include <mutex>
 
+#include "glad/glad.h"
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_stdlib.h"
+
+#include "GLUtils.h"
+#include "Triple.h"
+#include "Serialization.h"
+#include "Core.h"
+#include "Resources.h"
+#include "GPUEntity.h"
+#include "EditorViewers.h"
+#include "Pipeline.h"
