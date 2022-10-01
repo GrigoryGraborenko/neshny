@@ -98,6 +98,12 @@ inline void SerialiseByType(const QVector3D& val, QJsonValue & json, [[maybe_unu
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+template <>
+inline void SerialiseByType(const Triple& val, QJsonValue& json, [[maybe_unused]] ParseError& err) {
+    json = QJsonObject({ {"x", val.x}, {"y", val.y}, {"z", val.z} });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class SerialiserFunc {
 public:
@@ -301,24 +307,42 @@ inline void DeserialiseByType(QVector2D& val, const QJsonValue& json, ParseError
 ////////////////////////////////////////////////////////////////////////////////
 template <>
 inline void DeserialiseByType(QVector3D& val, const QJsonValue& json, ParseError &err) {
-    if (json.isObject()) {
-        QJsonObject jObj = json.toObject();
-        if (!jObj.contains("x") || !jObj.contains("y") || !jObj.contains("z")) {
-            return err.AddMessage(QString("Expected object to have fields x, y and z, got %1").arg(jObj.keys().join(", ")));
-        }
-        int x, y,z;
-        Json::Deserialise(x, jObj.value("x"), err);
-        Json::Deserialise(y, jObj.value("y"), err);
-        Json::Deserialise(z, jObj.value("z"), err);
-        if (err) {
-            return err.AddMessage(QStringLiteral("Deserialising the elements of QVector3D"));
-        }
-        val = QVector3D(x, y, z);
-    } else {
+    if (!json.isObject()) {
         return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
     }
+    QJsonObject obj = json.toObject();
+    if (!obj.contains("x") || !obj.contains("y") || !obj.contains("z")) {
+        return err.AddMessage(QString("Expected object to have fields x, y and z, got %1").arg(obj.keys().join(", ")));
+    }
+    float x, y,z;
+    Json::Deserialise(x, obj.value("x"), err);
+    Json::Deserialise(y, obj.value("y"), err);
+    Json::Deserialise(z, obj.value("z"), err);
+    if (err) {
+        return err.AddMessage(QStringLiteral("Deserialising the elements of QVector3D"));
+    }
+    val = QVector3D(x, y, z);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+template <>
+inline void DeserialiseByType(Triple& val, const QJsonValue& json, ParseError &err) {
+    if (!json.isObject()) {
+        return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
+    }
+    QJsonObject obj = json.toObject();
+    if (!obj.contains("x") || !obj.contains("y") || !obj.contains("z")) {
+        return err.AddMessage(QString("Expected object to have fields x, y and z, got %1").arg(obj.keys().join(", ")));
+    }
+    double x, y,z;
+    Json::Deserialise(x, obj.value("x"), err);
+    Json::Deserialise(y, obj.value("y"), err);
+    Json::Deserialise(z, obj.value("z"), err);
+    if (err) {
+        return err.AddMessage(QStringLiteral("Deserialising the elements of QVector3D"));
+    }
+    val = Triple(x, y, z);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>

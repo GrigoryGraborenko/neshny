@@ -522,21 +522,21 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	const int size_banner = 50;
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
+	m_CachedViewPerspective = data.m_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
 
 	ImGui::Text("content");
 
 	{
 		auto token = ActivateRTT();
-
 		glEnable(GL_DEPTH_TEST);
 
+		// todo: make this a checkbox
 		const double size_grid = 10.0;
 		AddLine(Triple(0, 0, 0), Triple(size_grid, 0, 0), QVector4D(1, 0, 0, 1));
 		AddLine(Triple(0, 0, 0), Triple(0, size_grid, 0), QVector4D(0, 1, 0, 1));
 		AddLine(Triple(0, 0, 0), Triple(0, 0, size_grid), QVector4D(0, 0, 1, 1));
 
-		auto vp = GetViewPerspectiveMatrix();
-		IRender3DDebug(vp, m_Width, m_Height, Triple(0, 0, 0), 1.0);
+		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0);
 		IClear();
 		m_NeedsReset = true;
 	}
@@ -556,11 +556,11 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.MouseWheel != 0.0f) {
 			bool up = io.MouseWheel > 0.0f;
-			m_Cam.p_Zoom *= 1.0 + (up ? -1 : 1) * ZOOM_SPEED;
+			data.m_Cam.p_Zoom *= 1.0 + (up ? -1 : 1) * ZOOM_SPEED;
 		}
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-			m_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
-			m_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
+			data.m_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
+			data.m_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
 		}
 	}
 

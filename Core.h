@@ -1,49 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#define INTERFACE_SAVE_VERSION 1 // todo: start incrementing this on release
-struct InterfaceCollapsible {
-	QString		p_Name;
-	bool		p_Open = false;
-	bool		p_Enabled = true;
-};
-
-struct InterfaceBufferViewer {
-	bool	p_Visible = false;
-	bool	p_AllEnabled = false;
-	int		p_MaxFrames = 100;
-	int		p_TimeSlider = 0; // do not save this
-	std::vector<InterfaceCollapsible> p_Items;
-};
-
-struct InterfaceShaderViewer {
-	bool			p_Visible = false;
-	std::string		p_Search = "";
-	std::vector<InterfaceCollapsible> p_Items;
-};
-
-struct InterfaceResourceViewer {
-	bool			p_Visible = false;
-};
-
-struct InterfaceScrapbook2D {
-	bool			p_Visible = false;
-};
-
-struct InterfaceScrapbook3D {
-	bool			p_Visible = false;
-};
-
-struct InterfaceCore {
-	int						p_Version = INTERFACE_SAVE_VERSION;
-	bool					p_ShowImGuiDemo = false;
-	InterfaceBufferViewer	p_BufferView;
-	InterfaceShaderViewer	p_ShaderView;
-	InterfaceResourceViewer	p_ResourceView;
-	InterfaceScrapbook2D	p_Scrapbook2D;
-	InterfaceScrapbook3D	p_Scrapbook3D;
-};
-
 struct Camera3DOrbit {
 
 	QMatrix4x4				GetViewMatrix				( void ) const {
@@ -94,6 +51,50 @@ struct Camera3DFPS {
 	float		p_FarPlane = 1000.0f;
 };
 
+#define INTERFACE_SAVE_VERSION 1 // todo: start incrementing this on release
+struct InterfaceCollapsible {
+	QString		p_Name;
+	bool		p_Open = false;
+	bool		p_Enabled = true;
+};
+
+struct InterfaceBufferViewer {
+	bool	p_Visible = false;
+	bool	p_AllEnabled = false;
+	int		p_MaxFrames = 100;
+	int		p_TimeSlider = 0; // do not save this
+	std::vector<InterfaceCollapsible> p_Items;
+};
+
+struct InterfaceShaderViewer {
+	bool			p_Visible = false;
+	std::string		p_Search = "";
+	std::vector<InterfaceCollapsible> p_Items;
+};
+
+struct InterfaceResourceViewer {
+	bool			p_Visible = false;
+};
+
+struct InterfaceScrapbook2D {
+	bool			p_Visible = false;
+};
+
+struct InterfaceScrapbook3D {
+	bool			p_Visible = false;
+	Camera3DOrbit	m_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
+};
+
+struct InterfaceCore {
+	int						p_Version = INTERFACE_SAVE_VERSION;
+	bool					p_ShowImGuiDemo = false;
+	InterfaceBufferViewer	p_BufferView;
+	InterfaceShaderViewer	p_ShaderView;
+	InterfaceResourceViewer	p_ResourceView;
+	InterfaceScrapbook2D	p_Scrapbook2D;
+	InterfaceScrapbook3D	p_Scrapbook3D;
+};
+
 namespace meta {
 	template<> inline auto registerMembers<InterfaceCore>() {
 		return members(
@@ -135,6 +136,7 @@ namespace meta {
 	template<> inline auto registerMembers<InterfaceScrapbook3D>() {
 		return members(
 			member("Visible", &InterfaceScrapbook3D::p_Visible)
+			,member("Cam", &InterfaceScrapbook3D::m_Cam)
 		);
 	}
 
@@ -143,6 +145,18 @@ namespace meta {
 			member("Name", &InterfaceCollapsible::p_Name)
 			,member("Open", &InterfaceCollapsible::p_Open)
 			,member("Enabled", &InterfaceCollapsible::p_Enabled)
+		);
+	}
+
+	template<> inline auto registerMembers<Camera3DOrbit>() {
+		return members(
+			member("Pos", &Camera3DOrbit::p_Pos)
+			,member("Zoom", &Camera3DOrbit::p_Zoom)
+			,member("HorizontalDegrees", &Camera3DOrbit::p_HorizontalDegrees)
+			,member("VerticalDegrees", &Camera3DOrbit::p_VerticalDegrees)
+			,member("FovDegrees", &Camera3DOrbit::p_FovDegrees)
+			,member("NearPlane", &Camera3DOrbit::p_NearPlane)
+			,member("FarPlane", &Camera3DOrbit::p_FarPlane)
 		);
 	}
 }

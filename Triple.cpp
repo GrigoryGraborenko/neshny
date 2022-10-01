@@ -169,7 +169,7 @@ Triple Triple::NearestToLine(Triple start, Triple end, bool clamp, double* frac)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Triple::LineLineIntersect(Triple a0, Triple a1, Triple b0, Triple b1, Triple& out_a, Triple& out_b, double* a_frac, double* b_frac) {
+bool Triple::LineLineIntersect(Triple a0, Triple a1, Triple b0, Triple b1, bool clamp, Triple& out_a, Triple& out_b, double* a_frac, double* b_frac) {
 
 	Triple p43 = b1 - b0;
 	if ((fabs(p43.x) < ALMOST_ZERO) && (fabs(p43.y) < ALMOST_ZERO) && (fabs(p43.z) < ALMOST_ZERO)) {
@@ -195,6 +195,11 @@ bool Triple::LineLineIntersect(Triple a0, Triple a1, Triple b0, Triple b1, Tripl
 
 	double mua = numer / denom;
 	double mub = (d1343 + d4321 * (mua)) / d4343;
+
+	if (clamp) {
+		mua = GETCLAMP(mua, 0.0, 1.0);
+		mub = GETCLAMP(mub, 0.0, 1.0);
+	}
 
 	out_a = Triple(a0.x + mua * p21.x, a0.y + mua * p21.y, a0.z + mua * p21.z);
 	out_b = Triple(b0.x + mub * p43.x, b0.y + mub * p43.y, b0.z + mub * p43.z);
@@ -811,7 +816,7 @@ bool CircumSphere(Triple p0, Triple p1, Triple p2, Triple& out_centre) {
 	Triple mid02 = (p0 + p2) * 0.5;
 
 	Triple intersect_a, intersect_b;
-	if (!Triple::LineLineIntersect(mid01, mid01 + double_cross, mid02, mid02 + alt_double_cross, intersect_a, intersect_b)) {
+	if (!Triple::LineLineIntersect(mid01, mid01 + double_cross, mid02, mid02 + alt_double_cross, false, intersect_a, intersect_b)) {
 		return false;
 	}
 	out_centre = (intersect_a + intersect_b) * 0.5;

@@ -159,7 +159,7 @@ public:
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
 	static auto					ActivateRTT					( void );
-	static QMatrix4x4			GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_Cam.GetViewPerspectiveMatrix(self.m_Width, self.m_Height); }
+	static QMatrix4x4			GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
 	static inline void			Line						( Triple a, Triple b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
 	static inline void			Point						( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
@@ -177,5 +177,5 @@ private:
 	int							m_Height = 32;
 	bool						m_NeedsReset = true;
 
-	Camera3DOrbit				m_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
+	QMatrix4x4					m_CachedViewPerspective;
 };

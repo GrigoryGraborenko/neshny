@@ -49,7 +49,7 @@ struct Triple {
 	double			MaxVal			( void ) const { return std::max(x, std::max(y, z)); }
 	Triple			NearestToLine	( Triple start, Triple end, bool clamp, double* frac = nullptr ) const;
 
-	static bool		LineLineIntersect ( Triple a0, Triple a1, Triple b0, Triple b1, Triple& out_a, Triple& out_b, double* a_frac = nullptr, double* b_frac = nullptr );
+	static bool		LineLineIntersect ( Triple a0, Triple a1, Triple b0, Triple b1, bool clamp, Triple& out_a, Triple& out_b, double* a_frac = nullptr, double* b_frac = nullptr );
 
 	QVector3D		toVec			( void ) const { return QVector3D(x, y, z); }
 	QVector4D		toVec4			( void ) const { return QVector4D(x, y, z, 1.0); }
@@ -58,6 +58,7 @@ struct Triple {
 
 	static Triple	Min				( Triple a, Triple b ) { return Triple(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
 	static Triple	Max				( Triple a, Triple b ) { return Triple(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
+	static Axis		IntToAxis		( int ax ) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : Axis::Z); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
