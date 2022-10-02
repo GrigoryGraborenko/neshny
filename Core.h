@@ -233,7 +233,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Core {
+class Neshny {
 
 public:
 
@@ -258,15 +258,15 @@ public:
 		QString			m_Error;
 	};
 
-	inline static Core&					Singleton				( void ) { static Core core; return core; }
+	inline static Neshny&				Singleton				( void ) { static Neshny core; return core; }
 
 #ifdef SDL_h_
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
 
-	GLShader*							GetShader				( QString name, QString insertion = QString() );
-	GLShader*							GetComputeShader		( QString name, QString insertion = QString() );
-	GLBuffer*							GetBuffer				( QString name );
+	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
+	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }
 	GLTexture*							GetTexture				( QString name, bool skybox = false );
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
@@ -306,8 +306,12 @@ public:
 
 private:
 
-										Core					( void );
-										~Core					( void );
+										Neshny					( void );
+										~Neshny					( void );
+
+	GLShader*							IGetShader				( QString name, QString insertion );
+	GLBuffer*							IGetBuffer				( QString name );
+	GLShader*							IGetComputeShader		( QString name, QString insertion );
 
 	template<class T>
 	const ResourceResult<T>				IGetResource			( QString path );

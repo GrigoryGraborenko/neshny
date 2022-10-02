@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Core* g_StaticInstance = nullptr;
+Neshny* g_StaticInstance = nullptr;
 
 #define EDITOR_INTERFACE_FILENAME "interface.json"
 //#define EDITOR_INTERFACE_FILENAME "interface.bin"
@@ -77,7 +77,7 @@ void WorkerThreadPool::Sync(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-Core::Core(void) {
+Neshny::Neshny(void) {
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
@@ -96,7 +96,7 @@ Core::Core(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Core::~Core(void) {
+Neshny::~Neshny(void) {
 
 	m_ResourceThreads.Stop();
 
@@ -121,7 +121,7 @@ Core::~Core(void) {
 
 #ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
+bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	g_StaticInstance = this;
 
@@ -297,7 +297,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::IRenderEditor(void) {
+void Neshny::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
 	if (ImGui::Button(m_Interface.p_BufferView.p_Visible ? "Hide buffer view" : "Show buffer view")) {
@@ -349,7 +349,7 @@ void Core::IRenderEditor(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::IIsBufferEnabled(QString name) {
+bool Neshny::IIsBufferEnabled(QString name) {
 	if (m_Interface.p_BufferView.p_AllEnabled) {
 		return true;
 	}
@@ -362,7 +362,7 @@ bool Core::IIsBufferEnabled(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
+void Neshny::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
 	glUniform1i(prog->GetUniform("uCount"), count);
 	constexpr int max_dispatch = 4 * 4 * 4 * 8 * 8 * 8;
 	for (int offset = 0; offset < count; offset += max_dispatch) {
@@ -375,7 +375,7 @@ void Core::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::GetShader(QString name, QString insertion) {
+GLShader* Neshny::IGetShader(QString name, QString insertion) {
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
@@ -404,7 +404,7 @@ GLShader* Core::GetShader(QString name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::GetComputeShader(QString name, QString insertion) {
+GLShader* Neshny::IGetComputeShader(QString name, QString insertion) {
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
@@ -433,7 +433,7 @@ GLShader* Core::GetComputeShader(QString name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLBuffer* Core::GetBuffer(QString name) {
+GLBuffer* Neshny::IGetBuffer(QString name) {
 
 	auto found = m_Buffers.find(name);
 	if (found != m_Buffers.end()) {
@@ -549,7 +549,7 @@ GLBuffer* Core::GetBuffer(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLTexture* Core::GetTexture(QString name, bool skybox) {
+GLTexture* Neshny::GetTexture(QString name, bool skybox) {
 
 	auto found = m_Textures.find(name);
 	if (found != m_Textures.end()) {
@@ -579,7 +579,7 @@ GLTexture* Core::GetTexture(QString name, bool skybox) {
 
 ////////////////////////////////////////////////////////////////////////////////
 template<class T>
-const Core::ResourceResult<T> Core::IGetResource(QString path) {
+const Neshny::ResourceResult<T> Neshny::IGetResource(QString path) {
 
 	auto found = m_Resources.find(path);
 	if (found != m_Resources.end()) {
@@ -613,7 +613,7 @@ const Core::ResourceResult<T> Core::IGetResource(QString path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::UnloadAllShaders(void) {
+void Neshny::UnloadAllShaders(void) {
 
 	for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {
 		delete it->second;

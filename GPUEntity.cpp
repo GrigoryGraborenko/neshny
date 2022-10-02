@@ -88,8 +88,6 @@ int GPUEntity::AddInstance(void* data) {
 void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO& control_buffer) {
 
 	// todo: for each death, take index d from alive and copy it
-	//return;
-	Core& core = Core::Singleton();
 	control_buffer.EnsureSize(sizeof(int));
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
@@ -99,7 +97,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO
 		defines += QString("\n#define BUFFER_TEX_SIZE %1\n").arg(BUFFER_TEX_SIZE);
 	}
 
-	GLShader* death_prog = core.GetComputeShader("Death", defines);
+	GLShader* death_prog = Neshny::GetComputeShader("Death", defines);
 	death_prog->UseProgram();
 
 	control_buffer.Bind(0);
@@ -113,7 +111,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO
 	}
 	glUniform1i(death_prog->GetUniform("uLifeCount"), m_MaxIndex);
 
-	Core::DispatchMultiple(death_prog, death_count);
+	Neshny::DispatchMultiple(death_prog, death_count);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 	m_MaxIndex -= death_count;

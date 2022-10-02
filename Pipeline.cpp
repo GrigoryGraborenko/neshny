@@ -283,7 +283,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
 	QString insertion_str = QString(insertion.join("\n")).arg(m_Entity.GetName());
-	GLShader* prog = Core::Singleton().GetComputeShader(m_ShaderName, insertion_str);
+	GLShader* prog = Neshny::GetComputeShader(m_ShaderName, insertion_str);
 	prog->UseProgram();
 
 	//DebugGPU::Checkpoint("PostRun", m_Entity);
@@ -307,7 +307,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	}
 
 	////////////////////////////////////////////////////
-	Core::DispatchMultiple(prog, m_Entity.GetMaxIndex());
+	Neshny::DispatchMultiple(prog, m_Entity.GetMaxIndex());
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	////////////////////////////////////////////////////
 
@@ -383,13 +383,13 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	std::vector<std::pair<QString, int>> integer_vars;
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
-	int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
+	int time_slider = Neshny::GetInterfaceData().p_BufferView.p_TimeSlider;
 
 	int num_entities = m_Entity.GetMaxIndex();
 	std::shared_ptr<GLSSBO> replace = nullptr;
 
 	if (time_slider > 0) {
-		replace = BufferViewer::GetStoredFrameAt(m_Entity.GetName(), Core::GetTicks() - time_slider, num_entities);
+		replace = BufferViewer::GetStoredFrameAt(m_Entity.GetName(), Neshny::GetTicks() - time_slider, num_entities);
 	}
 
 	for (auto str : m_ShaderDefines) {
@@ -433,7 +433,7 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	insertion.push_front(insertion_images.join("\n"));
 
 	QString insertion_str = QString(insertion.join("\n")).arg(m_Entity.GetName());
-	GLShader* prog = Core::Singleton().GetShader(m_ShaderName, insertion_str);
+	GLShader* prog = Neshny::GetShader(m_ShaderName, insertion_str);
 	prog->UseProgram();
 	buffer->UseBuffer(prog);
 
