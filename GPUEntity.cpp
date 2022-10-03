@@ -266,7 +266,8 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_DepthBuffer);
 		}
 
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (state != GL_FRAMEBUFFER_COMPLETE) {
 			//auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 			//bool FRAMEBUFFER_UNSUPPORTED = (state == GL_FRAMEBUFFER_UNSUPPORTED);
 			glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);

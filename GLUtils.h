@@ -73,13 +73,13 @@ public:
 													GLTexture		( void );
 	virtual 										~GLTexture		( void );
 
-	bool											Init			( QString filename, GLint wrap_mode = GL_REPEAT );
+	bool											Init			( QByteArray data, GLint wrap_mode = GL_REPEAT );
 	bool											InitSkybox		( QString filename );
 
-	inline GLuint									GetTexture		( void ) { return m_Texture; }
-	inline int										GetWidth		( void ) { return m_Width; }
-	inline int										GetHeight		( void ) { return m_Height; }
-	inline int										GetDepth		( void ) { return m_Depth; }
+	inline GLuint									GetTexture		( void ) const { return m_Texture; }
+	inline int										GetWidth		( void ) const { return m_Width; }
+	inline int										GetHeight		( void ) const { return m_Height; }
+	inline int										GetDepth		( void ) const { return m_Depth; }
 
 protected:
 

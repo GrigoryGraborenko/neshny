@@ -190,7 +190,7 @@ public:
 //
 ////////////////////////////////////////////////////////////////////////////////
 struct Token {
-	Token(std::function<void()> destruction, bool valid = true) : p_DestructFunc(destruction) {}
+	Token(std::function<void()> destruction, bool valid = true) : p_DestructFunc(destruction), p_Valid(valid) {}
 	Token() : p_DestructFunc(), p_Valid(false) {}
 	~Token(void) { p_DestructFunc(); }
 	inline bool IsValid(void) { return p_Valid; }
@@ -216,6 +216,7 @@ private:
 
 	struct ThreadInfo {
 		std::thread*	m_Thread;
+		int				m_GLContext = -1;
 		bool			m_StopRequested = false;
 	};
 
@@ -237,7 +238,7 @@ private:
 class Resource {
 public:
 	virtual				~Resource		( void ) {}
-	virtual bool		Init			( unsigned char* data, int length, QString& err ) = 0;
+	virtual bool		Init			( QString path, unsigned char* data, int length, QString& err ) = 0;
 protected:
 };
 
@@ -264,6 +265,7 @@ public:
 	struct ResourceResult {
 		ResourceResult(const ResourceContainer& container) : m_State(container.m_State), m_Resource((T*)container.m_Resource), m_Error(container.m_Error) {}
 		T* operator->() const { return m_Resource; }
+		bool IsValid(void) const { return m_State == ResourceState::DONE; }
 		ResourceState	m_State = ResourceState::PENDING;
 		T*				m_Resource = nullptr;
 		QString			m_Error;
@@ -315,6 +317,11 @@ public:
 	inline const std::map<QString, GLShader*>&	GetShaders				( void ) { return m_Shaders; }
 	inline const std::map<QString, GLShader*>&	GetComputeShaders		( void ) { return m_ComputeShaders; }
 
+	int									CreateGLContext			( void );
+	bool 								ActivateGLContext		( int index );
+	void 								DeleteGLContext			( int index );
+	static void							OpenGLSync				( void );
+
 private:
 
 										Neshny					( void );
@@ -341,7 +348,7 @@ private:
 			auto data = file.readAll();
 			T* result = new T();
 			QString err;
-			bool valid = result->Init((unsigned char*)data.data(), data.size(), err);
+			bool valid = result->Init(path, (unsigned char*)data.data(), data.size(), err);
 			if (!valid) {
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
@@ -376,4 +383,9 @@ private:
 
 	InterfaceCore						m_Interface;
 	WorkerThreadPool					m_ResourceThreads;
+
+#ifdef SDL_h_
+	SDL_Window*							m_Window;
+	std::vector<SDL_GLContext>			m_Contexts;
+#endif
 };

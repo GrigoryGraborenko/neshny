@@ -373,10 +373,10 @@ GLTexture::~GLTexture(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLTexture::Init(QString filename, GLint wrap_mode) {
+bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 
 	QImage im;
-	if (!im.load(filename)) {
+	if (!im.loadFromData(data)) {
 		return false;
 	}
 	m_Width = im.width();

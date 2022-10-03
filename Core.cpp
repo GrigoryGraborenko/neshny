@@ -15,7 +15,14 @@ void WorkerThreadPool::Start(int thread_count) {
 
 		m_Threads.push_back({});
 		ThreadInfo& info = m_Threads.back();
+
+		info.m_GLContext = Neshny::Singleton().CreateGLContext();
+
 		info.m_Thread = new std::thread([&info, &lock = m_Lock, &tasks = m_Tasks, &finished = m_FinishedTasks]() {
+
+			bool valid = Neshny::Singleton().ActivateGLContext(info.m_GLContext);
+			//auto err = SDL_GetError();
+
 			while (true) {
 				lock.lock();
 				if (info.m_StopRequested) {
@@ -27,6 +34,7 @@ void WorkerThreadPool::Start(int thread_count) {
 					tasks.pop_front();
 					lock.unlock();
 					task->p_Result = task->p_Task();
+					Neshny::OpenGLSync();
 					lock.lock();
 					finished.push_back(task);
 					lock.unlock();
@@ -50,6 +58,7 @@ void WorkerThreadPool::Stop(void) {
 	for (auto& thread : m_Threads) {
 		thread.m_Thread->join();
 		delete thread.m_Thread;
+		Neshny::Singleton().DeleteGLContext(thread.m_GLContext);
 	}
 	m_Threads.clear();
 }
@@ -91,8 +100,6 @@ Neshny::Neshny(void) {
 			m_Interface = InterfaceCore{};
 		}
 	}
-
-	m_ResourceThreads.Start(1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,6 +129,9 @@ Neshny::~Neshny(void) {
 #ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
 bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
+
+	m_Window = window;
+	m_ResourceThreads.Start(1); // started here so you have access to m_Window value
 
 	g_StaticInstance = this;
 
@@ -570,7 +580,10 @@ GLTexture* Neshny::GetTexture(QString name, bool skybox) {
 	if (skybox) {
 		init_result = tex->InitSkybox(prefix + name);
 	} else {
-		init_result = tex->Init(prefix + name);
+		QFile file(prefix + name);
+		if (file.open(QIODevice::ReadOnly)) {
+			init_result = tex->Init(file.readAll());
+		}
 	}
 	if (!init_result) {
 		delete tex;
@@ -592,4 +605,39 @@ void Neshny::UnloadAllShaders(void) {
 		delete it->second;
 	}
 	m_ComputeShaders.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int Neshny::CreateGLContext(void) {
+#ifdef SDL_h_
+	auto previous = SDL_GL_GetCurrentContext();
+	auto context = SDL_GL_CreateContext(m_Window);
+	SDL_GL_MakeCurrent(m_Window, previous);
+	m_Contexts.push_back(context);
+	return int(m_Contexts.size()) - 1;
+#else
+	return -1;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Neshny::ActivateGLContext(int index) {
+	if ((index < 0) || (index >= m_Contexts.size())) {
+		return false;
+	}
+	return SDL_GL_MakeCurrent(m_Window, m_Contexts[index]) == 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Neshny::DeleteGLContext(int index) {
+	if ((index < 0) || (index >= m_Contexts.size())) {
+		return;
+	}
+	SDL_GL_DeleteContext(m_Contexts[index]);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Neshny::OpenGLSync(void) {
+	GLsync fenceId = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	glClientWaitSync(fenceId, GL_SYNC_FLUSH_COMMANDS_BIT, GLuint64(1000000000)); // 1 second timeout
 }
