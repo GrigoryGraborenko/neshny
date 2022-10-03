@@ -58,6 +58,10 @@ struct InterfaceCollapsible {
 	bool		p_Enabled = true;
 };
 
+struct InterfaceInfoViewer {
+	bool	p_Visible = false;
+};
+
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
 	bool	p_AllEnabled = false;
@@ -88,6 +92,7 @@ struct InterfaceScrapbook3D {
 struct InterfaceCore {
 	int						p_Version = INTERFACE_SAVE_VERSION;
 	bool					p_ShowImGuiDemo = false;
+	InterfaceInfoViewer		p_InfoView;
 	InterfaceBufferViewer	p_BufferView;
 	InterfaceShaderViewer	p_ShaderView;
 	InterfaceResourceViewer	p_ResourceView;
@@ -100,11 +105,17 @@ namespace meta {
 		return members(
 			member("Version", &InterfaceCore::p_Version)
 			,member("ShowImGuiDemo", &InterfaceCore::p_ShowImGuiDemo)
+			,member("InfoView", &InterfaceCore::p_InfoView)
 			,member("BufferView", &InterfaceCore::p_BufferView)
 			,member("ShaderView", &InterfaceCore::p_ShaderView)
 			,member("ResourceView", &InterfaceCore::p_ResourceView)
 			,member("Scrapbook2D", &InterfaceCore::p_Scrapbook2D)
 			,member("Scrapbook3D", &InterfaceCore::p_Scrapbook3D)
+		);
+	}
+	template<> inline auto registerMembers<InterfaceInfoViewer>() {
+		return members(
+			member("Visible", &InterfaceInfoViewer::p_Visible)
 		);
 	}
 	template<> inline auto registerMembers<InterfaceBufferViewer>() {
@@ -314,7 +325,36 @@ private:
 	GLShader*							IGetComputeShader		( QString name, QString insertion );
 
 	template<class T>
-	const ResourceResult<T>				IGetResource			( QString path );
+	inline const ResourceResult<T>		IGetResource			( QString path ) {
+		auto found = m_Resources.find(path);
+		if (found != m_Resources.end()) {
+			return ResourceResult<T>(found->second);
+		}
+		ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
+
+		m_ResourceThreads.DoTask([path]() -> void* {
+
+			QFile file(path);
+			if (!file.open(QIODevice::ReadOnly)) {
+				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, file.errorString() };
+			}
+			auto data = file.readAll();
+			T* result = new T();
+			QString err;
+			bool valid = result->Init((unsigned char*)data.data(), data.size(), err);
+			if (!valid) {
+				delete result;
+				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
+			}
+
+			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };
+		}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
+			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
+			resource = *tmp_resource;
+			delete tmp_resource;
+		});
+		return ResourceResult<T>(resource);
+	}
 	void								IRenderEditor			( void );
 	bool								IIsBufferEnabled		( QString name );
 

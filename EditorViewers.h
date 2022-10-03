@@ -6,6 +6,59 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+class DebugTiming {
+public:
+
+	struct TimingInfo {
+		TimingInfo(const char* label) : p_Label(label) {}
+		TimingInfo(const char* label, qint64 nanos) : p_Label(label) { Add(nanos); }
+		void Add(qint64 nanos) {
+			p_Nanos += nanos;
+			p_RecentNanos += nanos;
+			p_MaxNanos = std::max(p_MaxNanos, nanos);
+			p_NumCalls++;
+			p_RecentNumCalls++;
+			if (p_RecentNumCalls >= 8) {
+				double av_secs = ((double)p_RecentNanos * NANO_CONVERT) / (double)p_RecentNumCalls;
+				p_RecentNanos = 0;
+				p_RecentNumCalls = 0;
+				const double roll_frac = 0.95;
+				p_RollingAvSeconds = p_RollingAvSeconds ? p_RollingAvSeconds * roll_frac + av_secs * (1.0 - roll_frac) : av_secs;
+			}
+		}
+		QString Report(qint64 total_global_nanos) {
+			double total_av_secs = ((double)p_Nanos * NANO_CONVERT) / (double)p_NumCalls;
+			double percent = 100.0 * (double)p_Nanos / (double)total_global_nanos;
+			double max_secs = (double)p_MaxNanos * NANO_CONVERT;
+			return QString("%1: %2 sec [%3 sec av %4 calls, %5 %%] max %6").arg(p_Label).arg(p_RollingAvSeconds, 0, 'f', 9).arg(total_av_secs, 0, 'f', 9).arg(p_NumCalls).arg(percent, 0, 'f', 6).arg(max_secs, 0, 'f', 9);
+		}
+		const char* p_Label;
+		qint64 p_Nanos = 0;
+		qint64 p_NumCalls = 0;
+		qint64 p_MaxNanos = 0;
+
+		qint64 p_RecentNanos = 0;
+		qint64 p_RecentNumCalls = 0;
+
+		double p_RollingAvSeconds = 0;
+	};
+
+										DebugTiming		( const char* label );
+										~DebugTiming	( void );
+
+	static QStringList					Report			( void );
+
+	static std::vector<TimingInfo>&		GetTimings	( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
+
+private:
+
+	QElapsedTimer		m_Timer;
+	const char*			m_Label;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class BaseDebugRender {
 
 public:
@@ -68,6 +121,13 @@ public:
 	static inline void                          Triangle			( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class InfoViewer {
+public:
+	static void						RenderImGui		( InterfaceInfoViewer& data );
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -165,6 +225,7 @@ public:
 	static inline void			Point						( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
 	static inline void			Point						( Triple pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void			Triangle					( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+	static inline void			Controls					( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static void					RenderImGui					( InterfaceScrapbook3D& data ) { Singleton().IRenderImGui(data); }
 
@@ -178,4 +239,6 @@ private:
 	bool						m_NeedsReset = true;
 
 	QMatrix4x4					m_CachedViewPerspective;
+
+	std::vector<std::function<void(int width, int height)>>		m_Controls;
 };

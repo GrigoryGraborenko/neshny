@@ -181,8 +181,7 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
 		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 		SDL_Event event;
-		while (SDL_PollEvent(&event))
-		{
+		while (SDL_PollEvent(&event)) {
 
 			if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
 				unfocus_timeout = 2;
@@ -216,7 +215,6 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 			}
 		}
 
-		//int width, height;
 		SDL_GetWindowSize(window, &width, &height);
 
 		qint64 nanos = frame_timer.nsecsElapsed();
@@ -300,6 +298,10 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 void Neshny::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
+	if (ImGui::Button(m_Interface.p_InfoView.p_Visible ? "Hide info view" : "Show info view")) {
+		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
+	}
+	ImGui::SameLine();
 	if (ImGui::Button(m_Interface.p_BufferView.p_Visible ? "Hide buffer view" : "Show buffer view")) {
 		m_Interface.p_BufferView.p_Visible = !m_Interface.p_BufferView.p_Visible;
 	}
@@ -341,6 +343,7 @@ void Neshny::IRenderEditor(void) {
 	}
 	*/
 
+	InfoViewer::RenderImGui(m_Interface.p_InfoView);
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
@@ -575,41 +578,6 @@ GLTexture* Neshny::GetTexture(QString name, bool skybox) {
 	}
 	m_Textures.insert_or_assign(name, tex);
 	return tex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template<class T>
-const Neshny::ResourceResult<T> Neshny::IGetResource(QString path) {
-
-	auto found = m_Resources.find(path);
-	if (found != m_Resources.end()) {
-		return ResourceResult<T>(found->second);
-	}
-	ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
-
-	m_ResourceThreads.DoTask([path]() -> void* {
-
-		QFile file(path);
-		if (!file.open(QIODevice::ReadOnly)) {
-			return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, file.errorString() };
-		}
-		auto data = file.readAll();
-		T* result = new T();
-		QString err;
-		bool valid = result->Init((unsigned char*)data.data(), data.size(), err);
-		if (!valid) {
-			delete result;
-			return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
-		}
-
-		return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };
-	}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
-		ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
-		resource = *tmp_resource;
-		delete tmp_resource;
-	});
-
-	return ResourceResult<T>(resource);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

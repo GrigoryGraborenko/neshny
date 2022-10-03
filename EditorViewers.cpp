@@ -87,6 +87,30 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void InfoViewer::RenderImGui(InterfaceInfoViewer& data) {
+
+	if (!data.p_Visible) {
+		return;
+	}
+
+	ImGui::Begin("Info Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+	//ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+
+	ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+	auto debug_list = DebugTiming::Report();
+	for (auto debug_item : debug_list) {
+		auto str = debug_item.toLocal8Bit();
+		ImGui::Text(str.data());
+	}
+
+	//ImGui::Text("CONTENT");
+
+	ImGui::End();
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
@@ -517,12 +541,25 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	ImGui::Begin("3D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
-	const int size_banner = 50;
+	ImVec2 min_available = ImGui::GetWindowContentRegionMin();
+	const int size_banner = 120;
+
+	int user_width = (space_available.x - min_available.x) * 0.75;
+	int user_height = size_banner - min_available.y - 5;
+	ImGui::SetCursorPos(ImVec2(min_available.x + (space_available.x - user_width), min_available.y));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(32, 32, 32, 255));
+	ImGui::BeginChild("UserControls", ImVec2(user_width, user_height), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+	for (int i = 0; i < m_Controls.size(); i++) {
+		m_Controls[i](user_width, user_height);
+	}
+	m_Controls.clear();
+	ImGui::EndChild();
+	ImGui::PopStyleColor();
+
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
 	m_CachedViewPerspective = data.m_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
-
-	ImGui::Text("content");
 
 	{
 		auto token = ActivateRTT();
@@ -565,3 +602,5 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	ImGui::End();
 
 }
+
+//void						IControls(std::function<void(int width, int height)> controls);
