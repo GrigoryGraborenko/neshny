@@ -562,38 +562,6 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLTexture* Neshny::GetTexture(QString name, bool skybox) {
-
-	auto found = m_Textures.find(name);
-	if (found != m_Textures.end()) {
-		return found->second;
-	}
-	m_Textures.insert_or_assign(name, nullptr);
-
-	QString prefix = ":/Core/img/";
-#ifdef _DEBUG
-	prefix = "../img/";
-#endif
-
-	GLTexture* tex = new GLTexture();
-	bool init_result = false;
-	if (skybox) {
-		init_result = tex->InitSkybox(prefix + name);
-	} else {
-		QFile file(prefix + name);
-		if (file.open(QIODevice::ReadOnly)) {
-			init_result = tex->Init(file.readAll());
-		}
-	}
-	if (!init_result) {
-		delete tex;
-		tex = nullptr;
-	}
-	m_Textures.insert_or_assign(name, tex);
-	return tex;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void Neshny::UnloadAllShaders(void) {
 
 	for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {

@@ -16,6 +16,9 @@ struct Camera3DOrbit {
 		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
 		return perspectiveMatrix * GetViewMatrix();
 	}
+	Triple				GetCamRealPos					( void ) const {
+		return GetViewMatrix().inverted() * QVector4D(0, 0, 0, 1);
+	}
 
 	Triple		p_Pos;
 	double		p_Zoom = 100.0;
@@ -238,7 +241,7 @@ private:
 class Resource {
 public:
 	virtual				~Resource		( void ) {}
-	virtual bool		Init			( QString path, unsigned char* data, int length, QString& err ) = 0;
+	virtual bool		Init			( QString path, QString& err ) = 0;
 protected:
 };
 
@@ -280,7 +283,6 @@ public:
 	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }
-	GLTexture*							GetTexture				( QString name, bool skybox = false );
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
 	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
@@ -340,20 +342,13 @@ private:
 		ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
 
 		m_ResourceThreads.DoTask([path]() -> void* {
-
-			QFile file(path);
-			if (!file.open(QIODevice::ReadOnly)) {
-				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, file.errorString() };
-			}
-			auto data = file.readAll();
 			T* result = new T();
 			QString err;
-			bool valid = result->Init(path, (unsigned char*)data.data(), data.size(), err);
+			bool valid = result->Init(path, err);
 			if (!valid) {
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 			}
-
 			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };
 		}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
 			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
@@ -373,7 +368,6 @@ private:
 
 	std::map<QString, GLShader*>		m_Shaders;
 	std::map<QString, GLBuffer*>		m_Buffers;
-	std::map<QString, GLTexture*>		m_Textures;
 	std::map<QString, GLShader*>		m_ComputeShaders;
 	std::map<QString, ResourceContainer> m_Resources;
 

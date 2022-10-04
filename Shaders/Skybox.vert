@@ -1,0 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+in vec3  aPosition;
+
+uniform mat4		uWorldViewPerspective;
+uniform vec3		uOffset;
+
+out vec3			vPos;
+
+void main(void) {
+	vPos = aPosition;
+	gl_Position = uWorldViewPerspective * vec4(aPosition * 100.0 + uOffset, 1.0);
+}

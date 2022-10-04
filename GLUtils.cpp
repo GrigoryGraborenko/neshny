@@ -406,20 +406,17 @@ bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLTexture::InitSkybox(QString filename) {
+bool GLTexture::InitSkybox(QString filename, QString& err) {
 
 	std::vector<QString> names = { "right", "left", "top", "bottom", "front", "back" };
 	std::list<QImage> images;
 
 	for (auto name : names) {
-
 		images.push_back(QImage());
-
 		QString fullname = filename;
 		fullname.replace('*', name);
-
-		//std::string fullname = filename + "/" + name;
 		if (!images.back().load(fullname)) {
+			err = "Could not load " + fullname;
 			return false;
 		}
 	}

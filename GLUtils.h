@@ -74,7 +74,7 @@ public:
 	virtual 										~GLTexture		( void );
 
 	bool											Init			( QByteArray data, GLint wrap_mode = GL_REPEAT );
-	bool											InitSkybox		( QString filename );
+	bool											InitSkybox		( QString filename, QString& err );
 
 	inline GLuint									GetTexture		( void ) const { return m_Texture; }
 	inline int										GetWidth		( void ) const { return m_Width; }
