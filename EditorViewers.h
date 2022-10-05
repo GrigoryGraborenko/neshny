@@ -15,10 +15,11 @@ public:
 		void Add(qint64 nanos) {
 			p_Nanos += nanos;
 			p_RecentNanos += nanos;
+			p_MinNanos = (p_MinNanos < 0) ? nanos : std::min(p_MinNanos, nanos);
 			p_MaxNanos = std::max(p_MaxNanos, nanos);
 			p_NumCalls++;
 			p_RecentNumCalls++;
-			if (p_RecentNumCalls >= 8) {
+			if (p_RecentNumCalls >= 16) {
 				double av_secs = ((double)p_RecentNanos * NANO_CONVERT) / (double)p_RecentNumCalls;
 				p_RecentNanos = 0;
 				p_RecentNumCalls = 0;
@@ -35,6 +36,7 @@ public:
 		const char* p_Label;
 		qint64 p_Nanos = 0;
 		qint64 p_NumCalls = 0;
+		qint64 p_MinNanos = -1;
 		qint64 p_MaxNanos = 0;
 
 		qint64 p_RecentNanos = 0;
@@ -48,7 +50,9 @@ public:
 
 	static QStringList					Report			( void );
 
-	static std::vector<TimingInfo>&		GetTimings	( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
+	static std::vector<TimingInfo>&		GetTimings		( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
+
+	static qint64						MainLoopTimer	( void ) { static QElapsedTimer timer; qint64 time = timer.nsecsElapsed(); timer.restart(); return time; }
 
 private:
 
@@ -119,6 +123,8 @@ public:
 	static inline void                          Point				( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
 	static inline void                          Point				( Triple pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void                          Triangle			( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+protected:
+												DebugRender			( void ) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +132,23 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 class InfoViewer {
 public:
-	static void						RenderImGui		( InterfaceInfoViewer& data );
+
+	inline static InfoViewer&					Singleton			( void ) { static InfoViewer instance; return instance; }
+
+	inline static void							RenderImGui			( InterfaceInfoViewer& data ) { Singleton().IRenderImGui(data); }
+
+	inline static void							LoopTime			( qint64 nanos ) { Singleton().ILoopTime(nanos); }
+	inline static void							ClearLoopTime		( qint64 nanos ) { Singleton().IClearLoopTime(); }
+
+protected:
+												InfoViewer			( void ) { IClearLoopTime(); }
+
+	void										ILoopTime			( qint64 nanos );
+	void										IRenderImGui		( InterfaceInfoViewer& data );
+	void										IClearLoopTime		( void );
+
+	std::vector<std::pair<double, int>>			m_LoopHistogram;
+	int											m_LoopHistogramOverflow;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +168,7 @@ public:
 
 	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
-private:
+protected:
 
 	struct CheckpointData {
 		QString								p_Stage;

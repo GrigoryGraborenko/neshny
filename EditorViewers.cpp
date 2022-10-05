@@ -124,7 +124,34 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void InfoViewer::RenderImGui(InterfaceInfoViewer& data) {
+void InfoViewer::ILoopTime(qint64 nanos) {
+	double loop_seconds = nanos * NANO_CONVERT;
+	for (auto& segment : m_LoopHistogram) {
+		if (loop_seconds < segment.first) {
+			segment.second++;
+			return;
+		}
+	}
+	m_LoopHistogramOverflow++;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void InfoViewer::IClearLoopTime(void) {
+	m_LoopHistogram.clear();
+	m_LoopHistogramOverflow = 0;
+	for (double s = 0; s < 0.1; s += 0.01) {
+		m_LoopHistogram.push_back({ s, 0 });
+	}
+	for (double s = 0.1; s < 1.0; s += 0.1) {
+		m_LoopHistogram.push_back({ s, 0 });
+	}
+	for (double s = 1.0; s < 10.0; s += 1.0) {
+		m_LoopHistogram.push_back({ s, 0 });
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 
 	if (!data.p_Visible) {
 		return;
@@ -134,17 +161,66 @@ void InfoViewer::RenderImGui(InterfaceInfoViewer& data) {
 	//ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 
 	ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::SameLine();
 
-	auto debug_list = DebugTiming::Report();
-	for (auto debug_item : debug_list) {
-		auto str = debug_item.toLocal8Bit();
-		ImGui::Text(str.data());
+	auto& timings = DebugTiming::GetTimings();
+	if (ImGui::Button("Reset")) {
+		timings.clear();
 	}
 
-	//ImGui::Text("CONTENT");
+	if (ImGui::Button("Reset Loop")) {
+		IClearLoopTime();
+	}
 
+	for (const auto& segment : m_LoopHistogram) {
+		if (!segment.second) {
+			continue;
+		}
+		ImGui::Text("< %.4f s: %i", segment.first, segment.second);
+	}
+
+	qint64 total_nanos = 0;
+	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
+		total_nanos += iter->p_Nanos;
+	}
+	
+	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+	if (ImGui::BeginTable("##Table", 7, table_flags)) {
+		ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
+
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Roll Avg (ms)", ImGuiTableColumnFlags_WidthFixed, 90);
+		ImGui::TableSetupColumn("Avg (ms)", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Min (ms)", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Max (ms)", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("%", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableHeadersRow();
+
+		for (auto iter = timings.begin(); iter != timings.end(); iter++) {
+
+			double total_av_secs = ((double)iter->p_Nanos * NANO_CONVERT) / (double)iter->p_NumCalls;
+			double percent = 100.0 * (double)iter->p_Nanos / (double)total_nanos;
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("%s", iter->p_Label);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.6f", iter->p_RollingAvSeconds * 1000.0);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%.6f", total_av_secs * 1000.0);
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%i", iter->p_NumCalls);
+			ImGui::TableSetColumnIndex(4);
+			ImGui::Text("%.6f", iter->p_MinNanos * MICRO_CONVERT);
+			ImGui::TableSetColumnIndex(5);
+			ImGui::Text("%.6f", iter->p_MaxNanos * MICRO_CONVERT);
+			ImGui::TableSetColumnIndex(6);
+			ImGui::Text("%.3f", percent);
+		}
+		ImGui::EndTable();
+	}
 	ImGui::End();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +316,6 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 	ImGui::BeginChild("BufferList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 200));
 
-	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
 	const int MAX_COLS = 50;
 	for (auto& buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
@@ -278,6 +353,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 				max_count = std::max(max_count, frame.p_Count);
 			}
 
+			ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
 			if (ImGui::BeginTable("##Table", max_frames + 1, table_flags)) {
 				ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
 

@@ -175,8 +175,11 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 	// Main loop
 	bool done = false;
 	bool fullscreen_hover = true;
-	while (!done)
-	{
+	while (!done) {
+
+		qint64 loop_nanos = DebugTiming::MainLoopTimer();
+		InfoViewer::LoopTime(loop_nanos);
+
 		int mouse_dx = 0;
 		int mouse_dy = 0;
 
