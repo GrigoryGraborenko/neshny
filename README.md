@@ -1,7 +1,7 @@
 # Neshny
-Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. The core feature is an entity system that runs mostly on the graphics card.
+Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card.
 
-Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff.
+Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features.
 
 ## Installation
 *This is a work in progress - later on there will be example projects and cmake files.*
@@ -121,7 +121,6 @@ EntityRender(projectiles, "ProjectileRender", {})
     glUniformMatrix4fv(prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, vp.data());
 });
 ```
-
 This is what the ProjectileMove compute shader might look like:
 ``` GLSL
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
@@ -151,6 +150,17 @@ TODO
 ### Cameras
 TODO
 ### Resource system
+The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that you 
+```
+	auto tex = Neshny::GetResource<Texture2D>("../images/example.png");
+    if(tex.IsValid()) {
+        glBindTexture(GL_TEXTURE_2D, tex->Get().GetTexture());
+    } else if(tex.m_State == ResourceState::PENDING) {
+        // show some loading info
+    } else if(tex.m_State == ResourceState::IN_ERROR) {
+        // show info about error using tex.m_Error
+    }
+```
 TODO
 ### 3D debug visualizer
 TODO
