@@ -1,5 +1,5 @@
 # Neshny
-Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card.
+Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card. There is an optional UI that can overlay your window and display valuable debugging information.
 
 Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features.
 
@@ -7,7 +7,7 @@ Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff
 *This is a work in progress - later on there will be example projects and cmake files.*
 
 Clone this repo and point to the base dir in your include directories list. Then add
-```
+``` C++
 // put this in your headers
 #include <IncludeAll.h> // Neshny
 // put this in your main.cpp or similar
@@ -16,7 +16,25 @@ Clone this repo and point to the base dir in your include directories list. Then
 Currently it assumes you already have QT, ImGui and Metastuff installed.
 
 ## Features
+### Viewing the editor overlay
+Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
+``` C++
+if (show_editor) {
+    // this will do all UI/UX for the editor
+    Neshny::RenderEditor();
+    // reset for per-cycle debugging visuals
+    DebugRender::Clear();
+}
+```
+### Shader and buffer convenience classes
+``` C++
+GLShader shader;
+QString err_msg;
+shader.Init(err_msg, {"ENABLE_THING"}, "shader.vert", "shader.frag", "shader.geom", "uniform int extra_uniform;");
+shader.UseProgram();
+glUniform1i(shader.GetUniform("extra_uniform"), 123);
 
+```
 ### Shader loading and viewing
 Here's an example of using a rendering shader:
 ``` C++
@@ -150,8 +168,8 @@ TODO
 ### Cameras
 TODO
 ### Resource system
-The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that you 
-```
+The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
+``` C++
 	auto tex = Neshny::GetResource<Texture2D>("../images/example.png");
     if(tex.IsValid()) {
         glBindTexture(GL_TEXTURE_2D, tex->Get().GetTexture());
@@ -161,7 +179,30 @@ The resource system uses threads to load and initialize resources in the backgro
         // show info about error using tex.m_Error
     }
 ```
-TODO
+Currently [TODO expand this list] there are resources for `SoundFile` (using SDL), `Texture2D` and `TextureSkybox`. Creating your own resource type is easy - simply subclass from `Resource` and implement the abstract function `virtual bool Init(QString path, QString& err)` like so:
+``` C++
+class CustomResource : public Resource {
+public:
+	virtual				~CustomResource(void) {}
+	virtual bool		Init(QString path, QString& err) {
+		// anything here will be run in an offline thread
+        // opengl resource creation here will be shared
+        for(int i = 0; i < 1000000; i++) {
+            // some slow process
+            cached_value++;
+        }
+        if(!cached_value) {
+            err = "Reason for failure";
+            return false; // resource will be "IN_ERROR"
+        }
+        return true; // resource will be "DONE"
+	};
+private:
+    int cached_value = 0; // whatever payload you like
+};
+
+```
+If you want to create a resource based off data in a file, you have the convenience base class `FileResource` which requires you to implement the `virtual bool FileInit(QString path, unsigned char* data, int length, QString& err)` function that is called after the file in the path is loaded. `data` and `length` contain the contents of the file if it has been successfully loaded.
 ### 3D debug visualizer
 TODO
 ### Scrapbook
