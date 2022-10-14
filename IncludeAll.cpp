@@ -12,3 +12,18 @@
 #include "Core.cpp"
 #include "EditorViewers.cpp"
 #include "Pipeline.cpp"
+
+////////////////////////////////////////////////////////////////////////////////
+double Random(void) {
+    return (double)rand() / RAND_MAX;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+double Random(double min_val, double max_val) {
+    return ((double)rand() / RAND_MAX) * (max_val - min_val) + min_val;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int RandomInt(int min_val, int max_val) {
+    return int(floor(Random(min_val, max_val)));
+}
