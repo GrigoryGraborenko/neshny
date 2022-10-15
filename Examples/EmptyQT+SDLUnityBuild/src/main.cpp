@@ -3,6 +3,11 @@
 
 #include "PreCompiledHeader.h"
 
+#include "Engine.h"
+
 int main(int, char**) {
 	return 123;
 }
+
+#include "Engine.cpp"
+#include "EmbeddedFiles.cpp"
