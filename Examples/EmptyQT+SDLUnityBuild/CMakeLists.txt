@@ -52,35 +52,41 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WI
 ###############################################################################
 message(STATUS "Including shaders")
 
-# Creates C resources file from files in given directory
-function(create_resources dir output_fname)
+file(GLOB_RECURSE ShaderList ${SHADER_PATH}/*.*)
+
+# Creates CPP resources file from files
+# function(create_resources output_fname file1 file2 file3 ... fileM )
+function(create_resources output_fname)
     # Create empty output file
     file(WRITE ${output_fname} "")
-    # Collect input files
-    file(GLOB bins ${dir}/*)
 
-    set(resource_vector "struct EmbeddedFile{ std::string p_FileName=\"\"\\; unsigned long long p_Size=0\\; const unsigned char* p_Data=nullptr\\; }\\;\n std::vector<EmbeddedFile> g_EmbeddedFiles = {\n")
+    set(resource_vector "struct EmbeddedFile{ unsigned long long p_Size=0\\; const unsigned char* p_Data=nullptr\\; }\\;\n std::unordered_map<std::string, EmbeddedFile> g_EmbeddedFiles = {\n")
 
     # Iterate through input files
-    foreach(bin ${bins})
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 1 ${last})
+
         # Get short filename
-        string(REGEX MATCH "([^/]+)$" filename ${bin})
+        string(REGEX MATCH "([^/]+)$" filename ${ARGV${i}})
         # Replace filename spaces & extension separator for C compatibility
         string(REGEX REPLACE "\\.| |-" "_" c_filename ${filename})
         # Read hex data from file
-        file(READ ${bin} filedata HEX)
+        file(READ ${ARGV${i}} filedata HEX)
         # Convert hex data for C compatibility
         string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
         # Append data to output file
         file(APPEND ${output_fname} "const unsigned char _g_${c_filename}[] = {${filedata}};\n")
 
-        string(APPEND resource_vector "{ \"${filename}\", sizeof(_g_${c_filename}), _g_${c_filename} },\n")
+        # string(APPEND resource_vector "{ \"${filename}\", sizeof(_g_${c_filename}), _g_${c_filename} },\n")
+        string(APPEND resource_vector "{ \"${filename}\", { sizeof(_g_${c_filename}), _g_${c_filename} }},\n")
     endforeach()
-    string(APPEND resource_vector "{}}\\;\n")
+    string(APPEND resource_vector "}\\;\n")
     file(APPEND ${output_fname} ${resource_vector})
 endfunction()
 
-create_resources(${NESHNY_DIR}/shaders "src/EmbeddedFiles.cpp")
+file(GLOB neshny_shader_binary_list ${NESHNY_DIR}/shaders/*.*)
+create_resources("src/EmbeddedFiles.cpp" ${neshny_shader_binary_list} ${ShaderList})
+file(APPEND "src/EmbeddedFiles.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${SHADER_PATH}\" };\n")
 
 ###############################################################################
 message(STATUS "Project Structure")
@@ -96,7 +102,7 @@ file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
 file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/shaders/*.*)
 
-list (APPEND FullList ${HeaderList} ${SourceList})
+list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
 set_source_files_properties(${SourceList} PROPERTIES
     HEADER_FILE_ONLY TRUE
@@ -113,6 +119,7 @@ target_sources(${PROJECT_NAME}
     ${HeaderList}
     ${SourceList}
     ${NeshnyList}
+    ${ShaderList}
 )
 
 source_group(TREE src PREFIX src FILES ${FullList})
@@ -130,5 +137,3 @@ configure_file(${QT_DIR}/bin/QT5Core.dll release/QT5Core.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT5Gui.dll release/QT5Gui.dll COPYONLY)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/release)
-
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/obj)
