@@ -204,7 +204,7 @@ bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, dou
 bool IntersectLineSphere(Triple centre, double radius_sqr, Triple p0, Triple p1, double& result_t0, double& result_t1);
 bool CircumSphere(Triple p0, Triple p1, Triple p2, Triple& out_centre);
 
-QMatrix3x3 ConvertTo3x3(const QMatrix4x4& mat) {
+inline QMatrix3x3 ConvertTo3x3(const QMatrix4x4& mat) {
 	auto d = mat.data();
 	float v[9] = {
 		d[0], d[4], d[8]

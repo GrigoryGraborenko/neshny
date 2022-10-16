@@ -35,4 +35,8 @@ bool Engine::Tick(qint64 delta_nanoseconds, int tick) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void Engine::Render(int width, int height) {
+
+	DebugRender::Clear();
+	Neshny::RenderEditor();
+
 }
