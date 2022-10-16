@@ -4,8 +4,32 @@ Neshny is an OpenGL/C++ library for games and simulations. It is designed to be 
 Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features.
 
 ## Installation
-*This is a work in progress - later on there will be example projects and cmake files.*
+Clone this repo to a location of your choice:
+```
+git clone https://github.com/GrigoryGraborenko/neshny.git
+```
+### Using cmake
+Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLUnityBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
 
+Make a copy of the entire directory and place it wherever you like. Ensure you have cmake 3.18 or greater installed.
+
+Edit the **UserSettings.cmake** to point to the correct directories where libraries are installed:
+``` cmake
+set(NESHNY_DIR "C:/Code/Neshny")
+set(QT_DIR "C:/Qt/5.15.2/msvc2019_64")
+set(SDL2_DIR "C:/SDL/SDL2-2.0.14")
+set(SDL2_DIR_PATH "C:/SDL/SDL2_mixer-2.0.4")
+set(SHADER_PATH "src/shaders")
+```
+Then navigate to the root of the copied project and run this command in the terminal:
+``` 
+cmake -G "Visual Studio 16 2019" -A x64 .
+```
+Replace `"Visual Studio 16 2019"` with whatever compiler you prefer. This will generate all the project files needed. Then open up the solution/project files and run it. You should see this:
+![Screenshot of Empty QT SDL Project](/Documentation/empty_qt_sdl_jumbo.png)
+
+
+### Manually
 Clone this repo and point to the base dir in your include directories list. Then add
 ``` C++
 // put this in your headers
@@ -13,7 +37,7 @@ Clone this repo and point to the base dir in your include directories list. Then
 // put this in your main.cpp or similar
 #include <IncludeAll.cpp> // Neshny
 ```
-Currently it assumes you already have QT, ImGui and Metastuff installed.
+This assumes you already have QT, ImGui and Metastuff installed.
 
 ## Features
 ### Viewing the editor overlay

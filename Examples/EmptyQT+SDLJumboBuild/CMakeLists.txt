@@ -52,7 +52,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WI
 ###############################################################################
 message(STATUS "Including shaders")
 
-file(GLOB_RECURSE ShaderList ${SHADER_PATH}/*.*)
+# adds shaders to directory structure and embeds them
+# remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
+file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
 
 # Creates CPP resources file from files
 # function(create_resources output_fname file1 file2 file3 ... fileM )
@@ -72,6 +74,11 @@ function(create_resources output_fname)
         string(REGEX REPLACE "\\.| |-" "_" c_filename ${filename})
         # Read hex data from file
         file(READ ${ARGV${i}} filedata HEX)
+
+        if(NOT filedata)
+            continue()
+        endif()
+
         # Convert hex data for C compatibility
         string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
         # Append data to output file
@@ -86,31 +93,29 @@ endfunction()
 
 file(GLOB neshny_shader_binary_list ${NESHNY_DIR}/shaders/*.*)
 create_resources("src/EmbeddedFiles.cpp" ${neshny_shader_binary_list} ${ShaderList})
-file(APPEND "src/EmbeddedFiles.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${SHADER_PATH}\" };\n")
+file(APPEND "src/EmbeddedFiles.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 ###############################################################################
 message(STATUS "Project Structure")
 
 target_precompile_headers(${PROJECT_NAME}
-    PRIVATE
+    PUBLIC
     src/PreCompiledHeader.h
 )
 
-file(GLOB_RECURSE HeaderList src/*.h)
-file(GLOB_RECURSE SourceList src/*.cpp)
+# remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
+file(GLOB_RECURSE HeaderList CONFIGURE_DEPENDS src/*.h)
+file(GLOB_RECURSE SourceList CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
 file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/shaders/*.*)
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
-set_source_files_properties(${SourceList} PROPERTIES
+set_source_files_properties(${SourceList} ${NeshnyList} PROPERTIES
     HEADER_FILE_ONLY TRUE
 )
-set_source_files_properties(${NeshnyList} PROPERTIES
-    HEADER_FILE_ONLY TRUE
-)
-set_source_files_properties(src/main.cpp PROPERTIES
+set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
     HEADER_FILE_ONLY FALSE
 )
 
