@@ -1,0 +1,15 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uniform vec4	uColor;
+
+in vec2 oUV;
+
+out vec4		oFragColor;
+
+void main(void) {
+    oFragColor = uColor;
+
+    float min_val = min(min(oUV.x, oUV.y), 1.0 - (oUV.x + oUV.y));
+
+    oFragColor.w *= smoothstep(0.1, 0.0, min_val) * 0.5 + 0.5;
+}

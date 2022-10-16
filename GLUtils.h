@@ -17,8 +17,8 @@ public:
 													GLShader			( void );
 													~GLShader			( void);
 
-	bool											Init				( QString& err_msg, const std::vector<QString>& prefixes, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion);
-	bool											InitCompute			( QString& err_msg, const std::vector<QString>& prefixes, QString shader_filename, QString insertion);
+	bool											Init				( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion);
+	bool											InitCompute			( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString shader_filename, QString insertion);
 
 	void											UseProgram			( void );
 	GLuint											GetAttribute		( QString name );
@@ -29,8 +29,8 @@ public:
 
 private:
 
-	GLuint											CreateProgram		( QString& err_msg, const std::vector<QString>& prefixes, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion );
-	GLuint											CreateShader		( QString& err_msg, const std::vector<QString>& prefixes, QString filename, GLenum type, QString insertion );
+	GLuint											CreateProgram		( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion );
+	GLuint											CreateShader		( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString filename, GLenum type, QString insertion );
 
 	GLuint											m_Program;
 	std::vector<SourceInfo>							m_Sources;

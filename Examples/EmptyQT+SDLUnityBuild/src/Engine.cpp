@@ -36,7 +36,22 @@ bool Engine::Tick(qint64 delta_nanoseconds, int tick) {
 ////////////////////////////////////////////////////////////////////////////////
 void Engine::Render(int width, int height) {
 
+
+	GLShader* prog_debug = Neshny::GetShader("Debug");
+
+	// dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
+	// loads from "../src/Shaders/" (TODO: hardcoded for now)
+	GLShader* prog = Neshny::GetShader("Fullscreen");
+	prog->UseProgram();
+	//glUniform1i(prog->GetUniform("uniform_name"), 123);
+
+	GLBuffer* buff = Neshny::GetBuffer("Square"); // get a built-in model
+	buff->UseBuffer(prog); // attach the program to the buffer
+	buff->Draw(); // executes the draw call
+
+	//DebugRender::Point(Triple(100.0, 30.0, 30.0), QVector4D(0.0, 0.5, 0.5, 1.0));
+	//DebugRender::Render3DDebug(vp, width, height, Triple(0, 0, 0), 1.0);
+
 	DebugRender::Clear();
 	Neshny::RenderEditor();
-
 }

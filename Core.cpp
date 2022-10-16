@@ -393,6 +393,10 @@ void Neshny::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
 ////////////////////////////////////////////////////////////////////////////////
 GLShader* Neshny::IGetShader(QString name, QString insertion) {
 
+	if (!m_EmbeddableLoader.has_value()) {
+		return nullptr;
+	}
+
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
 		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0);; // security is no concern, only speed and lack of collisions
@@ -407,12 +411,10 @@ GLShader* Neshny::IGetShader(QString name, QString insertion) {
 
 	QString vertex_name = name + ".vert", fragment_name = name + ".frag", geometry_name = "";
 
-	auto prefixes = GetShaderPrefixes();
-
 	GLShader* new_shader = new GLShader();
 	m_Shaders.insert_or_assign(lookup_name, new_shader);
 	QString err_msg = "";
-	if (!new_shader->Init(err_msg, prefixes, vertex_name, fragment_name, geometry_name, insertion)) {
+	if (!new_shader->Init(err_msg, m_EmbeddableLoader.value(), vertex_name, fragment_name, geometry_name, insertion)) {
 		qDebug() << err_msg;
 		m_Interface.p_ShaderView.p_Visible = true;
 	}
@@ -421,6 +423,10 @@ GLShader* Neshny::IGetShader(QString name, QString insertion) {
 
 ////////////////////////////////////////////////////////////////////////////////
 GLShader* Neshny::IGetComputeShader(QString name, QString insertion) {
+
+	if (!m_EmbeddableLoader.has_value()) {
+		return nullptr;
+	}
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
@@ -436,12 +442,10 @@ GLShader* Neshny::IGetComputeShader(QString name, QString insertion) {
 
 	QString shader_name = name + ".comp";
 
-	auto prefixes = GetShaderPrefixes();
-
 	GLShader* new_shader = new GLShader();
 	m_ComputeShaders.insert_or_assign(lookup_name, new_shader);
 	QString err_msg;
-	if (!new_shader->InitCompute(err_msg, prefixes, shader_name, insertion)) {
+	if (!new_shader->InitCompute(err_msg, m_EmbeddableLoader.value(), shader_name, insertion)) {
 		m_Interface.p_ShaderView.p_Visible = true;
 		qDebug() << err_msg;
 	}

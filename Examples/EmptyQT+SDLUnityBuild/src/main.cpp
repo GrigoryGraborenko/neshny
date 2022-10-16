@@ -5,6 +5,8 @@
 
 #include "Engine.h"
 
+#include "EmbeddedFiles.cpp"
+
 int main(int, char**) {
 
 	QCoreApplication::addLibraryPath("plugins");
@@ -55,6 +57,32 @@ int main(int, char**) {
 	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
+	Neshny::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
+
+#ifdef _DEBUG
+		QFile file;
+		for (auto prefix : g_ShaderBaseDirs) {
+			file.setFileName(QString("..\\%1\\%2").arg(prefix.c_str()).arg(path));
+			if (file.open(QIODevice::ReadOnly)) {
+				break;
+			}
+		}
+		if (!file.isOpen()) {
+			err_msg = "File error - " + file.errorString(); // TODO: better error handling than just last file error
+			return QByteArray();
+		}
+		return file.readAll();
+#endif
+
+		auto byte_path = path.toLocal8Bit();
+		auto found = g_EmbeddedFiles.find(std::string(byte_path.data()));
+		if (found == g_EmbeddedFiles.end()) {
+			err_msg = "Cannot find embedded file error - " + path;
+			return QByteArray();
+		}
+		return QByteArray((char*)found->second.p_Data, found->second.p_Size);
+	});
+
 	Engine engine;
 	bool result = Neshny::Singleton().SDLLoop(window, &engine);
 
@@ -71,4 +99,3 @@ int main(int, char**) {
 }
 
 #include "Engine.cpp"
-#include "EmbeddedFiles.cpp"

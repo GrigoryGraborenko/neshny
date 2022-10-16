@@ -12,15 +12,15 @@ GLShader::~GLShader(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLShader::Init(QString& err_msg, const std::vector<QString>& prefixes, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion) {
-	m_Program = CreateProgram(err_msg, prefixes, vertex_filename, fragment_filename, geometry_filename, insertion);
+bool GLShader::Init(QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion) {
+	m_Program = CreateProgram(err_msg, loader, vertex_filename, fragment_filename, geometry_filename, insertion);
 	return (m_Program != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLShader::InitCompute(QString& err_msg, const std::vector<QString>& prefixes, QString shader_filename, QString insertion) {
+bool GLShader::InitCompute(QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString shader_filename, QString insertion) {
 
-	auto shader = CreateShader(err_msg, prefixes, shader_filename, GL_COMPUTE_SHADER, insertion);
+	auto shader = CreateShader(err_msg, loader, shader_filename, GL_COMPUTE_SHADER, insertion);
 	if (!shader) {
 		err_msg = "Could not create " + shader_filename + ": " + err_msg;
 		return false;
@@ -65,18 +65,18 @@ GLint GLShader::GetUniform(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLuint GLShader::CreateProgram(QString& err_msg, const std::vector<QString>& prefixes, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion) {
+GLuint GLShader::CreateProgram(QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion) {
 
 	GLuint vertex_shader = 0;
 	if (vertex_shader_filename != "") {
-		vertex_shader = CreateShader(err_msg, prefixes, vertex_shader_filename, GL_VERTEX_SHADER, insertion);
+		vertex_shader = CreateShader(err_msg, loader, vertex_shader_filename, GL_VERTEX_SHADER, insertion);
 		if (!vertex_shader) {
 			err_msg = "Could not create " + vertex_shader_filename + ": " + err_msg;
 			qDebug() << err_msg;
 			return 0;
 		}
 	}
-	GLuint fragment_shader = CreateShader(err_msg, prefixes, fragment_shader_filename, GL_FRAGMENT_SHADER, insertion);
+	GLuint fragment_shader = CreateShader(err_msg, loader, fragment_shader_filename, GL_FRAGMENT_SHADER, insertion);
 	if (!fragment_shader) {
 		err_msg = "Could not create " + fragment_shader_filename + ": " + err_msg;
 		qDebug() << err_msg;
@@ -85,7 +85,7 @@ GLuint GLShader::CreateProgram(QString& err_msg, const std::vector<QString>& pre
 
 	GLuint geom_shader = 0;
 	if (geometry_shader_filename != "") {
-		geom_shader = CreateShader(err_msg, prefixes, geometry_shader_filename, GL_GEOMETRY_SHADER, insertion);
+		geom_shader = CreateShader(err_msg, loader, geometry_shader_filename, GL_GEOMETRY_SHADER, insertion);
 		if (!geom_shader) {
 			err_msg = "Could not create " + geometry_shader_filename + ": " + err_msg;
 			qDebug() << err_msg;
@@ -131,21 +131,13 @@ GLuint GLShader::CreateProgram(QString& err_msg, const std::vector<QString>& pre
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLuint GLShader::CreateShader(QString& err_msg, const std::vector<QString>& prefixes, QString filename, GLenum type, QString insertion) {
+GLuint GLShader::CreateShader(QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString filename, GLenum type, QString insertion) {
 
-	QFile file;
-	for (auto prefix : prefixes) {
-		file.setFileName(prefix + filename);
-		if (file.open(QIODevice::ReadOnly)) {
-			break;
-		}
-	}
-	if (!file.isOpen()) {
-		err_msg = "File error - " + file.errorString(); // TODO: better error handling than just last file error
+	QByteArray arr = loader(filename, err_msg);
+	if (arr.isNull()) {
+		err_msg = "File error - " + err_msg; // TODO: better error handling than just last file error
 		return 0;
 	}
-
-	QByteArray arr = file.readAll();
 
 	{ // replace all #include
 		QString search_term = "#include \"";
@@ -168,19 +160,13 @@ GLuint GLShader::CreateShader(QString& err_msg, const std::vector<QString>& pref
 				continue;
 			}
 
-			QFile includeFile;
-			for (auto prefix : prefixes) {
-				includeFile.setFileName(prefix + include_filename);
-				if (includeFile.open(QIODevice::ReadOnly)) {
-					break;
-				}
-			}
-			if (!includeFile.isOpen()) {
-				err_msg = "Include error, cannot open " + include_filename + " - " + includeFile.errorString();
+			QByteArray loaded_data = loader(include_filename, err_msg);
+			if (loaded_data.isEmpty() || loaded_data.isNull()) {
+				err_msg = "Include error, cannot open " + include_filename + " - " + err_msg;
 				return 0;
 			}
 
-			replacements.push_back({ include_data, includeFile.readAll() });
+			replacements.push_back({ include_data, loaded_data });
 		}
 		int replacePos = 0;
 		for (auto it = replacements.begin(); it != replacements.end(); it++)

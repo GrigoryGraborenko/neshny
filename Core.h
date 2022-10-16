@@ -276,6 +276,8 @@ public:
 
 	inline static Neshny&				Singleton				( void ) { static Neshny core; return core; }
 
+	void								SetEmbeddableFileLoader	( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
+
 #ifdef SDL_h_
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
@@ -360,12 +362,6 @@ private:
 	void								IRenderEditor			( void );
 	bool								IIsBufferEnabled		( QString name );
 
-#ifdef _DEBUG
-	inline std::vector<QString>			GetShaderPrefixes		( void ) { return { "../src/Shaders/", "../src/Neshny/Shaders/" }; }
-#else
-	inline std::vector<QString>			GetShaderPrefixes		( void ) { return { ":/Core/src/Shaders/", ":/Core/src/Neshny/Shaders/" }; }
-#endif
-
 	std::map<QString, GLShader*>		m_Shaders;
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
@@ -377,6 +373,7 @@ private:
 
 	InterfaceCore						m_Interface;
 	WorkerThreadPool					m_ResourceThreads;
+	std::optional<std::function<QByteArray(QString, QString&)>>	m_EmbeddableLoader;
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;
