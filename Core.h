@@ -185,6 +185,8 @@ public:
 	virtual void					Key			( int key, bool is_down ) = 0;
 
 	virtual void					Init		( void ) = 0;
+	virtual void					ExitSignal	( void ) = 0;
+	virtual bool					ShouldExit	( void ) = 0;
 	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
 	virtual void					Render		( int width, int height ) = 0;
 };
@@ -277,11 +279,17 @@ public:
 	inline static Neshny&				Singleton				( void ) { static Neshny core; return core; }
 
 	void								SetEmbeddableFileLoader	( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
+	inline void							SetTicksOverride		( int ticks ) { m_Ticks = ticks; }
+
+	bool								LoopInit				( IEngine* engine );
+	void								LoopInner				( IEngine* engine, int width, int height, bool& fullscreen_hover );
 
 #ifdef SDL_h_
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
-
+#ifdef QT_LOOP
+	bool								QTLoop					( class QOpenGLWindow* window, IEngine* engine );
+#endif
 	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }

@@ -18,8 +18,12 @@ Edit the **UserSettings.cmake** to point to the correct directories where librar
 set(NESHNY_DIR "C:/Code/Neshny")
 set(QT_DIR "C:/Qt/5.15.2/msvc2019_64")
 set(SDL2_DIR "C:/SDL/SDL2-2.0.14")
-set(SDL2_DIR_PATH "C:/SDL/SDL2_mixer-2.0.4")
+set(SDL2_MIXER_DIR "C:/SDL/SDL2_mixer-2.0.4")
 set(SHADER_PATH "src/shaders")
+```
+Also make sure to edit this line near the top of CMakeLists.txt:
+```
+set(PROJECT_NAME "EmptyQTJumboBuild") # change to your project name
 ```
 Then navigate to the root of the copied project and run this command in the terminal:
 ``` 

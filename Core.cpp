@@ -126,11 +126,9 @@ Neshny::~Neshny(void) {
 	}
 }
 
-#ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
+bool Neshny::LoopInit(IEngine* engine) {
 
-	m_Window = window;
 	m_ResourceThreads.Start(1); // started here so you have access to m_Window value
 
 	g_StaticInstance = this;
@@ -140,22 +138,82 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 		return false;
 	}
 
-	qInstallMessageHandler([](QtMsgType type, const QMessageLogContext &context, const QString &msg) {
+	qInstallMessageHandler([](QtMsgType type, const QMessageLogContext& context, const QString& msg) {
 		switch (type) {
-			case QtDebugMsg:
-			case QtWarningMsg:
-			case QtCriticalMsg:
-			case QtFatalMsg:
-				g_StaticInstance->m_LogFile.write(QString("[%1] %2 \n").arg(QDateTime::currentDateTime().toString("hh:mm:ss.zzz")).arg(msg).toLocal8Bit());
-				g_StaticInstance->m_LogFile.flush();
-				break;
-			case QtInfoMsg:
-			default:
-				break;
+		case QtDebugMsg:
+		case QtWarningMsg:
+		case QtCriticalMsg:
+		case QtFatalMsg:
+			g_StaticInstance->m_LogFile.write(QString("[%1] %2 \n").arg(QDateTime::currentDateTime().toString("hh:mm:ss.zzz")).arg(msg).toLocal8Bit());
+			g_StaticInstance->m_LogFile.flush();
+			break;
+		case QtInfoMsg:
+		default:
+			break;
 		}
-	});
+		});
 
 	qDebug() << "Core initializing...";
+
+	engine->Init();
+	m_Ticks = 0;
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Neshny::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_hover) {
+
+	ImGui::SetNextWindowPos(ImVec2(-2, -2), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(width + 4, height + 4), ImGuiCond_Always);
+	ImGui::SetNextWindowBgAlpha(0.0f);
+	ImGui::Begin("Window", nullptr,
+		ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoBringToFrontOnFocus
+	);
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glViewport(0, 0, width, height);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
+
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_BLEND);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	engine->Render(width, height);
+
+	ImGui::SetCursorPos(ImVec2(0, 0));
+	ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
+	if (fullscreen_hover = ImGui::IsItemHovered()) {
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.MouseWheel != 0.0f) {
+			engine->MouseWheel(io.MouseWheel > 0.0f);
+		}
+	}
+
+}
+
+
+#ifdef SDL_h_
+////////////////////////////////////////////////////////////////////////////////
+bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
+
+	m_Window = window;
+	if (!LoopInit(engine)) {
+		return false;
+	}
 
 	//bool is_mouse_relative = true;
 	//SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
@@ -169,13 +227,9 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	int unfocus_timeout = 0;
 
-	engine->Init();
-	m_Ticks = 0;
-
 	// Main loop
-	bool done = false;
 	bool fullscreen_hover = true;
-	while (!done) {
+	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();
 		InfoViewer::LoopTime(loop_nanos);
@@ -207,15 +261,12 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 			ImGui_ImplSDL2_ProcessEvent(&event);
 			if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))) {
-				done = true;
+				engine->ExitSignal();
 			} else if (event.type == SDL_MOUSEMOTION) {
 				mouse_dx = event.motion.xrel;
 				mouse_dy = event.motion.yrel;
 				engine->MouseMove(QVector2D(mouse_dx, mouse_dy), !fullscreen_hover);
 			} else if (event.type == SDL_KEYDOWN) {
-				if (event.key.keysym.sym == SDLK_ESCAPE) {
-					done = true;
-				}
 				engine->Key(event.key.keysym.sym, true);
 			} else if (event.type == SDL_KEYUP) {
 				engine->Key(event.key.keysym.sym, false);
@@ -223,8 +274,6 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 				engine->MouseButton(event.button.button, true);
 			} else if (event.type == SDL_MOUSEBUTTONUP) {
 				engine->MouseButton(event.button.button, false);
-			} else if (event.type == SDL_MOUSEWHEEL) {
-				//engine->MouseWheel(event.wheel.y > 0);
 			}
 		}
 
@@ -238,60 +287,16 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		///////////////////////////////////////////// render engine
 
-		//glClearColor(0.0f, 0.1f, 0.0f, 1.0f);
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		glViewport(0, 0, width, height);
-
-		//glStencilMask(255);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		glEnable(GL_DEPTH_TEST);
-		glDepthMask(GL_TRUE);
-		glDepthFunc(GL_LESS);
-
-		glDisable(GL_STENCIL_TEST);
-		glDisable(GL_BLEND);
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_FRONT);
-
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
+
 		ImGui::NewFrame();
-
-		ImGui::SetNextWindowPos(ImVec2(-2, -2), ImGuiCond_Always);
-		ImGui::SetNextWindowSize(ImVec2(width + 4, height + 4), ImGuiCond_Always);
-		ImGui::SetNextWindowBgAlpha(0.0f);
-		ImGui::Begin("Window", nullptr,
-			ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoCollapse |
-			ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoSavedSettings |
-			ImGuiWindowFlags_NoTitleBar | 
-			ImGuiWindowFlags_NoBringToFrontOnFocus
-		);
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-		engine->Render(width, height);
-
-		ImGui::SetCursorPos(ImVec2(0, 0));
-		ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
-		if (fullscreen_hover = ImGui::IsItemHovered()) {
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.MouseWheel != 0.0f) {
-				engine->MouseWheel(io.MouseWheel > 0.0f);
-			}
-		}
-
-		ImGui::End();
-		/////////////////////////////////////////////
-
-		//SDL_WINDOW_INPUT_GRABBED
-
+		LoopInner(engine, width, height, fullscreen_hover);
 		// Finish imgui rendering
+		ImGui::End();
 		ImGui::Render();
+
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
 
@@ -303,6 +308,55 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	qDebug() << "Finished";
 
+	return true;
+}
+#endif
+
+#ifdef QT_LOOP
+////////////////////////////////////////////////////////////////////////////////
+bool Neshny::QTLoop(QOpenGLWindow* window, IEngine* engine) {
+
+	if (!LoopInit(engine)) {
+		return false;
+	}
+
+	QElapsedTimer frame_timer;
+	frame_timer.restart();
+	const double inv_nano = 1.0 / 1000000000;
+
+	bool fullscreen_hover = true;
+
+	ImGuiIO& io = ImGui::GetIO();
+	while (!engine->ShouldExit()) {
+
+		qint64 loop_nanos = DebugTiming::MainLoopTimer();
+		InfoViewer::LoopTime(loop_nanos);
+
+		QApplication::processEvents(QEventLoop::WaitForMoreEvents, 1);
+		int width = window->width();
+		int height = window->height();
+
+		qint64 nanos = frame_timer.nsecsElapsed();
+		frame_timer.restart();
+		if (engine->Tick(nanos, m_Ticks)) {
+			m_Ticks++;
+		}
+
+		if (io.DeltaTime <= 0.0f) {
+			io.DeltaTime = 0.00001f;
+		}
+
+		window->makeCurrent();
+
+		QtImGui::newFrame();
+		LoopInner(engine, width, height, fullscreen_hover);
+		// Finish imgui rendering
+		ImGui::End();
+		QtImGui::render();
+
+		window->context()->swapBuffers(window->context()->surface());
+		window->doneCurrent();
+	}
 	return true;
 }
 #endif
@@ -597,18 +651,24 @@ int Neshny::CreateGLContext(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 bool Neshny::ActivateGLContext(int index) {
+#ifdef SDL_h_
 	if ((index < 0) || (index >= m_Contexts.size())) {
 		return false;
 	}
 	return SDL_GL_MakeCurrent(m_Window, m_Contexts[index]) == 0;
+#else
+	return false;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Neshny::DeleteGLContext(int index) {
+#ifdef SDL_h_
 	if ((index < 0) || (index >= m_Contexts.size())) {
 		return;
 	}
 	SDL_GL_DeleteContext(m_Contexts[index]);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

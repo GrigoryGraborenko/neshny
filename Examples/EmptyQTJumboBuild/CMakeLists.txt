@@ -1,7 +1,7 @@
 ###############################################################################
 
 # modify this
-set(PROJECT_NAME "EmptyQT+SDLJumboBuild")
+set(PROJECT_NAME "EmptyQTJumboBuild")
 
 project(${PROJECT_NAME})
 cmake_minimum_required(VERSION 3.18)
@@ -23,31 +23,26 @@ message(STATUS "Setting up compilation")
 add_executable(${PROJECT_NAME} src/main.cpp)
 
 set(CMAKE_PREFIX_PATH ${QT_DIR})
-find_package(Qt5 COMPONENTS Core Gui REQUIRED)
-
-if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
-else ()
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x86")
-endif ()
-
-set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib")
+find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     external
     ${NESHNY_DIR}
-    ${SDL2_DIR}/include
-    ${SDL2_MIXER_DIR}/include
 )
 
 target_link_libraries(${PROJECT_NAME}
+    Qt5::Widgets
     Qt5::Core
     Qt5::Gui
-    ${SDL2_LIBRARIES}
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    WIN32_EXECUTABLE ON
+    MACOSX_BUNDLE ON
+)
 
 ###############################################################################
 message(STATUS "Including shaders")
@@ -134,11 +129,14 @@ source_group("generated" FILES ${GeneratedList})
 ###############################################################################
 message(STATUS "Setting up file system")
 
-configure_file(${SDL2_LIB_DIR}/SDL2.dll release/SDL2.dll COPYONLY)
-
 configure_file(${QT_DIR}/bin/QT5Cored.dll release/QT5Cored.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT5Guid.dll release/QT5Guid.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT5Widgetsd.dll release/QT5Widgetsd.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT5Core.dll release/QT5Core.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT5Gui.dll release/QT5Gui.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT5Widgets.dll release/QT5Widgets.dll COPYONLY)
+
+configure_file(${QT_DIR}/plugins/platforms/qwindows.dll release/plugins/platforms/qwindows.dll COPYONLY)
+configure_file(${QT_DIR}/plugins/platforms/qwindowsd.dll release/plugins/platforms/qwindowsd.dll COPYONLY)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/release)
