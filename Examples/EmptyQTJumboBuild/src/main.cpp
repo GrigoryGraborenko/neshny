@@ -12,6 +12,8 @@ int main(int argc, char* argv[]) {
 	QCoreApplication::addLibraryPath("plugins");
 	QApplication a(argc, argv);
 
+	Engine engine;
+
 	QOpenGLWindow window;
 	window.show();
 	
@@ -28,7 +30,7 @@ int main(int argc, char* argv[]) {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	QtImGui::initialize(&window);
+	QtImGui::initialize(&window, &engine);
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
 	// Setup Dear ImGui style
@@ -63,7 +65,6 @@ int main(int argc, char* argv[]) {
 		return QByteArray((char*)found->second.p_Data, found->second.p_Size);
 	});
 
-	Engine engine;
 	bool result = Neshny::Singleton().QTLoop(&window, &engine);
 
 	// Cleanup

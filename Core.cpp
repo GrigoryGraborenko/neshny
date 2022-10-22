@@ -196,15 +196,21 @@ void Neshny::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_
 
 	ImGui::SetCursorPos(ImVec2(0, 0));
 	ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
+
 	if (fullscreen_hover = ImGui::IsItemHovered()) {
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.MouseWheel != 0.0f) {
 			engine->MouseWheel(io.MouseWheel > 0.0f);
 		}
+		for(int i = 0; i < 3; i++) {
+			if (ImGui::IsMouseReleased(i)) {
+				engine->MouseButton(i, false);
+			} else if (ImGui::IsMouseClicked(i)) {
+				engine->MouseButton(i, true);
+			}
+		}
 	}
-
 }
-
 
 #ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,10 +276,6 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 				engine->Key(event.key.keysym.sym, true);
 			} else if (event.type == SDL_KEYUP) {
 				engine->Key(event.key.keysym.sym, false);
-			} else if (event.type == SDL_MOUSEBUTTONDOWN) {
-				engine->MouseButton(event.button.button, true);
-			} else if (event.type == SDL_MOUSEBUTTONUP) {
-				engine->MouseButton(event.button.button, false);
 			}
 		}
 

@@ -37,7 +37,7 @@ public:
 
 class ImGuiRenderer : public QObject {
 public:
-    void initialize(WindowWrapper *window);
+    void initialize(WindowWrapper *window, IEngine* engine);
     void newFrame();
     void render();
 
@@ -66,6 +66,7 @@ private:
     bool createDeviceObjects();
 
     std::unique_ptr<WindowWrapper> m_Window;
+    IEngine*       m_Engine = nullptr;
     QElapsedTimer g_ElapsedTimer;
     std::deque<bool> g_MousePressed[3] = { { false }, { false }, { false } };
     float        g_MouseWheel = 0;
@@ -76,7 +77,6 @@ private:
     int          g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_AttribLocationColor = 0;
     unsigned int g_VboHandle = 0, g_VaoHandle = 0, g_ElementsHandle = 0;
     std::vector<KeyEvent> g_KeyEvents;
-    bool         g_TabKeyPressed = false;
     bool         g_Initialised = false;
     bool         g_FontsDirty = true;
 };

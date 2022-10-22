@@ -4,6 +4,7 @@
 
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #define QT_LOOP
+#define IMGUI_DISABLE_OBSOLETE_KEYIO
 
 #include <QCoreApplication>
 #include <QString>

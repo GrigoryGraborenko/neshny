@@ -27,38 +27,19 @@ QHash<int, ImGuiKey> keyMap = {
     { Qt::Key_Return, ImGuiKey_Enter },
     { Qt::Key_Escape, ImGuiKey_Escape },
     { Qt::Key_Space, ImGuiKey_Space },
-    { Qt::Key_A, ImGuiKey_A },
-    { Qt::Key_C, ImGuiKey_C },
-    { Qt::Key_V, ImGuiKey_V },
-    { Qt::Key_X, ImGuiKey_X },
-    { Qt::Key_Y, ImGuiKey_Y },
-    { Qt::Key_Z, ImGuiKey_Z },
-    { Qt::Key_0, ImGuiKey_0 },
-    { Qt::Key_1, ImGuiKey_1 },
-    { Qt::Key_2, ImGuiKey_2 },
-    { Qt::Key_3, ImGuiKey_3 },
-    { Qt::Key_4, ImGuiKey_4 },
-    { Qt::Key_5, ImGuiKey_5 },
-    { Qt::Key_6, ImGuiKey_6 },
-    { Qt::Key_7, ImGuiKey_7 },
-    { Qt::Key_8, ImGuiKey_8 },
-    { Qt::Key_9, ImGuiKey_9 }
 };
 
 QByteArray g_currentClipboardText;
 
-void ImGuiRenderer::initialize(WindowWrapper *window) {
+void ImGuiRenderer::initialize(WindowWrapper *window, IEngine* engine) {
     m_Window.reset(window);
+    m_Engine = engine;
 
     ImGuiIO &io = ImGui::GetIO();
 
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;       // We can honor GetMouseCursor() values (optional)
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;        // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendPlatformName = "imgui_impl_qt";
-
-    for (ImGuiKey key : keyMap.values()) {
-        //io.KeyMap[key] = key;
-    }
 
     io.SetClipboardTextFn = [](void *user_data, const char *text) {
         Q_UNUSED(user_data);
@@ -314,17 +295,9 @@ void ImGuiRenderer::newFrame() {
     g_MouseWheelH = 0;
     g_MouseWheel = 0;
 
-    if (g_TabKeyPressed) {
-        // handle tab key release events and make sure we still focus on the same View.
-        io.KeysDown[keyMap[Qt::Key_Tab]] = false;
-        m_Window->setFocus(Qt::FocusReason::TabFocusReason);
-        g_TabKeyPressed = false;
-    }
-
     for (auto event : g_KeyEvents) {
         if (keyMap.contains(event.key)) {
-            io.KeysDown[keyMap[event.key]] = event.type == QEvent::KeyPress;
-            g_TabKeyPressed = (event.key == Qt::Key_Tab);
+            io.AddKeyEvent(keyMap[event.key], event.type == QEvent::KeyPress);
         }
         if (event.type == QEvent::KeyPress && event.inputCharacter != 0) {
             io.AddInputCharacter(event.inputCharacter);
@@ -389,6 +362,9 @@ void ImGuiRenderer::onWheel(QWheelEvent *event) {
 }
 
 void ImGuiRenderer::onKeyPressRelease(QKeyEvent *event) {
+
+    m_Engine->Key(event->key(), event->type() == QEvent::KeyPress);
+
     ushort character = 0;
     if (event->type() == QEvent::KeyPress) {
         QString text = event->text();
@@ -407,17 +383,21 @@ void ImGuiRenderer::onKeyPressRelease(QKeyEvent *event) {
 
 bool ImGuiRenderer::eventFilter(QObject *watched, QEvent *event) {
     switch (event->type()) {
+    case QEvent::Close:
+    case QEvent::Quit:
+        m_Engine->ExitSignal();
+        break;
     case QEvent::MouseButtonPress:
     case QEvent::MouseButtonRelease:
     case QEvent::MouseButtonDblClick: // MouseButtonDblClick *replaces* MouseButtonPress if you click too rapidly, so treat it like a MouseButtonPress
-        this->onMousePressedChange(static_cast<QMouseEvent *>(event));
+        onMousePressedChange(static_cast<QMouseEvent *>(event));
         break;
     case QEvent::Wheel:
-        this->onWheel(static_cast<QWheelEvent *>(event));
+        onWheel(static_cast<QWheelEvent *>(event));
         break;
     case QEvent::KeyPress:
     case QEvent::KeyRelease:
-        this->onKeyPressRelease(static_cast<QKeyEvent *>(event));
+        onKeyPressRelease(static_cast<QKeyEvent *>(event));
         break;
     default:
         break;

@@ -32,8 +32,8 @@ private:
     QWindow *window;
 };
 
-void initialize(QWindow *window) {
-    ImGuiRenderer::instance()->initialize(new QWindowWindowWrapper(window));
+void initialize(QWindow *window, IEngine* engine) {
+    ImGuiRenderer::instance()->initialize(new QWindowWindowWrapper(window), engine);
 }
 
 void newFrame() {

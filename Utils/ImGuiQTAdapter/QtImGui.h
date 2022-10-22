@@ -7,7 +7,7 @@ class QWindow;
 
 namespace QtImGui {
 
-void initialize(QWindow *window);
+void initialize(QWindow *window, IEngine* engine);
 void newFrame();
 void render();
 
