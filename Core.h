@@ -1,6 +1,46 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+struct Camera2D {
+
+	inline QMatrix4x4		Get4x4Matrix			( int width, int height ) const {
+		float aspect = (float)height / width;
+		float view_rad_x = p_Zoom;
+		float view_rad_y = p_Zoom * aspect;
+		QMatrix4x4 viewMatrix;
+		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, -1.0, 1.0);
+		if (p_RotationAngle != 0.0) {
+			viewMatrix.rotate(p_RotationAngle, 0.0, 0.0, 1.0);
+		}
+		return viewMatrix;
+	}
+
+	// TODO: get 3x3 matrix here
+
+	inline void				Pan						( int viewport_width, int delta_pixels_x, int delta_pixels_y ) {
+		double pan_mult = 2.0 * p_Zoom / float(viewport_width);
+		p_Pos.x -= pan_mult * delta_pixels_x;
+		p_Pos.y += pan_mult * delta_pixels_y;
+	}
+
+	inline Vec2				ScreenToWorld			( Vec2 pos, int width, int height ) {
+		float aspect = (float)height / width;
+		double fx = pos.x / width - 0.5, fy = pos.y / height - 0.5;
+		return Vec2(
+			fx * p_Zoom * 2.0 + p_Pos.x
+			,fy * p_Zoom * aspect * 2.0 + p_Pos.y
+		);
+	}
+
+	inline void				Zoom					( double new_zoom, Vec2 mouse_world_pos, int width, int height) {
+		p_Zoom = new_zoom;
+	}
+
+	Vec2		p_Pos = Vec2(0, 0);
+	double		p_Zoom = 10.0;
+	float		p_RotationAngle = 0.0f;
+};
+
 struct Camera3DOrbit {
 
 	QMatrix4x4				GetViewMatrix				( void ) const {
@@ -85,11 +125,12 @@ struct InterfaceResourceViewer {
 
 struct InterfaceScrapbook2D {
 	bool			p_Visible = false;
+	Camera2D		p_Cam = Camera2D{};
 };
 
 struct InterfaceScrapbook3D {
 	bool			p_Visible = false;
-	Camera3DOrbit	m_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
+	Camera3DOrbit	p_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
 };
 
 struct InterfaceCore {
@@ -145,12 +186,13 @@ namespace meta {
 	template<> inline auto registerMembers<InterfaceScrapbook2D>() {
 		return members(
 			member("Visible", &InterfaceScrapbook2D::p_Visible)
+			,member("Cam", &InterfaceScrapbook2D::p_Cam)
 		);
 	}
 	template<> inline auto registerMembers<InterfaceScrapbook3D>() {
 		return members(
 			member("Visible", &InterfaceScrapbook3D::p_Visible)
-			,member("Cam", &InterfaceScrapbook3D::m_Cam)
+			,member("Cam", &InterfaceScrapbook3D::p_Cam)
 		);
 	}
 
@@ -173,6 +215,14 @@ namespace meta {
 			,member("FarPlane", &Camera3DOrbit::p_FarPlane)
 		);
 	}
+	template<> inline auto registerMembers<Camera2D>() {
+		return members(
+			member("Pos", &Camera2D::p_Pos)
+			,member("Zoom", &Camera2D::p_Zoom)
+			,member("RotationAngle", &Camera2D::p_RotationAngle)
+		);
+	}
+
 }
 
 class IEngine {
@@ -180,7 +230,7 @@ public:
 	virtual							~IEngine() {}
 
 	virtual void					MouseButton	( int button, bool is_down ) = 0;
-	virtual void					MouseMove	( QVector2D delta, bool occluded ) = 0;
+	virtual void					MouseMove	( Vec2 delta, bool occluded ) = 0;
 	virtual void					MouseWheel	( bool up ) = 0;
 	virtual void					Key			( int key, bool is_down ) = 0;
 

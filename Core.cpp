@@ -271,7 +271,7 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 			} else if (event.type == SDL_MOUSEMOTION) {
 				mouse_dx = event.motion.xrel;
 				mouse_dy = event.motion.yrel;
-				engine->MouseMove(QVector2D(mouse_dx, mouse_dy), !fullscreen_hover);
+				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !fullscreen_hover);
 			} else if (event.type == SDL_KEYDOWN) {
 				engine->Key(event.key.keysym.sym, true);
 			} else if (event.type == SDL_KEYUP) {

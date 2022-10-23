@@ -216,20 +216,35 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Scrapbook2D {
+class Scrapbook2D : private BaseDebugRender {
 public:
 
-	inline static Scrapbook2D&	Singleton			( void ) { static Scrapbook2D instance; return instance; }
+	inline static Scrapbook2D&	Singleton				( void ) { static Scrapbook2D instance; return instance; }
 
-	auto						ActivateRTT			( void ) { return Singleton().m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, m_Width, m_Height); }
+    static inline void			Line					( Vec2 a, Vec2 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a.ToTriple(), b.ToTriple(), color, on_top); }
+	static inline void			Point					( Vec2 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos.ToTriple(), color, on_top); }
+	static inline void			Point					( Vec2 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos.ToTriple(), text, color, on_top); }
+	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, QVector4D color ) { Singleton().AddTriangle(a.ToTriple(), b.ToTriple(), c.ToTriple(), color); }
+	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
-	static void					RenderImGui			( InterfaceScrapbook2D& data );
+	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
+	static auto					ActivateRTT				( void );
+
+	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
 private:
+
+	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
 	RTT							m_RTT;
 	int							m_Width = 32;
 	int							m_Height = 32;
+	std::optional<Vec2>			m_LastMousePos = std::nullopt;
+	bool						m_NeedsReset = true;
+
+	QMatrix4x4					m_CachedViewPerspective;
+
+	std::vector<std::function<void(int width, int height)>>		m_Controls;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

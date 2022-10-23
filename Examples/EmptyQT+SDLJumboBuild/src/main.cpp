@@ -62,7 +62,7 @@ int main(int, char**) {
 #ifdef _DEBUG
 		QFile file;
 		for (auto prefix : g_ShaderBaseDirs) {
-			file.setFileName(QString("..\\%1\\%2").arg(prefix.c_str()).arg(path));
+			file.setFileName(QString("%1\\%2").arg(prefix.c_str()).arg(path));
 			if (file.open(QIODevice::ReadOnly)) {
 				break;
 			}

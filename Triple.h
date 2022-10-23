@@ -87,11 +87,13 @@ public:
 	Vec2			( double e0, double e1 ) : x(e0), y(e1) {}
 	Vec2			( QPointF p ) : x(p.x()), y(p.y()) {}
 	Vec2			( QPoint p ) : x(p.x()), y(p.y()) {}
+	Vec2			( Triple p ) : x(p.x), y(p.y) {}
 
 	void			set				( double e0, double e1 );
 
-	inline QPointF	toPointF		( void) { return QPointF(x, y); }
-	//inline QVec2 toVec2		( void ) { return QVec2(x, y); }
+	inline QPointF		ToPointF	( void ) { return QPointF(x, y); }
+	inline QVector2D	ToQVec		( void ) { return QVector2D(x, y); }
+	inline Triple		ToTriple	( double z = 0.0 ) { return Triple(x, y, z); }
 
 	void			operator=		( const Vec2& t2 );
 	Vec2			operator+		( const Vec2& t2 ) const;

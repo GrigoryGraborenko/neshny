@@ -104,6 +104,12 @@ inline void SerialiseByType(const Triple& val, QJsonValue& json, [[maybe_unused]
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+template <>
+inline void SerialiseByType(const Vec2& val, QJsonValue& json, [[maybe_unused]] ParseError& err) {
+    json = QJsonObject({ {"x", val.x}, {"y", val.y} });
+}
+
+////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class SerialiserFunc {
 public:
@@ -334,14 +340,33 @@ inline void DeserialiseByType(Triple& val, const QJsonValue& json, ParseError &e
     if (!obj.contains("x") || !obj.contains("y") || !obj.contains("z")) {
         return err.AddMessage(QString("Expected object to have fields x, y and z, got %1").arg(obj.keys().join(", ")));
     }
-    double x, y,z;
+    double x, y, z;
     Json::Deserialise(x, obj.value("x"), err);
     Json::Deserialise(y, obj.value("y"), err);
     Json::Deserialise(z, obj.value("z"), err);
     if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of QVector3D"));
+        return err.AddMessage(QStringLiteral("Deserialising the elements of Triple"));
     }
     val = Triple(x, y, z);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template <>
+inline void DeserialiseByType(Vec2& val, const QJsonValue& json, ParseError &err) {
+    if (!json.isObject()) {
+        return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
+    }
+    QJsonObject obj = json.toObject();
+    if (!obj.contains("x") || !obj.contains("y")) {
+        return err.AddMessage(QString("Expected object to have fields x and y, got %1").arg(obj.keys().join(", ")));
+    }
+    double x, y;
+    Json::Deserialise(x, obj.value("x"), err);
+    Json::Deserialise(y, obj.value("y"), err);
+    if (err) {
+        return err.AddMessage(QStringLiteral("Deserialising the elements of Vec2"));
+    }
+    val = Vec2(x, y);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

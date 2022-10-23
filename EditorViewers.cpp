@@ -615,26 +615,99 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Scrapbook2D::RenderImGui(InterfaceScrapbook2D& data) {
+auto Scrapbook2D::ActivateRTT(void) {
+	auto& self = Singleton();
+	bool reset = self.m_NeedsReset;
+	self.m_NeedsReset = false;
+	return self.m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, self.m_Width, self.m_Height, reset);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 
 	if (!data.p_Visible) {
 		return;
 	}
 
 	ImGui::Begin("2D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+
+	if (ImGui::Button("Reset Camera")) {
+		data.p_Cam = Camera2D{};
+	}
+	ImGui::Text("Pos: [%.3f, %.3f]", data.p_Cam.p_Pos.x, data.p_Cam.p_Pos.y);
+	ImGui::Text("Size: [%i, %i]", m_Width, m_Height);
+	if (m_LastMousePos.has_value()) {
+		ImGui::Text("Mouse: [%.3f, %.3f]", m_LastMousePos->x, m_LastMousePos->y);
+	}
+
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+	ImVec2 min_available = ImGui::GetWindowContentRegionMin();
+	const int size_banner = 120;
 
-	ImGui::Text("content");
+	int user_width = (space_available.x - min_available.x) * 0.75;
+	int user_height = size_banner - min_available.y - 5;
+	ImGui::SetCursorPos(ImVec2(min_available.x + (space_available.x - user_width), min_available.y));
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(32, 32, 32, 255));
+	ImGui::BeginChild("UserControls", ImVec2(user_width, user_height), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	//const int size_banner = 50;
-	//ImGui::SetCursorPos(ImVec2(8, size_banner));
-	//ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
+	for (int i = 0; i < m_Controls.size(); i++) {
+		m_Controls[i](user_width, user_height);
+	}
+	m_Controls.clear();
+	ImGui::EndChild();
+	ImGui::PopStyleColor();
 
-	//ImGui::Text("content");
+	m_Width = space_available.x - 8;
+	m_Height = space_available.y - size_banner;
+	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height);
 
-	//ImGui::EndChild();
+	{
+		auto token = ActivateRTT();
+		glEnable(GL_DEPTH_TEST);
+		
+		// todo: make this a checkbox
+		const double size_grid = 1.0;
+		Line(Vec2(0, 0), Vec2(size_grid, 0), QVector4D(1, 0, 0, 1));
+		Line(Vec2(0, 0), Vec2(0, size_grid), QVector4D(0, 1, 0, 1));
+
+		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0);
+		IClear();
+		m_NeedsReset = true;
+	}
+
+	ImVec2 im_pos(8, size_banner);
+	ImVec2 im_size(m_Width, m_Height);
+	ImGui::SetCursorPos(im_pos);
+	auto im_screen_pos = ImGui::GetCursorScreenPos();
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex();
+	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::SetCursorPos(im_pos);
+	ImGui::InvisibleButton("##FullScreen", im_size);
+	if (ImGui::IsItemHovered()) {
+		const double ZOOM_SPEED = 0.1;
+		const double ROTATE_SPEED = 0.2;
+
+		ImGuiIO& io = ImGui::GetIO();
+		auto mpos = ImGui::GetMousePos() - im_screen_pos;
+		m_LastMousePos = data.p_Cam.ScreenToWorld(Vec2(mpos.x, mpos.y), m_Width, m_Height);
+
+		if (io.MouseWheel != 0.0f) {
+			bool up = io.MouseWheel > 0.0f;
+			data.p_Cam.Zoom(data.p_Cam.p_Zoom * (1.0 + (up ? -1 : 1) * ZOOM_SPEED), m_LastMousePos.value(), m_Width, m_Height);
+		}
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+			data.p_Cam.Pan(m_Width, io.MouseDelta.x, io.MouseDelta.y);
+		}
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+			data.p_Cam.p_RotationAngle -= io.MouseDelta.x * ROTATE_SPEED;
+		}
+
+	} else {
+		m_LastMousePos = std::nullopt;
+	}
+
 	ImGui::End();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,7 +745,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.m_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
+	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
 
 	{
 		auto token = ActivateRTT();
@@ -704,16 +777,13 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.MouseWheel != 0.0f) {
 			bool up = io.MouseWheel > 0.0f;
-			data.m_Cam.p_Zoom *= 1.0 + (up ? -1 : 1) * ZOOM_SPEED;
+			data.p_Cam.p_Zoom *= 1.0 + (up ? -1 : 1) * ZOOM_SPEED;
 		}
 		if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-			data.m_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
-			data.m_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
+			data.p_Cam.p_HorizontalDegrees += io.MouseDelta.x * ANGLE_SPEED;
+			data.p_Cam.p_VerticalDegrees += io.MouseDelta.y * ANGLE_SPEED;
 		}
 	}
 
 	ImGui::End();
-
 }
-
-//void						IControls(std::function<void(int width, int height)> controls);
