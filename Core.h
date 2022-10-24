@@ -3,6 +3,7 @@
 
 struct Camera2D {
 
+	// TODO: replace with double-based matrix
 	inline QMatrix4x4		Get4x4Matrix			( int width, int height ) const {
 		float aspect = (float)height / width;
 		float view_rad_x = p_Zoom;
@@ -17,23 +18,40 @@ struct Camera2D {
 
 	// TODO: get 3x3 matrix here
 
-	inline void				Pan						( int viewport_width, int delta_pixels_x, int delta_pixels_y ) {
+	inline void Pan(int viewport_width, int delta_pixels_x, int delta_pixels_y) {
 		double pan_mult = 2.0 * p_Zoom / float(viewport_width);
 		p_Pos.x -= pan_mult * delta_pixels_x;
 		p_Pos.y += pan_mult * delta_pixels_y;
 	}
 
-	inline Vec2				ScreenToWorld			( Vec2 pos, int width, int height ) {
+	inline Vec2 ScreenToWorld(Vec2 pos, int width, int height) {
 		float aspect = (float)height / width;
 		double fx = pos.x / width - 0.5, fy = pos.y / height - 0.5;
+		// TODO: account for rotation here
 		return Vec2(
 			fx * p_Zoom * 2.0 + p_Pos.x
 			,fy * p_Zoom * aspect * 2.0 + p_Pos.y
 		);
 	}
 
-	inline void				Zoom					( double new_zoom, Vec2 mouse_world_pos, int width, int height) {
+	inline Vec2 WorldToScreen(Vec2 pos, int width, int height) {
+		auto vp = Get4x4Matrix(width, height);
+		QVector4D res = vp * QVector4D(pos.x, pos.y, 0.0, 1.0);
+		double inv_w = 1.0 / res.w();
+		return Vec2((res.x() * inv_w * 0.5 + 0.5) * width, (res.y() * inv_w * 0.5 + 0.5) * height);
+	}
+
+	inline void Zoom(double new_zoom, Vec2 mouse_world_pos, int width, int height) {
+
+		// TODO: more efficient method that also takes rotation into account?
+		Vec2 screen = WorldToScreen(mouse_world_pos, width, height);
+
 		p_Zoom = new_zoom;
+
+		Vec2 new_world = ScreenToWorld(screen, width, height);
+		Vec2 delta = new_world - mouse_world_pos;
+		delta.x *= -1;
+		p_Pos += delta;
 	}
 
 	Vec2		p_Pos = Vec2(0, 0);

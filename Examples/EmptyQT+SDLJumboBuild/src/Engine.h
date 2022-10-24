@@ -11,7 +11,7 @@ public:
 							~Engine						( void );
 
 	virtual void			MouseButton					( int button, bool is_down );
-	virtual void			MouseMove					( QVector2D delta, bool occluded );
+	virtual void			MouseMove					( Vec2 delta, bool occluded );
 	virtual void			MouseWheel					( bool up );
 	virtual void			Key							( int key, bool is_down );
 

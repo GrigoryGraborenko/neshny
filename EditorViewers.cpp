@@ -638,6 +638,9 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImGui::Text("Size: [%i, %i]", m_Width, m_Height);
 	if (m_LastMousePos.has_value()) {
 		ImGui::Text("Mouse: [%.3f, %.3f]", m_LastMousePos->x, m_LastMousePos->y);
+
+		//Vec2 screen = data.p_Cam.WorldToScreen(m_LastMousePos.value(), m_Width, m_Height);
+		//ImGui::Text("Mouse Screen: [%.3f, %.3f]", screen.x, screen.y);
 	}
 
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
@@ -649,7 +652,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImGui::SetCursorPos(ImVec2(min_available.x + (space_available.x - user_width), min_available.y));
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(32, 32, 32, 255));
 	ImGui::BeginChild("UserControls", ImVec2(user_width, user_height), false, ImGuiWindowFlags_HorizontalScrollbar);
-
+	 
 	for (int i = 0; i < m_Controls.size(); i++) {
 		m_Controls[i](user_width, user_height);
 	}
