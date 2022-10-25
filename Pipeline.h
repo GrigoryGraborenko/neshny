@@ -59,7 +59,7 @@ protected:
 class PipelineStage : public CommonPipeline {
 
 public:
-								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_buffer, GLSSBO* destruction_buffer = nullptr );
+								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~PipelineStage		( void ) {}
 
 	PipelineStage&				AddEntity			( GPUEntity& entity );
@@ -92,9 +92,6 @@ private:
 		QString					p_Name;
 		int*					p_Ptr;
 	};
-
-	GLSSBO*						m_ControlBuffer = nullptr;
-	GLSSBO*						m_DestroyBuffer = nullptr;
 
 	std::vector<AddedEntity>	m_Entities;
 	std::vector<AddedSSBO>		m_SSBOs;

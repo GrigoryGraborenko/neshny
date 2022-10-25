@@ -144,15 +144,11 @@ for (int i = 0; i < 10; i++) {
     m_Projectiles.AddInstance((float*)&proj);
 }
 
-// store these two somewhere permanent
-GLSSBO control, deathList;
 PipelineStage(
     projectiles
     ,"ProjectileMove" // name of compute shader
     ,true // do you want the main function to be written for you?
     ,{ "MACRO_VALUE 123" } // will set up a #define of these items
-    ,&control
-    ,&deathList
 )
 .AddCreatableEntity(some_other_entity)
 .AddEntity(read_only_entity)

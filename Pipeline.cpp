@@ -63,10 +63,8 @@ QString CommonPipeline::GetUniformVectorStructCode(AddedUniformVector& uniform, 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_buffer, GLSSBO* destruction_buffer) :
+PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
 	CommonPipeline		( entity, shader_name, replace_main, shader_defines )
-	,m_ControlBuffer	( control_buffer )
-	,m_DestroyBuffer	( destruction_buffer )
 {
 }
 
@@ -118,19 +116,17 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("#define %1").arg(str);
 	}
 	insertion += QString("#define BUFFER_TEX_SIZE %1").arg(BUFFER_TEX_SIZE);
-	if (m_ControlBuffer) {
-		if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			var_vals.push_back({ 0, nullptr });
-		} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			var_vals.push_back({ 0, &entity_deaths });
-			var_vals.push_back({ entity_free_count, &entity_free_count });
-		}
-		for (const auto& var : m_Vars) {
-			insertion += QString("#define %1 (b_Control.i[%2])").arg(var.p_Name).arg((int)var_vals.size());
-			var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
-		}
-		insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
+	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+		var_vals.push_back({ 0, nullptr });
+	} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+		var_vals.push_back({ 0, &entity_deaths });
+		var_vals.push_back({ entity_free_count, &entity_free_count });
 	}
+	for (const auto& var : m_Vars) {
+		insertion += QString("#define %1 (b_Control.i[%2])").arg(var.p_Name).arg((int)var_vals.size());
+		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
+	}
+	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
 
 	// inserts main entity code
 	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
@@ -146,37 +142,35 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	insertion += m_Entity.GetGPUInsertion();
 	insertion += m_Entity.GetSpecs().p_GPUInsertion;
 
-	if (m_ControlBuffer) {
-		if (m_DestroyBuffer && (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
-			int buffer_index = insertion_buffers.size();
-			m_DestroyBuffer->EnsureSize(m_Entity.GetMaxIndex() * sizeof(int));
-			m_DestroyBuffer->Bind(buffer_index);
-			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
-		} else if(m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			int buffer_index = insertion_buffers.size();
-			m_Entity.GetFreeListSSBO()->Bind(buffer_index);
-			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
-		}
-		insertion += QString("void Destroy%1(int index) {").arg(m_Entity.GetName());
-
-		if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-			insertion += QString("\tint y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));\n\tivec2 base = ivec2(index - y * BUFFER_TEX_SIZE, y * FLOATS_PER_%1);").arg(m_Entity.GetName());
-		} else {
-			insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity.GetName());
-		}
-		insertion += QString("\t%1_SET(base, 0, intBitsToFloat(-1));").arg(m_Entity.GetName());
-
-		if (m_DestroyBuffer && m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			insertion += QString("\tint death_index = atomicAdd(b_Control.i[%1], 1);").arg((int)var_vals.size());
-			insertion += QString("\tb_Death.i[death_index] = index;");
-			var_vals.push_back({ 0, &entity_deaths });
-		} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			insertion += "\tatomicAdd(b_Control.i[0], 1);"; // assume b_Control has 0 and 1 reserved for death
-			insertion += "\tint free_index = atomicAdd(b_Control.i[1], 1);";
-			insertion += "\tb_FreeList.i[free_index] = index;";
-		}
-		insertion += "}";
+	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+		int buffer_index = insertion_buffers.size();
+		m_Entity.GetFreeListSSBO()->EnsureSize(m_Entity.GetMaxIndex() * sizeof(int));
+		m_Entity.GetFreeListSSBO()->Bind(buffer_index);
+		insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
+	} else if(m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+		int buffer_index = insertion_buffers.size();
+		m_Entity.GetFreeListSSBO()->Bind(buffer_index);
+		insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
 	}
+	insertion += QString("void Destroy%1(int index) {").arg(m_Entity.GetName());
+
+	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
+		insertion += QString("\tint y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));\n\tivec2 base = ivec2(index - y * BUFFER_TEX_SIZE, y * FLOATS_PER_%1);").arg(m_Entity.GetName());
+	} else {
+		insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity.GetName());
+	}
+	insertion += QString("\t%1_SET(base, 0, intBitsToFloat(-1));").arg(m_Entity.GetName());
+
+	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+		insertion += QString("\tint death_index = atomicAdd(b_Control.i[%1], 1);").arg((int)var_vals.size());
+		insertion += QString("\tb_Death.i[death_index] = index;");
+		var_vals.push_back({ 0, &entity_deaths });
+	} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+		insertion += "\tatomicAdd(b_Control.i[0], 1);"; // assume b_Control has 0 and 1 reserved for death
+		insertion += "\tint free_index = atomicAdd(b_Control.i[1], 1);";
+		insertion += "\tb_FreeList.i[free_index] = index;";
+	}
+	insertion += "}";
 
 	for (int b = 0; b < m_SSBOs.size(); b++) {
 		int buffer_index = insertion_buffers.size();
@@ -212,7 +206,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
 
 		entity_controls.push_back({ entity.GetMaxIndex(), entity.GetNextId(), entity.GetFreeCount() });
-		if (m_Entities[e].p_Creatable && m_ControlBuffer) {
+		if (m_Entities[e].p_Creatable) {
 			int control_index = (int)var_vals.size();
 			auto& curr = entity_controls.back();
 			var_vals.push_back({ curr.p_NextId, &curr.p_NextId });
@@ -268,16 +262,16 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			"}\n////////////////";
 	}
 
-	if (m_ControlBuffer && (!var_vals.empty())) {
+	if (!var_vals.empty()) {
 
-		m_ControlBuffer->EnsureSize((int)var_vals.size() * sizeof(int));
-		m_ControlBuffer->Bind(0); // you can assume this is at index zero
+		m_Entity.GetControlSSBO()->EnsureSize((int)var_vals.size() * sizeof(int));
+		m_Entity.GetControlSSBO()->Bind(0); // you can assume this is at index zero
 
 		std::vector<int> values;
 		for (auto var: var_vals) {
 			values.push_back(var.first);
 		}
-		m_ControlBuffer->SetValues(values);
+		m_Entity.GetControlSSBO()->SetValues(values);
 	}
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
@@ -311,44 +305,40 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	////////////////////////////////////////////////////
 
-	if (m_DestroyBuffer) {
-		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_DestroyBuffer, MemberSpec::Type::T_INT);
+	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
 
-	if (m_ControlBuffer) {
-
-		std::vector<int> control_values;
-		m_ControlBuffer->GetValues<int>(control_values, (int)var_vals.size());
-		for(int v = 0; v < var_vals.size(); v++) {
-			if (var_vals[v].second) {
-				*var_vals[v].second = control_values[v];
-			}
-		}
-
-		for (int e = 0; e < m_Entities.size(); e++) {
-			if (!m_Entities[e].p_Creatable) {
-				continue;
-			}
-			GPUEntity& entity = m_Entities[e].p_Entity;
-			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-				entity.ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
-			} else {
-				entity.ProcessMoveCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId);
-			}
-		}
-		if ((m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && m_DestroyBuffer && (entity_deaths > 0)) {
-			m_Entity.ProcessMoveDeaths(entity_deaths, *m_DestroyBuffer, *m_ControlBuffer);
-			if (true) {
-				BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
-			}
-		} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			m_Entity.ProcessStableDeaths(entity_deaths);
+	std::vector<int> control_values;
+	m_Entity.GetControlSSBO()->GetValues<int>(control_values, (int)var_vals.size());
+	for(int v = 0; v < var_vals.size(); v++) {
+		if (var_vals[v].second) {
+			*var_vals[v].second = control_values[v];
 		}
 	}
 
-	if (m_ControlBuffer) {
-		//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_ControlBuffer, MemberSpec::Type::T_INT);
+	for (int e = 0; e < m_Entities.size(); e++) {
+		if (!m_Entities[e].p_Creatable) {
+			continue;
+		}
+		GPUEntity& entity = m_Entities[e].p_Entity;
+		if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			entity.ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
+		} else {
+			entity.ProcessMoveCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId);
+		}
 	}
+	if ((m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && (entity_deaths > 0)) {
+		m_Entity.ProcessMoveDeaths(entity_deaths);
+		if (true) {
+			BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetControlSSBO(), MemberSpec::Type::T_INT);
+		}
+	} else if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+		m_Entity.ProcessStableDeaths(entity_deaths);
+	}
+
+	//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetControlSSBO(), MemberSpec::Type::T_INT);
+
 	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::SSBO) {
 		//DebugGPU::Checkpoint("PostRun", m_Entity);
 	}

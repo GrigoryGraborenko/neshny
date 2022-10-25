@@ -248,7 +248,7 @@ public:
 	void						Clear					( void );
 
 	int							AddInstance				( void* data );
-	void						ProcessMoveDeaths		( int death_count, GLSSBO& death_indices, GLSSBO& control_buffer );
+	void						ProcessMoveDeaths		( int death_count );
 	void						ProcessStableDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
@@ -260,6 +260,7 @@ public:
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline GLuint				GetTex					( void ) const { return m_Texture; }
 	inline GLSSBO*				GetSSBO					( void ) const { return m_SSBO; }
+	inline GLSSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
 	inline GLSSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
 	inline int					GetCount				( void ) const { return m_CurrentCount; }
 	inline int					GetMaxIndex				( void ) const { return m_MaxIndex; }
@@ -287,6 +288,7 @@ protected:
 	GLuint						m_Texture = 0;
 	GLSSBO*						m_SSBO = nullptr;
 
+	GLSSBO*						m_ControlSSBO = nullptr;
 	GLSSBO*						m_FreeList = nullptr;
 
 	int							m_CurrentCount = 0;

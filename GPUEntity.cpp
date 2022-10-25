@@ -20,9 +20,8 @@ bool GPUEntity::Init(void) {
 		float clear_val = 0;
 		glClearTexImage(m_Texture, 0, GL_RED, GL_FLOAT, &clear_val);
 	}
-	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
-		m_FreeList = new GLSSBO(BUFFER_TEX_SIZE * sizeof(float)); // TODO: what is the deal with this size? should be somewhat specified
-	}
+	m_ControlSSBO = new GLSSBO();
+	m_FreeList = new GLSSBO();
 
 	m_CurrentCount = 0;
 	m_MaxIndex = 0;
@@ -49,6 +48,10 @@ void GPUEntity::Destroy(void) {
 	if (m_SSBO) {
 		delete m_SSBO;
 		m_SSBO = nullptr;
+	}
+	if (m_ControlSSBO) {
+		delete m_ControlSSBO;
+		m_ControlSSBO = nullptr;
 	}
 	if (m_FreeList) {
 		delete m_FreeList;
@@ -85,10 +88,10 @@ int GPUEntity::AddInstance(void* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO& control_buffer) {
+void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	// todo: for each death, take index d from alive and copy it
-	control_buffer.EnsureSize(sizeof(int));
+	m_ControlSSBO->EnsureSize(sizeof(int));
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
 	if (m_SSBO) {
@@ -100,8 +103,8 @@ void GPUEntity::ProcessMoveDeaths(int death_count, GLSSBO& death_indices, GLSSBO
 	GLShader* death_prog = Neshny::GetComputeShader("Death", defines);
 	death_prog->UseProgram();
 
-	control_buffer.Bind(0);
-	death_indices.Bind(1);
+	m_ControlSSBO->Bind(0);
+	m_FreeList->Bind(1);
 
 	if (m_SSBO) {
 		m_SSBO->Bind(2);
