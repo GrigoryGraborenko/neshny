@@ -45,7 +45,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 
 	GLShader* debug_prog = Neshny::GetShader("Debug");
 	debug_prog->UseProgram();
-	GLBuffer* line_buffer = Neshny::GetBuffer("DebugLine");
+	GLBuffer* line_buffer = Neshny::GetBuffer("Line");
 	line_buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());

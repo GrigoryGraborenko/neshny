@@ -240,6 +240,7 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 		if (mode == Mode::NONE) {
 			return Token();
 		}
+		clear = true;
 
 		glGenFramebuffers(1, &m_FrameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);

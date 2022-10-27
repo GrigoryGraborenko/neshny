@@ -347,15 +347,25 @@ void GLBuffer::DrawInstanced(int count) {
 
 ////////////////////////////////////////////////////////////////////////////////
 GLTexture::GLTexture(void) :
-	m_Texture	( 0 )
-	,m_Width	( 0 )
-	,m_Height	( 0 )
-	,m_Depth	( 0 )
+	m_Texture		( 0 )
+	,m_Width		( 0 )
+	,m_Height		( 0 )
+	,m_DepthBytes	( 0 )
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 GLTexture::~GLTexture(void) {
+	glDeleteTextures(1, &m_Texture);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool GLTexture::Init(int width, int height, int depth_bytes, GLint wrap_mode) {
+	m_Width = width;
+	m_Height = height;
+	m_DepthBytes = depth_bytes;
+	Common2DInit(wrap_mode);
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,11 +377,18 @@ bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 	}
 	m_Width = im.width();
 	m_Height = im.height();
-	m_Depth = im.depth() / 8;
+	m_DepthBytes = im.depth() / 8;
 
+	Common2DInit(wrap_mode, im.bits());
+
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GLTexture::Common2DInit(GLint wrap_mode, unsigned char* data) {
 	auto internal_format = GL_RGB;
 	auto format = GL_RGB;
-	if (im.depth() == 32) {
+	if (m_DepthBytes == 4) {
 		internal_format = GL_RGBA;
 		format = GL_RGBA;
 		//format = GL_BGRA;
@@ -381,14 +398,12 @@ bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &m_Texture);
 	glBindTexture(GL_TEXTURE_2D, m_Texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_Width, m_Height, 0, format, GL_UNSIGNED_BYTE, im.bits());
+	glTexImage2D(GL_TEXTURE_2D, 0, internal_format, m_Width, m_Height, 0, format, GL_UNSIGNED_BYTE, data);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glGenerateMipmap(GL_TEXTURE_2D);
-
-	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

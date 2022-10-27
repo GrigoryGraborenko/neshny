@@ -9,7 +9,7 @@ struct Camera2D {
 		float view_rad_x = p_Zoom;
 		float view_rad_y = p_Zoom * aspect;
 		QMatrix4x4 viewMatrix;
-		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, -1.0, 1.0);
+		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, 1.0, -1.0);
 		if (p_RotationAngle != 0.0) {
 			viewMatrix.rotate(p_RotationAngle, 0.0, 0.0, 1.0);
 		}
@@ -26,7 +26,7 @@ struct Camera2D {
 
 	inline Vec2 ScreenToWorld(Vec2 pos, int width, int height) {
 		float aspect = (float)height / width;
-		double fx = pos.x / width - 0.5, fy = pos.y / height - 0.5;
+		double fx = pos.x / width - 0.5, fy = 0.5 - pos.y / height;
 		// TODO: account for rotation here
 		return Vec2(
 			fx * p_Zoom * 2.0 + p_Pos.x
@@ -38,7 +38,7 @@ struct Camera2D {
 		auto vp = Get4x4Matrix(width, height);
 		QVector4D res = vp * QVector4D(pos.x, pos.y, 0.0, 1.0);
 		double inv_w = 1.0 / res.w();
-		return Vec2((res.x() * inv_w * 0.5 + 0.5) * width, (res.y() * inv_w * 0.5 + 0.5) * height);
+		return Vec2((res.x() * inv_w * 0.5 + 0.5) * width, (res.y() * inv_w * -0.5 + 0.5) * height);
 	}
 
 	inline void Zoom(double new_zoom, Vec2 mouse_world_pos, int width, int height) {
@@ -49,8 +49,7 @@ struct Camera2D {
 		p_Zoom = new_zoom;
 
 		Vec2 new_world = ScreenToWorld(screen, width, height);
-		Vec2 delta = new_world - mouse_world_pos;
-		delta.x *= -1;
+		Vec2 delta = mouse_world_pos - new_world;
 		p_Pos += delta;
 	}
 

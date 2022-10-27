@@ -531,7 +531,9 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 				,-1.0f, 1.0f
 			})
 			,std::vector<GLuint>({ 0, 2, 1, 0, 3, 2 }));
-
+	} else if(name == "Point") {
+		new_buffer = new GLBuffer();
+		new_buffer->Init(3, GL_POINTS, std::vector<GLfloat>({0.0f, 0.0f, 0.0f}));
 	} else if(name == "Cube") {
 		new_buffer = new GLBuffer();
 
@@ -590,7 +592,7 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 			ang += seg_rads;
 		}
 		new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
-	} else if(name == "DebugLine") {
+	} else if(name == "Line") {
 		new_buffer = new GLBuffer();
 		new_buffer->Init(2, GL_LINES, std::vector<GLfloat>({1, 0, 0, 1}));
 	} else if(name == "DebugTriangle") {
