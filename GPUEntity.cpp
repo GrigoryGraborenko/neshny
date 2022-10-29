@@ -248,7 +248,11 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 		if (mode != Mode::DEPTH_STENCIL) {
 			glGenTextures(1, &m_ColorTex);
 			glBindTexture(GL_TEXTURE_2D, m_ColorTex);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			if (m_Mode == Mode::RGBA_FLOAT) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, NULL);
+			} else {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			}
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorTex, 0);
@@ -261,7 +265,6 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 		}
 
 		if ((mode == Mode::RGBA_DEPTH_STENCIL) || (mode == Mode::DEPTH_STENCIL)) {
-
 			glGenTextures(1, &m_DepthTex);
 			glBindTexture(GL_TEXTURE_2D, m_DepthTex);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_Width, m_Height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);

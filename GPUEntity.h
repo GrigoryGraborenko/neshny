@@ -307,6 +307,7 @@ public:
 	enum class Mode {
 		NONE
 		,RGBA
+		,RGBA_FLOAT
 		,RGBA_DEPTH_STENCIL
 		,DEPTH_STENCIL
 	};
