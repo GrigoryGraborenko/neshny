@@ -12,6 +12,7 @@
 #include "Core.cpp"
 #include "EditorViewers.cpp"
 #include "Pipeline.cpp"
+#include "Testing.cpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 double Random(void) {

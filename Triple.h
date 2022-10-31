@@ -110,6 +110,8 @@ public:
 	double			length			( void ) { return sqrt(x * x + y * y); }
 	void			normalize		( void );
 	Vec2			normalizeCopy	( void );
+
+	Vec2			NearestToLine	( Vec2 p0, Vec2 p1, bool clamp = true, double* frac = nullptr );
 };
 
 ////////////////////////////////////////////////////////////////////////////////

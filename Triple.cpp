@@ -292,6 +292,25 @@ Vec2 Vec2::normalizeCopy(void) {
 	return Vec2(x * inv_len, y * inv_len);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+Vec2 Vec2::NearestToLine(Vec2 A, Vec2 B, bool clamp, double* frac) {
+
+	Vec2 a_p = *this - A;
+	Vec2 a_b = B - A;
+
+	double a_b_sqr = a_b.lengthSquared();
+	double a_p_dot_a_b = a_b.x * a_p.x + a_b.y * a_p.y;
+
+	double t = a_p_dot_a_b / a_b_sqr;
+	if (clamp) {
+		t = std::max(0.0, std::min(1.0, t));
+	}
+	if (frac) {
+		*frac = t;
+	}
+	return A + a_b * t;
+}
+
 // might consider templating this func
 ////////////////////////////////////////////////////////////////////////////////
 bool Vec4::LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {

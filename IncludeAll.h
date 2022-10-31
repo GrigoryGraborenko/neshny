@@ -73,3 +73,4 @@ void RemoveUnordered(std::vector<T>& vect, typename std::vector<T>::iterator ite
 #include "GPUEntity.h"
 #include "EditorViewers.h"
 #include "Pipeline.h"
+#include "Testing.h"

@@ -163,6 +163,10 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::SameLine();
 
+	if (ImGui::Button("Run Unit Tests")) {
+		UnitTester::Execute();
+	}
+
 	auto& timings = DebugTiming::GetTimings();
 	if (ImGui::Button("Reset")) {
 		timings.clear();

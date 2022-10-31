@@ -109,7 +109,7 @@ file(GLOB_RECURSE HeaderList CONFIGURE_DEPENDS src/*.h)
 file(GLOB_RECURSE SourceList CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
-file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/shaders/*.*)
+file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.*)
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
