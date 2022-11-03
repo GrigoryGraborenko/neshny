@@ -9,7 +9,7 @@ struct Camera2D {
 		float view_rad_x = p_Zoom;
 		float view_rad_y = p_Zoom * aspect;
 		QMatrix4x4 viewMatrix;
-		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, 1.0, -1.0);
+		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y + view_rad_y, p_Pos.y - view_rad_y, 1.0, -1.0);
 		if (p_RotationAngle != 0.0) {
 			viewMatrix.rotate(p_RotationAngle, 0.0, 0.0, 1.0);
 		}
@@ -21,12 +21,12 @@ struct Camera2D {
 	inline void Pan(int viewport_width, int delta_pixels_x, int delta_pixels_y) {
 		double pan_mult = 2.0 * p_Zoom / float(viewport_width);
 		p_Pos.x -= pan_mult * delta_pixels_x;
-		p_Pos.y += pan_mult * delta_pixels_y;
+		p_Pos.y -= pan_mult * delta_pixels_y;
 	}
 
 	inline Vec2 ScreenToWorld(Vec2 pos, int width, int height) {
 		float aspect = (float)height / width;
-		double fx = pos.x / width - 0.5, fy = 0.5 - pos.y / height;
+		double fx = pos.x / width - 0.5, fy = pos.y / height - 0.5;
 		// TODO: account for rotation here
 		return Vec2(
 			fx * p_Zoom * 2.0 + p_Pos.x
