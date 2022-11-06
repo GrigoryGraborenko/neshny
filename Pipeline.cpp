@@ -69,14 +69,20 @@ PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replac
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddEntity(GPUEntity& entity) {
+PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, false });
+	if (cache) {
+		cache->Bind(*this);
+	}
 	return *this;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity) {
+PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, true });
+	if (cache) {
+		cache->Bind(*this);
+	}
 	return *this;
 }
 
@@ -231,7 +237,6 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			}
 			insertion += QString("\titem.%1 = item_id;").arg(entity.GetIDName());
 			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
-
 		}
 	}
 
@@ -272,6 +277,11 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			values.push_back(var.first);
 		}
 		m_Entity.GetControlSSBO()->SetValues(values);
+	}
+
+	if (!m_ExtraCode.isNull()) {
+		insertion += "////////////////";
+		insertion += m_ExtraCode;
 	}
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
@@ -422,6 +432,11 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	insertion.push_front(insertion_buffers.join("\n"));
 	insertion.push_front(insertion_images.join("\n"));
 
+	if (!m_ExtraCode.isNull()) {
+		insertion += "////////////////";
+		insertion += m_ExtraCode;
+	}
+
 	QString insertion_str = QString(insertion.join("\n")).arg(m_Entity.GetName());
 	GLShader* prog = Neshny::GetShader(m_ShaderName, insertion_str);
 	prog->UseProgram();
@@ -444,4 +459,111 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	////////////////////////////////////////////////////
 	buffer->DrawInstanced(num_entities);
 	////////////////////////////////////////////////////
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Grid2DCache::Grid2DCache(GPUEntity& entity, QString pos_name) :
+	m_Entity	( entity )
+	,m_PosName	( pos_name )
+{
+	int brk = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Grid2DCache::GenerateCache(IVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
+
+	m_GridSize = grid_size;
+	m_GridMin = grid_min;
+	m_GridMax = grid_max;
+
+	Vec2 range = grid_max - grid_min;
+	Vec2 cell_size(range.x / grid_size.x, range.y / grid_size.y);
+	m_GridIndices.EnsureSize(grid_size.x * grid_size.y * 3 * sizeof(int));
+	m_GridItems.EnsureSize(m_Entity.GetCount() * sizeof(int));
+
+	QString main_func =
+		QString("void ItemMain(int item_index, vec2 pos);\nbool %1Main(int item_index, %1 item, inout %1 new_item) { ItemMain(item_index, item.%2); return false; }")
+		.arg(m_Entity.GetName()).arg(m_PosName);
+
+	PipelineStage(
+		m_Entity
+		,"GridCache2D"
+		,true
+		,{ "PHASE_INDEX" }
+	)
+	.AddCode(main_func)
+	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, false)
+	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
+		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
+		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
+		glUniform2f(prog->GetUniform("uGridMax"), grid_max.x, grid_max.y);
+	});
+
+	int alloc_count = 0;
+	PipelineStage(
+		m_Entity
+		,"GridCache2D"
+		,true
+		,{ "PHASE_ALLOCATE" }
+	)
+	.AddCode(main_func)
+	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, false)
+	.AddInputOutputVar("AllocationCount", &alloc_count)
+	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
+		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
+		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
+		glUniform2f(prog->GetUniform("uGridMax"), grid_max.x, grid_max.y);
+	});
+
+	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache", "Gen", m_GridIndices, MemberSpec::Type::T_INT);
+
+	PipelineStage(
+		m_Entity
+		,"GridCache2D"
+		,true
+		,{ "PHASE_FILL" }
+	)
+	.AddCode(main_func)
+	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, false)
+	.AddSSBO("b_Cache", m_GridItems, MemberSpec::Type::T_INT, false)
+	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
+		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
+		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
+		glUniform2f(prog->GetUniform("uGridMax"), grid_max.x, grid_max.y);
+	});
+
+	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache_Items", "Gen", m_GridItems, MemberSpec::Type::T_INT);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Grid2DCache::Bind(PipelineStage& stage) {
+
+	auto name = m_Entity.GetName();
+	stage.AddSSBO(QString("b_%1GridIndices").arg(name), m_GridIndices, MemberSpec::Type::T_INT);
+	stage.AddSSBO(QString("b_%1GridItems").arg(name), m_GridItems, MemberSpec::Type::T_INT);
+
+	stage.AddCode(
+		QString(
+			"ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size); // forward declare \n"
+			"ivec2 Get%1IndexRangeAt(ivec2 grid_pos) {\n"
+			"\tint index = (grid_pos.x + grid_pos.y * %6) * 3;\n"
+			"\tint start = b_%1GridIndices.i[index + 1];\n"
+			"\tint count = b_%1GridIndices.i[index + 2];\n"
+			"\treturn ivec2(start, start + count);\n"
+			"}\n"
+			"%1 Get%1AtCache(int index) {\n"
+			"\treturn Get%1(b_%1GridItems.i[index]);"
+			"}\n"
+			"ivec2 Get%1GridPosAt(vec2 pos) {\n"
+			"\treturn GetGridPos(pos, vec2(%2, %3), vec2(%4, %5), ivec2(%6, %7));\n"
+			"}"
+		)
+		.arg(name)
+		.arg(m_GridMin.x, 0, 'f', 6)
+		.arg(m_GridMin.y, 0, 'f', 6)
+		.arg(m_GridMax.x, 0, 'f', 6)
+		.arg(m_GridMax.y, 0, 'f', 6)
+		.arg(m_GridSize.x)
+		.arg(m_GridSize.y)
+	);
 }

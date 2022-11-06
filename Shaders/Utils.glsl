@@ -26,6 +26,15 @@ vec3 SafeNormalize(vec3 val) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+vec2 SafeNormalize(vec2 val) {
+    float len = length(val);
+    if (len <= 0.0) {
+        return vec2(0.0);
+    }
+    return val * (1.0 / len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 float TrigHash(float num) {
 	return fract(sin(num * 0.01 + 0.45) + cos(num * 1.04573 + 0.1) + sin(num * 11.32523 + 1.674) + sin(num * 1076.043 + 563.50));
 }
@@ -102,6 +111,14 @@ vec2 NearestToLine2D(vec2 point, vec2 start, vec2 end, bool clamp_line, out floa
 	frac = u;
 
 	return start + (lp1_to_lp0 * u);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size) {
+    vec2 range = grid_max - grid_min;
+    vec2 inv_range = vec2(1.0 / range.x, 1.0 / range.y);
+	vec2 frac = (pos - grid_min) * inv_range;
+	return max(ivec2(0, 0), min(ivec2(grid_size.x - 1, grid_size.y - 1), ivec2(floor(vec2(grid_size) * frac))));
 }
 
 #define LOOKUP(tex, base, index) (texelFetch((tex), (base) + ivec2(0, (index)), 0).r)

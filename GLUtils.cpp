@@ -169,11 +169,9 @@ GLuint GLShader::CreateShader(QString& err_msg, const std::function<QByteArray(Q
 			replacements.push_back({ include_data, loaded_data });
 		}
 		int replacePos = 0;
-		for (auto it = replacements.begin(); it != replacements.end(); it++)
-		{
+		for (auto it = replacements.begin(); it != replacements.end(); it++) {
 			int foundPos = arr.indexOf(it->first, replacePos);
-			if (foundPos < 0)
-			{
+			if (foundPos < 0) {
 				continue;
 			}
 			arr.replace(foundPos, it->first.length(), it->second);
@@ -193,7 +191,7 @@ GLuint GLShader::CreateShader(QString& err_msg, const std::function<QByteArray(Q
 		preamble += "#define IS_GEOMETRY_SHADER\n";
 		source_type = "Geometry";
 	}
-	preamble += insertion;
+	preamble += insertion + "\n";
 	arr = preamble.toLocal8Bit() + arr;
 
 	unsigned char* start = (unsigned char*)arr.data();

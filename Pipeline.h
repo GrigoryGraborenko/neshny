@@ -6,6 +6,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+class BaseCache {
+public:
+	virtual void Bind(class PipelineStage& stage) = 0;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class CommonPipeline {
 
 public:
@@ -49,6 +57,7 @@ protected:
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
+	QString						m_ExtraCode;
 
 	std::vector<AddedUniformVector>		m_UniformVectors;
 };
@@ -62,10 +71,11 @@ public:
 								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~PipelineStage		( void ) {}
 
-	PipelineStage&				AddEntity			( GPUEntity& entity );
-	PipelineStage&				AddCreatableEntity	( GPUEntity& entity );
+	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
+	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
 	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
+	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
 	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
@@ -78,7 +88,7 @@ private:
 
 	struct AddedEntity {
 		GPUEntity&	p_Entity;
-		bool		p_Creatable;
+		bool		p_Creatable = false;
 	};
 
 	struct AddedSSBO {
@@ -109,6 +119,7 @@ public:
 								~EntityRender		( void ) {}
 
 	EntityRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type );
+	EntityRender&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
 	void						Render				( GLBuffer* buffer, std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
@@ -126,4 +137,29 @@ private:
 	};
 
 	std::vector<AddedSSBO>		m_SSBOs;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class Grid2DCache : public BaseCache {
+
+public:
+
+								Grid2DCache		( GPUEntity& entity, QString pos_name );
+	void						GenerateCache	( IVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
+
+	virtual void				Bind			( class PipelineStage& stage ) override;
+
+private:
+
+	GPUEntity&					m_Entity;
+	QString						m_PosName;
+
+	GLSSBO						m_GridIndices;
+	GLSSBO						m_GridItems;
+
+	IVec2						m_GridSize;
+	Vec2						m_GridMin;
+	Vec2						m_GridMax;
 };

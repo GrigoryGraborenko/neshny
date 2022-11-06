@@ -1,0 +1,33 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+#include "Utils.glsl"
+
+uniform ivec2	uGridSize;
+uniform vec2	uGridMin;
+uniform vec2	uGridMax;
+
+//////////////////////////////////////////////////////////////////////////////
+void ItemMain(int item_index, vec2 pos) {
+
+    ivec2 grid_pos = GetGridPos(pos, uGridMin, uGridMax, uGridSize);
+    int index = (grid_pos.x + grid_pos.y * uGridSize.x) * 3;
+
+#ifdef PHASE_INDEX
+    atomicAdd(b_Index.i[index], 1);
+    atomicCompSwap(b_Index.i[index + 1], 0, -1);
+#elif defined(PHASE_ALLOCATE)
+    int test_val = atomicCompSwap(b_Index.i[index + 1], -1, 0);
+    if (test_val != -1) {
+        return;
+    }
+    int cell_count = b_Index.i[index];
+    int offset = atomicAdd(AllocationCount, cell_count);
+    b_Index.i[index + 1] = offset;
+#elif defined(PHASE_FILL)
+    int outer_offset = b_Index.i[index + 1];
+    int inner_offset = atomicAdd(b_Index.i[index + 2], 1);
+    b_Cache.i[outer_offset + inner_offset] = item_index;
+#endif
+}
+
