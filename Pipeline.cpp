@@ -63,9 +63,12 @@ QString CommonPipeline::GetUniformVectorStructCode(AddedUniformVector& uniform, 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
+PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, BaseCache* cache) :
 	CommonPipeline		( entity, shader_name, replace_main, shader_defines )
 {
+	if (cache) {
+		cache->Bind(*this);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////

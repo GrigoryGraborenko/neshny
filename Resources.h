@@ -58,7 +58,7 @@ public:
 		return m_Texture.Init(arr);
 	};
 
-	inline const GLTexture& Get(void) { return m_Texture; }
+	inline const GLTexture& Get(void) const { return m_Texture; }
 
 private:
 

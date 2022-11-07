@@ -68,7 +68,7 @@ protected:
 class PipelineStage : public CommonPipeline {
 
 public:
-								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, BaseCache* cache = nullptr );
 								~PipelineStage		( void ) {}
 
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
