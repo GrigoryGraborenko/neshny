@@ -309,8 +309,17 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 	ImGui::InputInt("Max Frames", &data.p_MaxFrames);
 	ImGui::SameLine();
 
-	ImGui::SetNextItemWidth(300);
+	//ImGui::SetNextItemWidth(300);
+	ImGui::SetNextItemWidth(space_available.x - 400);
 	ImGui::SliderInt("Rewind", &data.p_TimeSlider, 0, max_rewind);
+	ImGui::SameLine();
+	if (ImGui::Button("<")) {
+		data.p_TimeSlider = std::max(0, data.p_TimeSlider - 1);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(">")) {
+		data.p_TimeSlider = std::min(max_rewind, data.p_TimeSlider + 1);
+	}
 	ImGui::SameLine();
 	ImGui::Text("%i", max_rewind);
 
