@@ -145,7 +145,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	} else {
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ m_Entity.GetSSBO(), buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { float i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
+		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
 	}
 
 	insertion += m_Entity.GetGPUInsertion();
@@ -168,7 +168,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	} else {
 		insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity.GetName());
 	}
-	insertion += QString("\t%1_SET(base, 0, intBitsToFloat(-1));").arg(m_Entity.GetName());
+	insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity.GetName());
 
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 		insertion += QString("\tint death_index = atomicAdd(b_Control.i[%1], 1);").arg((int)var_vals.size());
@@ -208,7 +208,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		} else {
 			int buffer_index = insertion_buffers.size();
 			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
-			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { float i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
+			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
 		}
 
 		insertion += entity.GetGPUInsertion();
@@ -408,7 +408,7 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	} else {
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ replace.get() ? replace.get() : m_Entity.GetSSBO(), buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { float i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
+		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
 	}
 	insertion_uniforms += QString("uniform int u%1Count;").arg(m_Entity.GetName());
 	integer_vars.push_back({ QString("u%1Count").arg(m_Entity.GetName()), num_entities });
