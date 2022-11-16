@@ -35,6 +35,11 @@ vec2 SafeNormalize(vec2 val) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+float SafeDivide(float numer, float denom) {
+    return numer / (abs(denom) == 0.0 ? ALMOST_ZERO : denom);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 float TrigHash(float num) {
 	return fract(sin(num * 0.01 + 0.45) + cos(num * 1.04573 + 0.1) + sin(num * 11.32523 + 1.674) + sin(num * 1076.043 + 563.50));
 }
@@ -133,17 +138,16 @@ struct GridStep2DCursor {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-GridStep2DCursor StartGridStep2D(vec2 start, vec2 end) {
-	GridStep2DCursor cursor;
+void StartGridStep2D(inout GridStep2DCursor cursor, vec2 start, vec2 end) {
     ivec2 grid_pos = ivec2(floor(start));
 	cursor.p_Start = start;
 	cursor.p_Delta = end - start;
+	vec2 inv_delta = vec2(SafeDivide(1.0, cursor.p_Delta.x), SafeDivide(1.0, cursor.p_Delta.y));
 	cursor.p_GridDirs = ivec2(sign(cursor.p_Delta));
-	cursor.p_Amounts = abs(vec2(1.0) / cursor.p_Delta);
-	cursor.p_Left = max((vec2(grid_pos) - start) / cursor.p_Delta, (vec2(grid_pos + ivec2(1)) - start) / cursor.p_Delta);
+	cursor.p_Amounts = abs(inv_delta);
+	cursor.p_Left = max((vec2(grid_pos) - start) * inv_delta, (vec2(grid_pos + ivec2(1)) - start) * inv_delta);
 	cursor.p_CurrentFrac = 0;
 	cursor.p_CurrentGrid = grid_pos;
-	return cursor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
