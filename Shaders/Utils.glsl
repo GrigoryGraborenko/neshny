@@ -120,6 +120,46 @@ ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size) {
 	return max(ivec2(0, 0), min(ivec2(grid_size.x - 1, grid_size.y - 1), ivec2(floor(vec2(grid_size) * frac))));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+struct GridStep2DCursor {
+	ivec2 p_CurrentGrid; // current integer location on grid
+	float p_CurrentFrac; // current fraction of two endpoints traversed
+
+	vec2 p_Start;
+    vec2 p_Delta;
+	ivec2 p_GridDirs;
+	vec2 p_Left;
+	vec2 p_Amounts;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+GridStep2DCursor StartGridStep2D(vec2 start, vec2 end) {
+	GridStep2DCursor cursor;
+    ivec2 grid_pos = ivec2(floor(start));
+	cursor.p_Start = start;
+	cursor.p_Delta = end - start;
+	cursor.p_GridDirs = ivec2(sign(cursor.p_Delta));
+	cursor.p_Amounts = abs(vec2(1.0) / cursor.p_Delta);
+	cursor.p_Left = max((vec2(grid_pos) - start) / cursor.p_Delta, (vec2(grid_pos + ivec2(1)) - start) / cursor.p_Delta);
+	cursor.p_CurrentFrac = 0;
+	cursor.p_CurrentGrid = grid_pos;
+	return cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool NextGridStep2D(inout GridStep2DCursor cursor) {
+	float move_dist = min(cursor.p_Left.x, cursor.p_Left.y);
+	// TODO: make 3d version of this
+	// float move_dist = min(min(left.x, left.y), left.z);
+	cursor.p_CurrentFrac += move_dist;
+	cursor.p_Left -= move_dist;
+	vec2 hit_res = step(0, -cursor.p_Left);
+	cursor.p_Left += hit_res * cursor.p_Amounts;
+	cursor.p_CurrentGrid += ivec2(hit_res) * cursor.p_GridDirs;
+
+	return cursor.p_CurrentFrac < 1.0;
+}
+
 #define LOOKUP(tex, base, index) (texelFetch((tex), (base) + ivec2(0, (index)), 0).r)
 #define IM_LOOKUP(im, base, index) (imageLoad((im), (base) + ivec2(0, (index))).r)
 #define IM_SET(im, base, index, value) (imageStore((im), (base) + ivec2(0, (index)), vec4(value)).r)

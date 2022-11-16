@@ -9,18 +9,18 @@ struct Grid2DStepCursor {
 	Grid2DStepCursor(Vec2 start, Vec2 end) {
 		m_Start = start;
 		m_Delta = end - start;
-		m_GridPos = IVec2(start.Floor());
+		IVec2 grid_pos = IVec2(start.Floor());
 
 		m_GridDirs = IVec2(m_Delta.Sign());
 		m_Amounts = Vec2(fabs(1.0 / m_Delta.x), fabs(1.0 / m_Delta.y));
 
-		Vec2 left_neg((double(m_GridPos.x) - start.x) / m_Delta.x, (double(m_GridPos.y) - start.y) / m_Delta.y);
-		Vec2 left_pos((double(m_GridPos.x) + 1.0 - start.x) / m_Delta.x, (double(m_GridPos.y) + 1.0 - start.y) / m_Delta.y);
+		Vec2 left_neg((double(grid_pos.x) - start.x) / m_Delta.x, (double(grid_pos.y) - start.y) / m_Delta.y);
+		Vec2 left_pos((double(grid_pos.x) + 1.0 - start.x) / m_Delta.x, (double(grid_pos.y) + 1.0 - start.y) / m_Delta.y);
 
 		m_Left = Vec2(std::max(left_neg.x, left_pos.x), std::max(left_neg.y, left_pos.y));
 
 		m_StepDist = 0;
-		m_CurrentGrid = m_GridPos;
+		m_CurrentGrid = grid_pos;
 	}
 
 	bool Next() {
@@ -42,7 +42,6 @@ struct Grid2DStepCursor {
 private:
 	Vec2 m_Start;
 	Vec2 m_Delta;
-	IVec2 m_GridPos;
 	IVec2 m_GridDirs;
 	Vec2 m_Amounts;
 	Vec2 m_Left;
