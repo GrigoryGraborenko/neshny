@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#define DEBUG_POINT_SIZE 1.0
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +94,7 @@ protected:
 		QVector4D p_Col;
 	};
 
-	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale );
+	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale, double point_size = 1.0 );
     inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); }
 
     std::vector<DebugLine>						m_Lines;

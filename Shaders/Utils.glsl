@@ -91,7 +91,6 @@ vec3 NearestToLine(vec3 point, vec3 start, vec3 end, bool clamp_line, out float 
 	return start + (lp1_to_lp0 * u);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 vec2 NearestToLine2D(vec2 point, vec2 start, vec2 end, bool clamp_line, out float frac) {
 	vec2 p_to_lp0 = point - start;

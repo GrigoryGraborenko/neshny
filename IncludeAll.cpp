@@ -12,6 +12,7 @@
 #include "Core.cpp"
 #include "EditorViewers.cpp"
 #include "Pipeline.cpp"
+#include "Geometry.cpp"
 #include "Testing.cpp"
 
 ////////////////////////////////////////////////////////////////////////////////

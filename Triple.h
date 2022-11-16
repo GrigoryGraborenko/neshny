@@ -95,6 +95,12 @@ public:
 	inline QVector2D	ToQVec		( void ) { return QVector2D(x, y); }
 	inline Triple		ToTriple	( double z = 0.0 ) { return Triple(x, y, z); }
 
+	Vec2			Ceil(void) const { return Vec2(ceil(x), ceil(y)); };
+	Vec2			Floor(void) const { return Vec2(floor(x), floor(y)); };
+	Vec2			Sign(void) const { return Vec2(SIGN(x), SIGN(y)); }
+	Vec2			Step(double step) const { return Vec2(STEP(x, step), STEP(y, step)); }
+	Vec2			Step(Vec2 step) const { return Vec2(STEP(x, step.x), STEP(y, step.y)); }
+
 	void			operator=		( const Vec2& t2 );
 	Vec2			operator+		( const Vec2& t2 ) const;
 	void			operator+=		( const Vec2& t2 );
@@ -104,6 +110,7 @@ public:
 	Vec2			operator/		( double f ) const;
 	Vec2			operator/		( const Vec2& t2 ) const;
 	Vec2			operator*		( const Vec2& t2 ) const;
+	double			operator^		( const Vec2& t2 ) const { return x * t2.y - y * t2.x; } // cross product
 	bool			operator==		( const Vec2& t2 ) const;
 
 	inline double	lengthSquared	( void ) { return (x * x + y * y); }
@@ -112,6 +119,8 @@ public:
 	Vec2			normalizeCopy	( void );
 
 	Vec2			NearestToLine	( Vec2 p0, Vec2 p1, bool clamp = true, double* frac = nullptr );
+
+	static bool		LineLineIntersect( Vec2 a0, Vec2 a1, Vec2 b0, Vec2 b1, Vec2& out, double* a_frac = nullptr, double* b_frac = nullptr );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +131,12 @@ struct IVec2 {
 
 	IVec2(void) : x(0), y(0) {}
 	IVec2(int e0, int e1) : x(e0), y(e1) {}
+	IVec2(Vec2 v) : x(floor(v.x)), y(floor(v.y)) {}
 	Vec2			ToVec2(void) const { return Vec2(x, y); }
+
+	IVec2			operator*		(const IVec2& t2) const { return IVec2(x * t2.x, y * t2.y); }
+
+	IVec2			operator+		(const IVec2& t2) const { return IVec2(x + t2.x, y + t2.y); }
 
 	bool			operator==		(const IVec2& v2) const { return ((x == v2.x) && (y == v2.y)); };
 };

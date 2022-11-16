@@ -311,6 +311,38 @@ Vec2 Vec2::NearestToLine(Vec2 A, Vec2 B, bool clamp, double* frac) {
 	return A + a_b * t;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+bool Vec2::LineLineIntersect(Vec2 a0, Vec2 a1, Vec2 b0, Vec2 b1, Vec2& out, double* a_frac, double* b_frac) {
+
+	Vec2 r = a1 - a0;
+	Vec2 s = b1 - b0;
+
+	Vec2 qp = b0 - a0;
+	double numerator = qp ^ r;
+	double denominator = r ^ s;
+
+	// lines are parallel
+	if (denominator == 0) {
+		return false;
+	}
+
+	if ((numerator == 0) && (denominator == 0)) { // they are collinear
+		// TODO: check if the lines are overlapping
+		return false;
+	}
+
+	double u = numerator / denominator;
+	double t = (qp ^ s) / denominator;
+	if (a_frac) {
+		*a_frac = u;
+	}
+	if (b_frac) {
+		*b_frac = t;
+	}
+
+	return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+}
+
 // might consider templating this func
 ////////////////////////////////////////////////////////////////////////////////
 bool Vec4::LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {

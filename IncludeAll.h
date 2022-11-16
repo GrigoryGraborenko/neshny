@@ -34,6 +34,7 @@
 #define PI 3.14159265359
 constexpr double TWOPI = 2.0 * PI;
 #define SIGN(x) ((x > 0) ? 1 : ((x < 0) ? -1 : 0))
+#define STEP(v, step) ((v >= step) ? 1 : 0)
 #define ALMOST_ZERO 0.0000001
 constexpr double ONE_THIRD = 1.0 / 3.0;
 constexpr double INV_255 = 1.0 / 255.0;
@@ -73,4 +74,5 @@ void RemoveUnordered(std::vector<T>& vect, typename std::vector<T>::iterator ite
 #include "GPUEntity.h"
 #include "EditorViewers.h"
 #include "Pipeline.h"
+#include "Geometry.h"
 #include "Testing.h"

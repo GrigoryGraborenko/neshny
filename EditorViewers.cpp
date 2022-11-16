@@ -38,7 +38,7 @@ QStringList DebugTiming::Report(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale) {
+void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale, double point_size) {
 
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
@@ -76,7 +76,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
 		glUniform3f(debug_prog->GetUniform("uPosA"), dpos.x, dpos.y, dpos.z);
 		for (int i = 0; i < 2; i++) {
-			Triple off = (it->p_Pos - offset + Triple(Random() - 0.5, Random() - 0.5, Random() - 0.5) * DEBUG_POINT_SIZE) * scale;
+			Triple off = (it->p_Pos - offset + Triple(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
 			glUniform3f(debug_prog->GetUniform("uPosB"), off.x, off.y, off.z);
 			line_buffer->Draw();
 		}
@@ -686,7 +686,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		Line(Vec2(0, 0), Vec2(size_grid, 0), QVector4D(1, 0, 0, 1));
 		Line(Vec2(0, 0), Vec2(0, size_grid), QVector4D(0, 1, 0, 1));
 
-		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0);
+		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 		IClear();
 		m_NeedsReset = true;
 	}
