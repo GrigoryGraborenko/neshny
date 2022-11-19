@@ -77,7 +77,7 @@ public:
 
 	inline const GLTexture& Get(void) { return m_Texture; }
 
-	void Render(const QMatrix4x4& vp, Triple cam_pos) {
+	void Render(const QMatrix4x4& vp, Vec3 cam_pos) {
 		
 		GLShader* prog = Neshny::GetShader("Skybox");
 		prog->UseProgram();

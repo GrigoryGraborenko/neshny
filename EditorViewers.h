@@ -68,10 +68,10 @@ public:
     //static inline std::vector<QString>&	        GetStrings  	    ( void ) { return Singleton().m_Strings; }
 	//static inline std::unordered_map<QString, QString>& GetPersistantStrings(void) { return Singleton().m_PersistStrings; }
 
-    inline void									AddLine             ( Triple a, Triple b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Lines.push_back(DebugLine{a, b, color, on_top}); }
-    inline void									AddPoint            ( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(DebugPoint{pos, std::string(""), color, on_top}); }
-    inline void									AddPoint            ( Triple pos, std::string text, QVector4D color, bool on_top = true ) { m_Points.push_back(DebugPoint{pos, text, color, on_top}); }
-    inline void									AddTriangle         ( Triple a, Triple b, Triple c, QVector4D color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
+    inline void									AddLine             ( Vec3 a, Vec3 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Lines.push_back(DebugLine{a, b, color, on_top}); }
+    inline void									AddPoint            ( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(DebugPoint{pos, std::string(""), color, on_top}); }
+    inline void									AddPoint            ( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { m_Points.push_back(DebugPoint{pos, text, color, on_top}); }
+    inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
 
     //static inline void                          AddString           ( const QString& str ) { Singleton().m_Strings.push_back(str); }
     //static inline void                          AddPersistString    ( QString key, QString val ) { Singleton().m_PersistStrings.insert_or_assign(key, val); }
@@ -79,22 +79,22 @@ public:
 protected:
 
 	struct DebugPoint {
-		Triple p_Pos;
+		Vec3 p_Pos;
 		std::string p_Str;
 		QVector4D p_Col;
 		bool p_OnTop;
 	};
 
 	struct DebugLine {
-		Triple p_A, p_B; QVector4D p_Col; bool p_OnTop;
+		Vec3 p_A, p_B; QVector4D p_Col; bool p_OnTop;
 	};
 
 	struct DebugTriangle {
-		Triple p_A, p_B, p_C;
+		Vec3 p_A, p_B, p_C;
 		QVector4D p_Col;
 	};
 
-	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale, double point_size = 1.0 );
+	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
     inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); }
 
     std::vector<DebugLine>						m_Lines;
@@ -113,14 +113,14 @@ public:
 
 	static inline DebugRender&					Singleton			( void ) { static DebugRender instance; return instance; }
 
-	static inline void							Render3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Triple offset = Triple(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+	static inline void							Render3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }
 
-	static inline void                          Line				( Triple a, Triple b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
-	static inline void                          Point				( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
-	static inline void                          Point				( Triple pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
-	static inline void                          Triangle			( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+	static inline void                          Line				( Vec3 a, Vec3 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
+	static inline void                          Point				( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
+	static inline void                          Point				( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
+	static inline void                          Triangle			( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
 protected:
 												DebugRender			( void ) {}
 };
@@ -219,10 +219,10 @@ public:
 
 	inline static Scrapbook2D&	Singleton				( void ) { static Scrapbook2D instance; return instance; }
 
-    static inline void			Line					( Vec2 a, Vec2 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a.ToTriple(), b.ToTriple(), color, on_top); }
-	static inline void			Point					( Vec2 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos.ToTriple(), color, on_top); }
-	static inline void			Point					( Vec2 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos.ToTriple(), text, color, on_top); }
-	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, QVector4D color ) { Singleton().AddTriangle(a.ToTriple(), b.ToTriple(), c.ToTriple(), color); }
+    static inline void			Line					( Vec2 a, Vec2 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a.ToVec3(), b.ToVec3(), color, on_top); }
+	static inline void			Point					( Vec2 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos.ToVec3(), color, on_top); }
+	static inline void			Point					( Vec2 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos.ToVec3(), text, color, on_top); }
+	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, QVector4D color ) { Singleton().AddTriangle(a.ToVec3(), b.ToVec3(), c.ToVec3(), color); }
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
@@ -256,10 +256,10 @@ public:
 	static auto					ActivateRTT					( void );
 	static QMatrix4x4			GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
-	static inline void			Line						( Triple a, Triple b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
-	static inline void			Point						( Triple pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
-	static inline void			Point						( Triple pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
-	static inline void			Triangle					( Triple a, Triple b, Triple c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+	static inline void			Line						( Vec3 a, Vec3 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
+	static inline void			Point						( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
+	static inline void			Point						( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
+	static inline void			Triangle					( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
 	static inline void			Controls					( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static void					RenderImGui					( InterfaceScrapbook3D& data ) { Singleton().IRenderImGui(data); }

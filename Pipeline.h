@@ -147,7 +147,7 @@ class Grid2DCache : public BaseCache {
 public:
 
 								Grid2DCache		( GPUEntity& entity, QString pos_name );
-	void						GenerateCache	( IVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
+	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
 	virtual void				Bind			( class PipelineStage& stage ) override;
 
@@ -159,7 +159,7 @@ private:
 	GLSSBO						m_GridIndices;
 	GLSSBO						m_GridItems;
 
-	IVec2						m_GridSize;
+	iVec2						m_GridSize;
 	Vec2						m_GridMin;
 	Vec2						m_GridMax;
 };

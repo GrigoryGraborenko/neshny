@@ -73,11 +73,11 @@ struct Camera3DOrbit {
 		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
 		return perspectiveMatrix * GetViewMatrix();
 	}
-	Triple				GetCamRealPos					( void ) const {
+	Vec3				GetCamRealPos					( void ) const {
 		return GetViewMatrix().inverted() * QVector4D(0, 0, 0, 1);
 	}
 
-	Triple		p_Pos;
+	Vec3		p_Pos;
 	double		p_Zoom = 100.0;
 	float		p_HorizontalDegrees = 0.0f;
 	float		p_VerticalDegrees = 0.0f;
@@ -98,13 +98,13 @@ struct Camera3DFPS {
 		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
 		return perspectiveMatrix * GetViewMatrix();
 	}
-	void GetDirections(Triple* forward = nullptr, Triple* up = nullptr, Triple* side = nullptr) {
+	void GetDirections(Vec3* forward = nullptr, Vec3* up = nullptr, Vec3* side = nullptr) {
 		auto inv = p_Direction.inverted();
 		if (forward) { *forward = inv * QVector3D(0, 0, -1); forward->Normalize(); }
 		if (up) { *up = inv * QVector3D(0, 1, 0); up->Normalize(); }
 		if (side) { *side = inv * QVector3D(1, 0, 0); side->Normalize(); }
 	}
-	Triple		p_Pos;
+	Vec3		p_Pos;
 	QQuaternion	p_Direction = QQuaternion(0.0f, 0.0f, 0.0f, 1.0f);
 	float		p_FovDegrees = 60;
 	float		p_NearPlane = 0.1f;
@@ -147,7 +147,7 @@ struct InterfaceScrapbook2D {
 
 struct InterfaceScrapbook3D {
 	bool			p_Visible = false;
-	Camera3DOrbit	p_Cam = Camera3DOrbit{ Triple(), 100, 30, 30 };
+	Camera3DOrbit	p_Cam = Camera3DOrbit{ Vec3(), 100, 30, 30 };
 };
 
 struct InterfaceCore {

@@ -99,7 +99,7 @@ inline void SerialiseByType(const QVector3D& val, QJsonValue & json, [[maybe_unu
 
 ////////////////////////////////////////////////////////////////////////////////
 template <>
-inline void SerialiseByType(const Triple& val, QJsonValue& json, [[maybe_unused]] ParseError& err) {
+inline void SerialiseByType(const Vec3& val, QJsonValue& json, [[maybe_unused]] ParseError& err) {
     json = QJsonObject({ {"x", val.x}, {"y", val.y}, {"z", val.z} });
 }
 
@@ -332,7 +332,7 @@ inline void DeserialiseByType(QVector3D& val, const QJsonValue& json, ParseError
 
 ////////////////////////////////////////////////////////////////////////////////
 template <>
-inline void DeserialiseByType(Triple& val, const QJsonValue& json, ParseError &err) {
+inline void DeserialiseByType(Vec3& val, const QJsonValue& json, ParseError &err) {
     if (!json.isObject()) {
         return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
     }
@@ -345,9 +345,9 @@ inline void DeserialiseByType(Triple& val, const QJsonValue& json, ParseError &e
     Json::Deserialise(y, obj.value("y"), err);
     Json::Deserialise(z, obj.value("z"), err);
     if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of Triple"));
+        return err.AddMessage(QStringLiteral("Deserialising the elements of Vec3"));
     }
-    val = Triple(x, y, z);
+    val = Vec3(x, y, z);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

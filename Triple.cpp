@@ -1,122 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-void Vec2::set(double e0, double e1) {
-	x = e0;
-	y = e1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Vec2::operator=(const Vec2& t2) {
-	x = t2.x;
-	y = t2.y;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator+(const Vec2& t2) const {
-	return Vec2(x + t2.x, y + t2.y);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Vec2::operator+=(const Vec2& t2) {
-	x += t2.x;
-	y += t2.y;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator-(const Vec2& t2) const {
-	return Vec2(x - t2.x, y - t2.y);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator*(double f) const {
-	return Vec2(x * f, y * f);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator/(double f) const {
-	return Vec2(x / f, y / f);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator/(const Vec2& t2) const {
-	return Vec2(x / t2.x, y / t2.y);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::operator*(const Vec2& t2) const {
-	return Vec2(x * t2.x, y * t2.y);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Vec2::operator==(const Vec2& t2) const {
-	return ((x == t2.x) && (y == t2.y));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Vec2::normalize(void) {
-	double inv_len = 1.0 / length();
-	x *= inv_len;
-	y *= inv_len;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::normalizeCopy(void) {
-	double inv_len = 1.0 / length();
-	return Vec2(x * inv_len, y * inv_len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Vec2 Vec2::NearestToLine(Vec2 A, Vec2 B, bool clamp, double* frac) {
-
-	Vec2 a_p = *this - A;
-	Vec2 a_b = B - A;
-
-	double a_b_sqr = a_b.lengthSquared();
-	double a_p_dot_a_b = a_b.x * a_p.x + a_b.y * a_p.y;
-
-	double t = a_p_dot_a_b / a_b_sqr;
-	if (clamp) {
-		t = std::max(0.0, std::min(1.0, t));
-	}
-	if (frac) {
-		*frac = t;
-	}
-	return A + a_b * t;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Vec2::LineLineIntersect(Vec2 a0, Vec2 a1, Vec2 b0, Vec2 b1, Vec2& out, double* a_frac, double* b_frac) {
-
-	Vec2 r = a1 - a0;
-	Vec2 s = b1 - b0;
-
-	Vec2 qp = b0 - a0;
-	double numerator = qp ^ r;
-	double denominator = r ^ s;
-
-	// lines are parallel
-	if (denominator == 0) {
-		return false;
-	}
-
-	if ((numerator == 0) && (denominator == 0)) { // they are collinear
-		// TODO: check if the lines are overlapping
-		return false;
-	}
-
-	double u = numerator / denominator;
-	double t = (qp ^ s) / denominator;
-	if (a_frac) {
-		*a_frac = u;
-	}
-	if (b_frac) {
-		*b_frac = t;
-	}
-
-	return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
-}
-
 // might consider templating this func
 ////////////////////////////////////////////////////////////////////////////////
 bool Vec4::LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {
@@ -189,7 +72,7 @@ Matrix3::Matrix3(double e00, double e01, double e02, double e10, double e11, dou
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Matrix3::Matrix3(Triple t1, Triple t2, Triple t3) {
+Matrix3::Matrix3(Vec3 t1, Vec3 t2, Vec3 t3) {
 	set(
 		t1.x, t1.y, t1.z
 		,t2.x, t2.y, t2.z
@@ -249,8 +132,8 @@ Matrix3 Matrix3::operator*(double m2) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Triple Matrix3::operator*(Triple t2) {
-	Triple ta;
+Vec3 Matrix3::operator*(Vec3 t2) {
+	Vec3 ta;
 	ta.x= m[0][0]*t2.x + m[0][1]*t2.y + m[0][2]*t2.z;
 	ta.y= m[1][0]*t2.x + m[1][1]*t2.y + m[1][2]*t2.z;
 	ta.z= m[2][0]*t2.x + m[2][1]*t2.y + m[2][2]*t2.z;
@@ -329,7 +212,7 @@ Matrix4::Matrix4(QMatrix4x4 mat) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Matrix4::Matrix4(Triple row_a, Triple row_b, Triple row_c, Triple row_d) {
+Matrix4::Matrix4(Vec3 row_a, Vec3 row_b, Vec3 row_c, Vec3 row_d) {
 	m[0][0] = row_a.x;
 	m[0][1] = row_a.y;
 	m[0][2] = row_a.z;
@@ -409,8 +292,8 @@ Matrix4 Matrix4::operator*(Matrix4 m2) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Triple Matrix4::operator*(Triple v) const {
-	Triple res(
+Vec3 Matrix4::operator*(Vec3 v) const {
+	Vec3 res(
 		m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3]
 		,m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3]
 		,m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3]
@@ -553,10 +436,10 @@ void Matrix4UnitTest(void) {
 		auto theirs_res = theirs* theirs_b;
 		auto mine_res = mine * mine_b;
 
-		Triple tst(Random(-rad, rad), Random(-rad, rad), Random(-rad, rad));
+		Vec3 tst(Random(-rad, rad), Random(-rad, rad), Random(-rad, rad));
 		auto my_tst_res = mine_res * tst;
-		auto their_tst_res = Triple(theirs_res * tst.toVec4());
-		Triple diff = their_tst_res - my_tst_res;
+		auto their_tst_res = Vec3(theirs_res * tst.toVec4());
+		Vec3 diff = their_tst_res - my_tst_res;
 		double delta = diff.Length();
 
 		bool theirs_ok = false, mine_ok = false;
@@ -566,8 +449,8 @@ void Matrix4UnitTest(void) {
 		if (theirs_ok) {
 
 			auto my_tst_inv_res = mine_inv * tst;
-			auto their_tst_inv_res = Triple(theirs_inv * tst.toVec4());
-			Triple diff_inv = their_tst_inv_res - my_tst_inv_res;
+			auto their_tst_inv_res = Vec3(theirs_inv * tst.toVec4());
+			Vec3 diff_inv = their_tst_inv_res - my_tst_inv_res;
 			double delta_inv = diff_inv.Length();
 			assert(delta_inv < 0.001);
 		}
@@ -602,10 +485,10 @@ bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, dou
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool IntersectLineSphere(Triple centre, double radius_sqr, Triple p0, Triple p1, double& result_t0, double& result_t1) {
+bool IntersectLineSphere(Vec3 centre, double radius_sqr, Vec3 p0, Vec3 p1, double& result_t0, double& result_t1) {
 
-	Triple delta = p1 - p0;
-	Triple f = p0 - centre;
+	Vec3 delta = p1 - p0;
+	Vec3 f = p0 - centre;
 
 	double a = delta | delta;
 	double b = 2.0 * (delta | f);
@@ -624,24 +507,24 @@ bool IntersectLineSphere(Triple centre, double radius_sqr, Triple p0, Triple p1,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool CircumSphere(Triple p0, Triple p1, Triple p2, Triple& out_centre) {
+bool CircumSphere(Vec3 p0, Vec3 p1, Vec3 p2, Vec3& out_centre) {
 
-	Triple d10 = p1 - p0;
-	Triple d20 = p2 - p0;
+	Vec3 d10 = p1 - p0;
+	Vec3 d20 = p2 - p0;
 
-	Triple cross = d10 ^ d20;
+	Vec3 cross = d10 ^ d20;
 	double clensqr = cross.LengthSquared();
 	if (clensqr < 0.01) {
 		return false;
 	}
 
-	Triple double_cross = cross ^ d10;
-	Triple alt_double_cross = cross ^ d20;
-	Triple mid01 = (p0 + p1) * 0.5;
-	Triple mid02 = (p0 + p2) * 0.5;
+	Vec3 double_cross = cross ^ d10;
+	Vec3 alt_double_cross = cross ^ d20;
+	Vec3 mid01 = (p0 + p1) * 0.5;
+	Vec3 mid02 = (p0 + p2) * 0.5;
 
-	Triple intersect_a, intersect_b;
-	if (!Triple::LineLineIntersect(mid01, mid01 + double_cross, mid02, mid02 + alt_double_cross, false, intersect_a, intersect_b)) {
+	Vec3 intersect_a, intersect_b;
+	if (!Vec3::LineLineIntersect(mid01, mid01 + double_cross, mid02, mid02 + alt_double_cross, false, intersect_a, intersect_b)) {
 		return false;
 	}
 	out_centre = (intersect_a + intersect_b) * 0.5;

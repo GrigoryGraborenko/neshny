@@ -38,7 +38,7 @@ QStringList DebugTiming::Report(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Triple offset, double scale, double point_size) {
+void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
@@ -56,8 +56,8 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		} else {
 			glEnable(GL_DEPTH_TEST);
 		}
-		Triple da = (it->p_A - offset) * scale;
-		Triple db = (it->p_B - offset) * scale;
+		Vec3 da = (it->p_A - offset) * scale;
+		Vec3 db = (it->p_B - offset) * scale;
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
 		glUniform3f(debug_prog->GetUniform("uPosA"), da.x, da.y, da.z);
 		glUniform3f(debug_prog->GetUniform("uPosB"), db.x, db.y, db.z);
@@ -71,12 +71,12 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		} else {
 			glEnable(GL_DEPTH_TEST);
 		}
-		Triple dpos = (it->p_Pos - offset) * scale;
+		Vec3 dpos = (it->p_Pos - offset) * scale;
 
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
 		glUniform3f(debug_prog->GetUniform("uPosA"), dpos.x, dpos.y, dpos.z);
 		for (int i = 0; i < 2; i++) {
-			Triple off = (it->p_Pos - offset + Triple(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
+			Vec3 off = (it->p_Pos - offset + Vec3(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
 			glUniform3f(debug_prog->GetUniform("uPosB"), off.x, off.y, off.z);
 			line_buffer->Draw();
 		}
@@ -109,9 +109,9 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
 
-		Triple da = (it->p_A - offset) * scale;
-		Triple db = (it->p_B - offset) * scale;
-		Triple dc = (it->p_C - offset) * scale;
+		Vec3 da = (it->p_A - offset) * scale;
+		Vec3 db = (it->p_B - offset) * scale;
+		Vec3 dc = (it->p_C - offset) * scale;
 
 		glUniform3f(debug_prog->GetUniform("uPosA"), da.x, da.y, da.z);
 		glUniform3f(debug_prog->GetUniform("uPosB"), db.x, db.y, db.z);
@@ -686,7 +686,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		Line(Vec2(0, 0), Vec2(size_grid, 0), QVector4D(1, 0, 0, 1));
 		Line(Vec2(0, 0), Vec2(0, size_grid), QVector4D(0, 1, 0, 1));
 
-		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
+		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 		IClear();
 		m_NeedsReset = true;
 	}
@@ -769,11 +769,11 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 		// todo: make this a checkbox
 		const double size_grid = 10.0;
-		AddLine(Triple(0, 0, 0), Triple(size_grid, 0, 0), QVector4D(1, 0, 0, 1));
-		AddLine(Triple(0, 0, 0), Triple(0, size_grid, 0), QVector4D(0, 1, 0, 1));
-		AddLine(Triple(0, 0, 0), Triple(0, 0, size_grid), QVector4D(0, 0, 1, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(size_grid, 0, 0), QVector4D(1, 0, 0, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(0, size_grid, 0), QVector4D(0, 1, 0, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(0, 0, size_grid), QVector4D(0, 0, 1, 1));
 
-		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Triple(0, 0, 0), 1.0);
+		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
 		IClear();
 		m_NeedsReset = true;
 	}
