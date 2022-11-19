@@ -1,232 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-void Triple::set(double e0, double e1, double e2) {
-	x=e0;y=e1;z=e2;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Triple::operator=(const Triple& t2) {
-	x=t2.x;y=t2.y;z=t2.z;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator+(const Triple& t2) const {
-	Triple ta;
-	ta.x=x+t2.x;ta.y=y+t2.y;ta.z=z+t2.z;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Triple::operator+=(const Triple& t2) {
-	x = x + t2.x;
-	y = y + t2.y;
-	z = z + t2.z;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator-(const Triple& t2) const {
-	Triple ta;
-	ta.x=x-t2.x;ta.y=y-t2.y;ta.z=z-t2.z;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-double Triple::operator*(const Triple& t2) const {
-	return x*t2.x + y*t2.y + z*t2.z;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator*(double f) const {
-	Triple ta;
-	ta.x=x*f;ta.y=y*f;ta.z=z*f;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Triple::operator*=(double f) {
-	x *= f;
-	y *= f;
-	z *= f;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator/(double f) const {
-	Triple ta;
-	ta.x = x / f; ta.y = y / f; ta.z = z / f;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator/(const Triple& t2) const {
-	Triple ta;
-	ta.x = x / t2.x; ta.y = y / t2.y; ta.z = z / t2.z;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::operator^(const Triple& t2) const {
-	Triple ta;
-	ta.x = y*t2.z - z*t2.y;
-	ta.y = z*t2.x - x*t2.z;
-	ta.z = x*t2.y - y*t2.x;
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Triple::operator==(const Triple& t2) const {
-	return ((x==t2.x)&&(y==t2.y)&&(z==t2.z));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::round(void) const {
-	Triple ta;
-	ta.x = floor(x + 0.5f);
-	ta.y = floor(y + 0.5f);
-	ta.z = floor(z + 0.5f);
-	return ta;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::sign(void) const {
-	return Triple(SIGN(x), SIGN(y), SIGN(z));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::mult(const Triple& t2) const {
-	return Triple(x * t2.x, y * t2.y, z * t2.z);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-double Triple::lengthSquared(void) const {
-	return (x * x + y * y + z * z);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-double Triple::length(void) const {
-	return sqrt(x*x+y*y+z*z);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void Triple::normalize(void) {
-	double dist = length();
-	if(dist == 0)
-		dist = ALMOST_ZERO;
-	x = x / dist;
-	y = y / dist;
-	z = z / dist;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::normalizeCopy(void) const {
-	Triple res;
-	double dist = length();
-	if(dist == 0)
-		dist = ALMOST_ZERO;
-	res.x = x / dist;
-	res.y = y / dist;
-	res.z = z / dist;
-	return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::modify(double new_val, Axis axis) const {
-	switch(axis) {
-		case Axis::X: return Triple(new_val, y, z);
-		case Axis::Y: return Triple(x, new_val, z);
-	}
-	return Triple(x, y, new_val);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Triple Triple::NearestToLine(Triple start, Triple end, bool clamp, double* frac) const {
-
-	Triple p_to_lp0 = (*this) - start;
-	Triple lp1_to_lp0 = end - start;
-
-	double numer = p_to_lp0 * lp1_to_lp0;
-	double denom = lp1_to_lp0 * lp1_to_lp0;
-
-	if(denom == 0) {
-		if(frac) {
-			frac = 0;
-		}
-		return start;
-	}
-	double u = numer / denom;
-	if(clamp) {
-		if(u < 0) {
-			u = 0;
-		} else if(u > 1) {
-			u = 1;
-		}
-	}
-	if(frac) {
-		*frac = u;
-	}
-
-	return start + (lp1_to_lp0 * u);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Triple::LineLineIntersect(Triple a0, Triple a1, Triple b0, Triple b1, bool clamp, Triple& out_a, Triple& out_b, double* a_frac, double* b_frac) {
-
-	Triple p43 = b1 - b0;
-	if ((fabs(p43.x) < ALMOST_ZERO) && (fabs(p43.y) < ALMOST_ZERO) && (fabs(p43.z) < ALMOST_ZERO)) {
-		return false;
-	}
-	Triple p21 = a1 - a0;
-	if ((fabs(p21.x) < ALMOST_ZERO) && (fabs(p21.y) < ALMOST_ZERO) && (fabs(p21.z) < ALMOST_ZERO)) {
-		return false;
-	}
-	Triple p13 = a0 - b0;
-
-	double d1343 = p13.x * p43.x + p13.y * p43.y + p13.z * p43.z;
-	double d4321 = p43.x * p21.x + p43.y * p21.y + p43.z * p21.z;
-	double d1321 = p13.x * p21.x + p13.y * p21.y + p13.z * p21.z;
-	double d4343 = p43.x * p43.x + p43.y * p43.y + p43.z * p43.z;
-	double d2121 = p21.x * p21.x + p21.y * p21.y + p21.z * p21.z;
-
-	double denom = d2121 * d4343 - d4321 * d4321;
-	if (fabs(denom) < ALMOST_ZERO) {
-		return false;
-	}
-	double numer = d1343 * d4321 - d1321 * d4343;
-
-	double mua = numer / denom;
-	double mub = (d1343 + d4321 * (mua)) / d4343;
-
-	if (clamp) {
-		mua = GETCLAMP(mua, 0.0, 1.0);
-		mub = GETCLAMP(mub, 0.0, 1.0);
-	}
-
-	out_a = Triple(a0.x + mua * p21.x, a0.y + mua * p21.y, a0.z + mua * p21.z);
-	out_b = Triple(b0.x + mub * p43.x, b0.y + mub * p43.y, b0.z + mub * p43.z);
-
-	if (a_frac) {
-		*a_frac = mua;
-	}
-	if (b_frac) {
-		*b_frac = mub;
-	}
-	return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-Matrix4 Triple::GetScale(void) const {
-	Matrix4 scale = Matrix4::Identity();
-	scale.m[0][0] = x;
-	scale.m[1][1] = y;
-	scale.m[2][2] = z;
-	return scale;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 void Vec2::set(double e0, double e1) {
 	x = e0;
 	y = e1;
@@ -783,7 +557,7 @@ void Matrix4UnitTest(void) {
 		auto my_tst_res = mine_res * tst;
 		auto their_tst_res = Triple(theirs_res * tst.toVec4());
 		Triple diff = their_tst_res - my_tst_res;
-		double delta = diff.length();
+		double delta = diff.Length();
 
 		bool theirs_ok = false, mine_ok = false;
 		auto theirs_inv = theirs_res.inverted(&theirs_ok);
@@ -794,7 +568,7 @@ void Matrix4UnitTest(void) {
 			auto my_tst_inv_res = mine_inv * tst;
 			auto their_tst_inv_res = Triple(theirs_inv * tst.toVec4());
 			Triple diff_inv = their_tst_inv_res - my_tst_inv_res;
-			double delta_inv = diff_inv.length();
+			double delta_inv = diff_inv.Length();
 			assert(delta_inv < 0.001);
 		}
 		assert(delta < 0.001);
@@ -833,9 +607,9 @@ bool IntersectLineSphere(Triple centre, double radius_sqr, Triple p0, Triple p1,
 	Triple delta = p1 - p0;
 	Triple f = p0 - centre;
 
-	double a = delta * delta;
-	double b = 2.0 * (delta * f);
-	double c = (f * f) - radius_sqr;
+	double a = delta | delta;
+	double b = 2.0 * (delta | f);
+	double c = (f | f) - radius_sqr;
 
 	double det = b * b - 4 * a * c;
 	if (det < 0) {
@@ -856,7 +630,7 @@ bool CircumSphere(Triple p0, Triple p1, Triple p2, Triple& out_centre) {
 	Triple d20 = p2 - p0;
 
 	Triple cross = d10 ^ d20;
-	double clensqr = cross.lengthSquared();
+	double clensqr = cross.LengthSquared();
 	if (clensqr < 0.01) {
 		return false;
 	}

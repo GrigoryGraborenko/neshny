@@ -100,9 +100,9 @@ struct Camera3DFPS {
 	}
 	void GetDirections(Triple* forward = nullptr, Triple* up = nullptr, Triple* side = nullptr) {
 		auto inv = p_Direction.inverted();
-		if (forward) { *forward = inv * QVector3D(0, 0, -1); forward->normalize(); }
-		if (up) { *up = inv * QVector3D(0, 1, 0); up->normalize(); }
-		if (side) { *side = inv * QVector3D(1, 0, 0); side->normalize(); }
+		if (forward) { *forward = inv * QVector3D(0, 0, -1); forward->Normalize(); }
+		if (up) { *up = inv * QVector3D(0, 1, 0); up->Normalize(); }
+		if (side) { *side = inv * QVector3D(1, 0, 0); side->Normalize(); }
 	}
 	Triple		p_Pos;
 	QQuaternion	p_Direction = QQuaternion(0.0f, 0.0f, 0.0f, 1.0f);

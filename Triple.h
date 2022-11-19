@@ -4,62 +4,158 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-struct Triple {
+template<typename T>
+struct BaseVec3 {
 
-	double x, y, z;
+	T x, y, z;
 
 	enum class Axis {
 		X, Y, Z
 	};
 
-					Triple			( void ) : x(0), y(0), z(0) {}
-					Triple			( double e0, double e1, double e2 ) : x(e0), y(e1), z(e2) {}
-					Triple			( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {}
-					Triple			( QVector4D v ) : x(v.x()), y(v.y()), z(v.z()) {}
-					Triple			( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
+						BaseVec3		( void ) : x(0), y(0), z(0) {}
+						BaseVec3		( T e0, T e1, T e2 ) : x(e0), y(e1), z(e2) {}
+						BaseVec3		( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {}
+						BaseVec3		( QVector4D v ) : x(v.x()), y(v.y()), z(v.z()) {}
+						BaseVec3		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
 
-	void			set				( double e0, double e1, double e2 );
+	inline void			Set				( T e0, T e1, T e2 ) { x = e0; y = e1; z = e2; }
 
-	void			operator=		( const Triple& t2 );
-	Triple			operator+		( const Triple& t2 ) const;
-	void			operator+=		( const Triple& t2 );
-	Triple			operator-		( const Triple& t2 ) const;
-	double			operator*		( const Triple& t2 ) const;
-	Triple			operator*		( double f ) const;
-	void			operator*=		( double f );
-	Triple			operator/		( double f ) const;
-	Triple			operator/		( const Triple& t2 ) const;
-	Triple			operator^		( const Triple& t2 ) const; // cross product
-	bool			operator==		( const Triple& t2 ) const;
+	inline void			operator=		( const BaseVec3<T>& t2 ) { x = t2.x; y = t2.y; z = t2.z; }
+	inline BaseVec3<T>	operator+		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x + t2.x, y + t2.y, z + t2.z); }
+	inline void			operator+=		( const BaseVec3<T>& t2 ) { x = x + t2.x; y = y + t2.y; z = z + t2.z; }
+	inline BaseVec3<T>	operator-		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x - t2.x, y - t2.y, z - t2.z); }
+	inline void			operator-=		( const BaseVec3<T>& t2 ) { x = x - t2.x; y = y - t2.y; z = z - t2.z; }
+	inline BaseVec3<T>	operator*		( T f ) const { return BaseVec3<T>(x * f, y * f, z * f); };
+	inline void			operator*=		( T f ) { x *= f; y *= f; z *= f; }
+	inline BaseVec3<T>	operator/		( T f ) const { return BaseVec3<T>(x / f, y / f, z / f); };
+	inline void			operator/=		( T f ) { x /= f; y /= f; z /= f; }
+	//inline T			operator*		( const Triple& t2 ) const;
+	inline BaseVec3<T>	operator*		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x * t2.x, y * t2.y, z * t2.z); }
+	inline BaseVec3<T>	operator/		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x / t2.x, y / t2.y, z / t2.z); }
+	inline bool			operator==		( const  BaseVec3<T>& t2 ) const { return (x == t2.x) && (y == t2.y) && (z == t2.z); }
 
-	Triple			round			( void ) const;
-	Triple			Ceil			( void ) const { return Triple(ceil(x), ceil(y), ceil(z)); };
-	Triple			Floor			( void ) const { return Triple(floor(x), floor(y), floor(z)); };
-	Triple			sign			( void ) const;
-	Triple			abs				( void ) const { return Triple(fabs(x), fabs(y), fabs(z)); };
-	Triple			inv				( void ) const { return Triple(1.0 / x, 1.0 / y, 1.0 / z); };
-	Triple			mult			( const Triple& t2 ) const;
-	double			lengthSquared	( void ) const;
-	double			length			( void ) const;
-	void			normalize		( void );
-	Triple			normalizeCopy	( void ) const;
-	Triple			modify			( double new_val, Axis axis ) const;
-	bool			nearby			( const Triple& other, double tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance) && (fabs(other.z - z) < tolerance); };
-	double			MinVal			( void ) const { return std::min(x, std::min(y, z)); }
-	double			MaxVal			( void ) const { return std::max(x, std::max(y, z)); }
-	Triple			NearestToLine	( Triple start, Triple end, bool clamp, double* frac = nullptr ) const;
+	inline T			Dot				( BaseVec3<T> t2 ) const { return x * t2.x + y * t2.y + z * t2.z; }
+	inline BaseVec3<T>	Cross			( BaseVec3<T> t2 ) const { return BaseVec3<T>(y * t2.z - z * t2.y, z * t2.x - x * t2.z, x * t2.y - y * t2.x); }
 
-	static bool		LineLineIntersect ( Triple a0, Triple a1, Triple b0, Triple b1, bool clamp, Triple& out_a, Triple& out_b, double* a_frac = nullptr, double* b_frac = nullptr );
+	inline T			operator|		( const BaseVec3<T>& t2 ) const { return Dot(t2); }
+	inline BaseVec3<T>	operator^		( const BaseVec3<T>& t2 ) const { return Cross(t2); }
+
+	inline BaseVec3<T>	Round			( void ) const { return BaseVec3<T>(floor(x + (T)0.5), floor(y + (T)0.5), floor(z + (T)0.5)); };
+	inline BaseVec3<T>	Ceil			( void ) const { return BaseVec3<T>(ceil(x), ceil(y), ceil(z)); };
+	inline BaseVec3<T>	Floor			( void ) const { return BaseVec3<T>(floor(x), floor(y), floor(z)); };
+	inline BaseVec3<T>	Abs				( void ) const { return BaseVec3<T>(fabs(x), fabs(y), fabs(z)); };
+	inline BaseVec3<T>	Inv				( void ) const { return BaseVec3<T>(1.0 / x, 1.0 / y, 1.0 / z); };
+
+	inline BaseVec3<T>	Sign			( void ) const { return BaseVec3<T>(SIGN(x), SIGN(y), SIGN(z)); };
+
+	//inline BaseVec3<T>			mult			( const Triple& t2 ) const;
+	inline T			LengthSquared	( void ) const { return x * x + y * y + z * z; }
+	inline T			Length			( void ) const { return sqrt(x * x + y * y + z * z); }
+	inline void			Normalize		( void ) {
+		T dist = Length();
+		dist = dist == 0 ? ALMOST_ZERO : dist;
+		x = x / dist; y = y / dist; z = z / dist;
+	}
+	inline BaseVec3<T>	NormalizeCopy	( void ) const {
+		T dist = Length();
+		dist = dist == 0 ? ALMOST_ZERO : dist;
+		return BaseVec3<T>(x / dist, y / dist, z / dist);
+	}
+	inline BaseVec3<T>	Modify			( T new_val, Axis axis ) const {
+		switch(axis) {
+			case Axis::X: return BaseVec3<T>(new_val, y, z);
+			case Axis::Y: return BaseVec3<T>(x, new_val, z);
+		}
+		return BaseVec3<T>(x, y, new_val);
+	}
+	inline bool			Nearby			( const BaseVec3<T>& other, T tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance) && (fabs(other.z - z) < tolerance); };
+	inline T			MinVal			( void ) const { return std::min(x, std::min(y, z)); }
+	inline T			MaxVal			( void ) const { return std::max(x, std::max(y, z)); }
+
+	BaseVec3<T>			NearestToLine	( BaseVec3<T> start, BaseVec3<T> end, bool clamp, T* frac = nullptr ) const {
+		BaseVec3<T> p_to_lp0 = (*this) - start;
+		BaseVec3<T> lp1_to_lp0 = end - start;
+
+		T numer = p_to_lp0 | lp1_to_lp0;
+		T denom = lp1_to_lp0 | lp1_to_lp0;
+
+		if(denom == 0) {
+			if(frac) {
+				frac = 0;
+			}
+			return start;
+		}
+		T u = numer / denom;
+		if(clamp) {
+			if(u < 0) {
+				u = 0;
+			} else if(u > 1) {
+				u = 1;
+			}
+		}
+		if(frac) {
+			*frac = u;
+		}
+
+		return start + (lp1_to_lp0 * u);
+	}
+
+	static bool			LineLineIntersect ( BaseVec3<T> a0, BaseVec3<T> a1, BaseVec3<T> b0, BaseVec3<T> b1, bool clamp, BaseVec3<T>& out_a, BaseVec3<T>& out_b, T* a_frac = nullptr, T* b_frac = nullptr ) {
+		BaseVec3<T> p43 = b1 - b0;
+		if ((fabs(p43.x) < ALMOST_ZERO) && (fabs(p43.y) < ALMOST_ZERO) && (fabs(p43.z) < ALMOST_ZERO)) {
+			return false;
+		}
+		BaseVec3<T> p21 = a1 - a0;
+		if ((fabs(p21.x) < ALMOST_ZERO) && (fabs(p21.y) < ALMOST_ZERO) && (fabs(p21.z) < ALMOST_ZERO)) {
+			return false;
+		}
+		BaseVec3<T> p13 = a0 - b0;
+
+		T d1343 = p13.x * p43.x + p13.y * p43.y + p13.z * p43.z;
+		T d4321 = p43.x * p21.x + p43.y * p21.y + p43.z * p21.z;
+		T d1321 = p13.x * p21.x + p13.y * p21.y + p13.z * p21.z;
+		T d4343 = p43.x * p43.x + p43.y * p43.y + p43.z * p43.z;
+		T d2121 = p21.x * p21.x + p21.y * p21.y + p21.z * p21.z;
+
+		T denom = d2121 * d4343 - d4321 * d4321;
+		if (fabs(denom) < ALMOST_ZERO) {
+			return false;
+		}
+		T numer = d1343 * d4321 - d1321 * d4343;
+
+		T mua = numer / denom;
+		T mub = (d1343 + d4321 * (mua)) / d4343;
+
+		if (clamp) {
+			mua = GETCLAMP(mua, 0.0, 1.0);
+			mub = GETCLAMP(mub, 0.0, 1.0);
+		}
+
+		out_a = BaseVec3<T>(a0.x + mua * p21.x, a0.y + mua * p21.y, a0.z + mua * p21.z);
+		out_b = BaseVec3<T>(b0.x + mub * p43.x, b0.y + mub * p43.y, b0.z + mub * p43.z);
+
+		if (a_frac) {
+			*a_frac = mua;
+		}
+		if (b_frac) {
+			*b_frac = mub;
+		}
+		return true;
+	}
 
 	QVector3D		toVec			( void ) const { return QVector3D(x, y, z); }
 	QVector4D		toVec4			( void ) const { return QVector4D(x, y, z, 1.0); }
 
 	struct Matrix4	GetScale		( void ) const;
 
-	static Triple	Min				( Triple a, Triple b ) { return Triple(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
-	static Triple	Max				( Triple a, Triple b ) { return Triple(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
-	static Axis		IntToAxis		( int ax ) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : Axis::Z); }
+	inline static BaseVec3<T>	Min				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
+	inline static BaseVec3<T>	Max				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
+	inline static Axis			IntToAxis		( int ax ) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : Axis::Z); }
 };
+
+//using Vec3 = BaseVec3<double>;
+using Triple = BaseVec3<double>;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -243,4 +339,13 @@ inline QMatrix3x3 ConvertTo3x3(const QMatrix4x4& mat) {
 		,d[2], d[6], d[10]
 	};
 	return QMatrix3x3(v);
+}
+
+template<typename T>
+Matrix4 BaseVec3<T>::GetScale(void) const {
+	Matrix4 scale = Matrix4::Identity();
+	scale.m[0][0] = x;
+	scale.m[1][1] = y;
+	scale.m[2][2] = z;
+	return scale;
 }
