@@ -118,6 +118,35 @@ vec2 NearestToLine2D(vec2 point, vec2 start, vec2 end, bool clamp_line, out floa
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool GetInterceptPosition(vec2 target_pos, vec2 target_vel, vec2 start_pos, float intercept_speed, out vec2 intercept_pos, out float time_mult) {
+	vec2 delta = start_pos - target_pos;
+
+	float dist = length(delta);
+	float a_speed = length(target_vel);
+	float r = intercept_speed / a_speed;
+	float a = r * r - 1.0;
+
+	// use law of cosins: c^2 = a^2 + b^2 - 2abCos(y)
+	// where y is angle between position delta vector and target velocity
+	float cos_a = dot(delta, target_vel) / (a_speed * dist);
+	float b = 2 * dist * cos_a;
+	float c = -(dist * dist);
+
+	float det = b * b - 4.0 * a * c;
+	if (det < 0.0) {
+		return false;
+	}
+	float a_dist = (-b + sqrt(det)) / (2.0 * a);
+	float t = a_dist / a_speed;
+	if (t < 0.0) {
+		return false;
+	}
+	time_mult = t;
+	intercept_pos = target_pos + target_vel * t;
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size) {
     vec2 range = grid_max - grid_min;
     vec2 inv_range = vec2(1.0 / range.x, 1.0 / range.y);
