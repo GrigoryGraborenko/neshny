@@ -15,6 +15,7 @@
 #include <optional>
 #include <thread>
 #include <mutex>
+#include <variant>
 
 #include "glad/glad.h"
 

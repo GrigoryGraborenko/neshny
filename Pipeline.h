@@ -142,6 +142,41 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+class QueryEntities : CommonPipeline {
+
+public:
+
+								QueryEntities		( GPUEntity& entity );
+
+	QueryEntities&				ByNearestPosition	( QString param_name, fVec2 pos );
+	QueryEntities&				ByNearestPosition	( QString param_name, fVec3 pos );
+	QueryEntities&				ById				( int id );
+
+	template<typename T>
+	T							Run					( void ) {
+		int index = ExecuteQuery();
+		return m_Entity.ExtractSingle<T>(index);
+	}
+
+private:
+
+	int						ExecuteQuery		( void );
+
+	enum class QueryType {
+		Position2D
+		,Position3D
+		,ID
+	};
+
+	QueryType							m_Query;
+	QString								m_ParamName;
+	std::variant<fVec2, fVec3, int>		m_QueryParam;
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class Grid2DCache : public BaseCache {
 
 public:

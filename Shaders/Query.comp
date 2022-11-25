@@ -1,0 +1,55 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+
+uniform vec2    uPos2D;
+uniform vec3    uPos3D;
+uniform int     uID;
+
+//////////////////////////////////////////////////////////////////////////////
+void WriteNearestDist(int item_index, float dist) {
+
+    // order of magnitude (maggo) bits 30 to 20, the rest a multiplier
+    // floating point int that preserves ordering
+	int maggo = int(floor(log(dist) / log(10)));
+	float mult = pow(10.0, float(maggo));
+	int mantissa = int(floor((dist / mult) * 100000.0));
+	maggo = clamp(maggo + 512, 0, 1023);
+	int idist =  mantissa | (maggo << 20);
+
+    // record previous best index and set a new min dist
+    int prev_ind = atomicCompSwap(ioIndex, 0, 0);
+    int prev_dist = atomicMin(ioDistance, idist);
+    if(prev_dist <= idist) { // you aren't the smallest
+        return;
+    }
+
+    while(true) {
+        int other_prev_ind = atomicCompSwap(ioIndex, prev_ind, item_index);
+        if(other_prev_ind == prev_ind) {
+            return;
+        }
+        prev_ind = other_prev_ind;
+        prev_dist = atomicCompSwap(ioDistance, idist, idist);
+        if(prev_dist < idist) {
+            return;
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+void ItemMainNearest2D(int item_index, vec2 pos) {
+    WriteNearestDist(item_index, length(pos - uPos2D));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+void ItemMainNearest3D(int item_index, vec3 pos) {
+    WriteNearestDist(item_index, length(pos - uPos3D));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+void ItemMainIsID(int item_index, int id) {
+    if(id == uID) {
+        // should be unique and therefore doesn't need any more complexity than this
+        atomicExchange(ioIndex, item_index);
+    }
+}

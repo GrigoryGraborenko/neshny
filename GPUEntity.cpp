@@ -162,21 +162,21 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int size = m_MaxIndex * entity_size;
 	unsigned char* ptr = new unsigned char[size];
-	MakeCopyIn(ptr, size);
+	MakeCopyIn(ptr, 0, size);
 	auto result = std::shared_ptr<unsigned char[]>(ptr);
 	return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUEntity::MakeCopyIn(unsigned char* ptr, int size) {
+void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 
-	const int entity_size = m_NumDataFloats * sizeof(float);
 	if (m_SSBO) {
-		glGetNamedBufferSubData(m_SSBO->Get(), 0, size, ptr);
+		glGetNamedBufferSubData(m_SSBO->Get(), offset, size, ptr);
 		return;
 	}
 	// todo: this is untested
 
+	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int row_size = BUFFER_TEX_SIZE * entity_size;
 	const int rows = (int)ceil((double)m_MaxIndex / BUFFER_TEX_SIZE);
 

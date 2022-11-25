@@ -175,8 +175,9 @@ struct BaseVec2 {
 
 						BaseVec2		( void ) : x(0), y(0) {}
 						BaseVec2		( T e0, T e1 ) : x(e0), y(e1) {}
-						BaseVec2		( QVector2D v ) : x(v.x()), y(v.y()) {}
 						BaseVec2		( const BaseVec2<int>& t2 ) : x((T)t2.x), y((T)t2.y) {}
+						BaseVec2		( const BaseVec2<float>& t2 ) : x((T)t2.x), y((T)t2.y) {}
+						BaseVec2		( const BaseVec2<double>& t2 ) : x((T)t2.x), y((T)t2.y) {}
 						BaseVec2		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0) {}
 
 	inline void			Set				( T e0, T e1 ) { x = e0; y = e1; }

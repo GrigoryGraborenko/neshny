@@ -110,6 +110,12 @@ public:
 			type = MemberSpec::T_UINT;
 		} else if constexpr (std::is_same<CurrentMemberType, float>::value) {
 			type = MemberSpec::T_FLOAT;
+		} else if constexpr (std::is_same<CurrentMemberType, fVec2>::value) {
+			type = MemberSpec::T_VEC2;
+		} else if constexpr (std::is_same<CurrentMemberType, fVec3>::value) {
+			type = MemberSpec::T_VEC3;
+		//} else if constexpr (std::is_same<CurrentMemberType, fVec4>::value) {
+		//	type = MemberSpec::T_VEC4;
 		} else if constexpr (std::is_same<CurrentMemberType, QVector2D>::value) {
 			type = MemberSpec::T_VEC2;
 		} else if constexpr (std::is_same<CurrentMemberType, QVector3D>::value) {
@@ -237,13 +243,20 @@ public:
 	}
 	~GPUEntity(void) { Destroy(); }
 
-	template <typename T> void Extract(std::vector<T>& items) {
+	template <typename T> void ExtractAll(std::vector<T>& items) {
 		if (m_MaxIndex <= 0) {
 			return;
 		}
 		items.resize(m_MaxIndex);
 		unsigned char* ptr = (unsigned char*)&(items[0]);
-		MakeCopyIn(ptr, m_MaxIndex * m_NumDataFloats * sizeof(float));
+		MakeCopyIn(ptr, 0, m_MaxIndex * m_NumDataFloats * sizeof(float));
+	}
+
+	template <typename T> T ExtractSingle(int index) {
+		T item;
+		int size_item = m_NumDataFloats * sizeof(float);
+		MakeCopyIn((unsigned char*)&item, index * size_item, size_item);
+		return item;
 	}
 
 
@@ -276,7 +289,7 @@ public:
 
 protected:
 
-	void						MakeCopyIn				( unsigned char* ptr, int size );
+	void						MakeCopyIn				( unsigned char* ptr, int offset, int size );
 
 	void						Destroy					( void );
 
