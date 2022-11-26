@@ -464,6 +464,10 @@ GLSSBO::~GLSSBO(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GLSSBO::EnsureSize(int size, bool clear_after) {
+
+	// ensure size doubles each time
+	size = RoundUpPowerTwo(size);
+
 	if (m_Size >= size) {
 		if (clear_after) {
 			ClearBuffer();
@@ -471,15 +475,20 @@ void GLSSBO::EnsureSize(int size, bool clear_after) {
 		return;
 	}
 
-	if (m_Buffer) {
-		glDeleteBuffers(1, &m_Buffer);
-		m_Buffer = 0;
-	}
+	GLuint old_buffer = m_Buffer;
 	glGenBuffers(1, &m_Buffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_Buffer);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
-
+	
 	ClearBuffer();
+	if (!clear_after) {
+		glCopyNamedBufferSubData(old_buffer, m_Buffer, 0, 0, m_Size);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
+	if (old_buffer) {
+		glDeleteBuffers(1, &old_buffer);
+	}
 
 	m_Size = size;
 #ifdef SSBO_DEBUG

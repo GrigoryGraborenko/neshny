@@ -21,12 +21,7 @@ bool GPUEntity::Init(void) {
 		glClearTexImage(m_Texture, 0, GL_RED, GL_FLOAT, &clear_val);
 	}
 	m_ControlSSBO = new GLSSBO();
-	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
-		// need to implement growing but preserved SSBOs to set this to zero
-		m_FreeList = new GLSSBO(BUFFER_TEX_SIZE * sizeof(float));
-	} else {
-		m_FreeList = new GLSSBO();
-	}
+	m_FreeList = new GLSSBO();
 
 	m_CurrentCount = 0;
 	m_MaxIndex = 0;
@@ -113,7 +108,7 @@ void GPUEntity::DeleteInstance(int index) {
 
 		int id_value = -1;
 		glNamedBufferSubData(m_SSBO->Get(), index * size_item + pos_index, sizeof(float), (unsigned char*)&id_value);
-		// TODO: need to ensure that m_FreeList has ensureSize here
+		m_FreeList->EnsureSize((m_FreeCount + 1) * sizeof(int), false);
 		glNamedBufferSubData(m_FreeList->Get(), m_FreeCount * sizeof(int), sizeof(int), (unsigned char*)&index);
 		m_FreeCount++;
 	} else {

@@ -53,6 +53,7 @@ constexpr double DOUBLE_NAN = std::numeric_limits<double>::quiet_NaN();
 double Random(void);
 double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);
+int RoundUpPowerTwo(int value);
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

@@ -1,6 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <UnitTests/Vec2Test.cpp>
+#include <UnitTests/SSBOTest.cpp>
+#include <UnitTests/UtilsTest.cpp>
 
 void UnitTester::IRender(void) {
     if (!m_Display) {
@@ -28,14 +30,18 @@ void UnitTester::IExecute(void) {
 
     m_Results.clear();
 
-    std::vector<std::function<void()>> tests;
-    tests.push_back(&Test::Test_LineIntersect2D);
+    std::vector<std::pair<std::function<void()>, QString>> tests;
+    tests.push_back({ &Test::Test_LineIntersect2D, "LineIntersect2D" });
+    tests.push_back({ &Test::Test_SSBOEnsureSize, "SSBOEnsureSize" });
+    tests.push_back({ &Test::Test_RoundPowerTwo, "RoundPowerTwo" });
+    
 
     for (auto& test : tests) {
-        QString label = "TODO: insert function name";
+        QString label = test.second;
+        //QString label = "TODO: insert function name";
         //QString label = test.target_type().name();
         try {
-            test();
+            test.first();
         } catch(const char* info) {
             m_Results.push_back({ false, label, info });
             continue;

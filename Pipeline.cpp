@@ -158,6 +158,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
 	} else if(m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 		int buffer_index = insertion_buffers.size();
+		m_Entity.GetFreeListSSBO()->EnsureSize(m_Entity.GetMaxIndex() * sizeof(int), false);
 		m_Entity.GetFreeListSSBO()->Bind(buffer_index);
 		insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
 	}

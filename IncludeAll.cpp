@@ -29,3 +29,12 @@ double Random(double min_val, double max_val) {
 int RandomInt(int min_val, int max_val) {
     return int(floor(Random(min_val, max_val)));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+int RoundUpPowerTwo(int value) {
+    if (value <= 0) {
+        return 0;
+    }
+    int pow_two = int(ceil(log2(double(value))));
+    return 1 << pow_two;
+}
