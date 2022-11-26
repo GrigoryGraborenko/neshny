@@ -264,10 +264,8 @@ public:
 	void						Clear					( void );
 
 	int							AddInstance				( void* data );
-	void						ProcessMoveDeaths		( int death_count );
-	void						ProcessStableDeaths		( int death_count );
-	void						ProcessMoveCreates		( int new_count, int new_next_id );
-	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
+	void						DeleteInstance			( int index );
+
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopy			( void );
 
@@ -286,6 +284,11 @@ public:
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
 	inline QString				GetGPUInsertion			( void ) const { return m_GPUInsertion; }
 	inline QString				GetIDName				( void ) const { return m_IDName; }
+
+	void						ProcessMoveDeaths		( int death_count );
+	void						ProcessStableDeaths		( int death_count );
+	void						ProcessMoveCreates		( int new_count, int new_next_id );
+	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
 
 protected:
 

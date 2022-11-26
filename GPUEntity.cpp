@@ -93,6 +93,41 @@ int GPUEntity::AddInstance(void* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::DeleteInstance(int index) {
+
+	int size_item = m_NumDataFloats * sizeof(float);
+	if (!m_SSBO) {
+		// TODO - implement this
+		return;
+	}
+
+	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
+
+		int pos_index = 0;
+		for (const auto& member : m_Specs.p_Members) {
+			if (member.p_Name == m_IDName) {
+				break;
+			}
+			pos_index += member.p_Size;
+		}
+
+		int id_value = -1;
+		glNamedBufferSubData(m_SSBO->Get(), index * size_item + pos_index, sizeof(float), (unsigned char*)&id_value);
+		// TODO: need to ensure that m_FreeList has ensureSize here
+		glNamedBufferSubData(m_FreeList->Get(), m_FreeCount * sizeof(int), sizeof(int), (unsigned char*)&index);
+		m_FreeCount++;
+	} else {
+		if (index != (m_MaxIndex - 1)) {
+			// copy the end item into this pos
+			glCopyNamedBufferSubData(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
+		}
+		m_MaxIndex--;
+	}
+
+	m_CurrentCount--;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	// todo: for each death, take index d from alive and copy it

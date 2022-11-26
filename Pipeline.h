@@ -153,8 +153,14 @@ public:
 	QueryEntities&				ById				( int id );
 
 	template<typename T>
-	T							Run					( void ) {
+	std::optional<T>			Run					( int* index_result = nullptr ) {
 		int index = ExecuteQuery();
+		if (index < 0) {
+			return std::nullopt;
+		}
+		if (index_result) {
+			*index_result = index;
+		}
 		return m_Entity.ExtractSingle<T>(index);
 	}
 
