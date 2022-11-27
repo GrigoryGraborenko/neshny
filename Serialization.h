@@ -580,6 +580,22 @@ inline void FromJson(const QByteArray& data, T& obj, ParseError &err) noexcept {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void FromJson(const QByteArray& data, std::vector<T>& obj, ParseError &err) noexcept {
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error) {
+        err.AddMessage(error.errorString());
+        return;
+    }
+    if (!doc.isArray()) {
+        err.AddMessage("JSON does not begin with an array");
+        return;
+    }
+    Json::Deserialise(obj, doc.array(), err);
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

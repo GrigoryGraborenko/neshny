@@ -376,6 +376,7 @@ bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 	m_Width = im.width();
 	m_Height = im.height();
 	m_DepthBytes = im.depth() / 8;
+	im = im.mirrored();
 
 	Common2DInit(wrap_mode, im.bits());
 

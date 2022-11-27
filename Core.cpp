@@ -155,7 +155,9 @@ bool Neshny::LoopInit(IEngine* engine) {
 
 	qDebug() << "Core initializing...";
 
-	engine->Init();
+	if (!engine->Init()) {
+		qDebug() << "Could not init engine";
+	}
 	m_Ticks = 0;
 	return true;
 }
