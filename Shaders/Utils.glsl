@@ -180,7 +180,12 @@ void StartGridStep2D(inout GridStep2DCursor cursor, vec2 start, vec2 end) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool NextGridStep2D(inout GridStep2DCursor cursor) {
+bool HasNextGridStep2D(in GridStep2DCursor cursor) {
+	return cursor.p_CurrentFrac < 1.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void NextGridStep2D(inout GridStep2DCursor cursor) {
 	float move_dist = min(cursor.p_Left.x, cursor.p_Left.y);
 	// TODO: make 3d version of this
 	// float move_dist = min(min(left.x, left.y), left.z);
@@ -189,8 +194,6 @@ bool NextGridStep2D(inout GridStep2DCursor cursor) {
 	vec2 hit_res = step(0, -cursor.p_Left);
 	cursor.p_Left += hit_res * cursor.p_Amounts;
 	cursor.p_CurrentGrid += ivec2(hit_res) * cursor.p_GridDirs;
-
-	return cursor.p_CurrentFrac < 1.0;
 }
 
 #define LOOKUP(tex, base, index) (texelFetch((tex), (base) + ivec2(0, (index)), 0).r)

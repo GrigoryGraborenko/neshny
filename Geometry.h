@@ -23,7 +23,11 @@ struct Grid2DStepCursor {
 		m_CurrentGrid = grid_pos;
 	}
 
-	bool Next() {
+	bool HasNext() {
+		return m_StepDist < 1.0;
+	}
+
+	void Next() {
 
 		float move_dist = std::min(m_Left.x, m_Left.y);
 		m_StepDist += move_dist;
@@ -31,8 +35,6 @@ struct Grid2DStepCursor {
 		Vec2 hit_res = (m_Left * -1).Step(0);
 		m_Left += hit_res * m_Amounts;
 		m_CurrentGrid = m_CurrentGrid + hit_res.ToIVec2() * m_GridDirs;
-
-		return m_StepDist < 1.0;
 	}
 
 	inline iVec2 CurrentGridPos() { return m_CurrentGrid; }
