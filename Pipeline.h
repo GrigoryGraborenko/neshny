@@ -6,20 +6,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class BaseCache {
-public:
-	virtual void Bind(class PipelineStage& stage) = 0;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
 class CommonPipeline {
 
 public:
 
-								CommonPipeline		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+								CommonPipeline		( QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~CommonPipeline		( void ) {}
+
+	struct AddedSSBO {
+		GLSSBO& p_Buffer;
+		QString					p_Name;
+		MemberSpec::Type		p_Type;
+		bool					p_ReadOnly = true;
+	};
 
 protected:
 
@@ -29,6 +28,11 @@ protected:
 		int						p_NumFloatsPerItem;
 		std::vector<MemberSpec> p_Members;
 		std::vector<float>		p_Data;
+	};
+
+	struct AddedEntity {
+		GPUEntity&	p_Entity;
+		bool		p_Creatable = false;
 	};
 
 	template <class T>
@@ -53,13 +57,20 @@ protected:
 		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
 	);
 
-	GPUEntity&					m_Entity;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
 	QString						m_ExtraCode;
 
 	std::vector<AddedUniformVector>		m_UniformVectors;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class BaseCache {
+public:
+	virtual QString Bind(std::vector<CommonPipeline::AddedSSBO>& ssbos ) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,23 +97,12 @@ public:
 
 private:
 
-	struct AddedEntity {
-		GPUEntity&	p_Entity;
-		bool		p_Creatable = false;
-	};
-
-	struct AddedSSBO {
-		GLSSBO&					p_Buffer;
-		QString					p_Name;
-		MemberSpec::Type		p_Type;
-		bool					p_ReadOnly;
-	};
-
 	struct AddedInOut {
 		QString					p_Name;
 		int*					p_Ptr;
 	};
 
+	GPUEntity&					m_Entity;
 	std::vector<AddedEntity>	m_Entities;
 	std::vector<AddedSSBO>		m_SSBOs;
 	std::vector<AddedInOut>		m_Vars;
@@ -130,13 +130,30 @@ public:
 
 private:
 
-	struct AddedSSBO {
-		GLSSBO&					p_Buffer;
-		QString					p_Name;
-		MemberSpec::Type		p_Type;
-	};
-
+	GPUEntity&					m_Entity;
 	std::vector<AddedSSBO>		m_SSBOs;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class BasicRender : CommonPipeline {
+
+public:
+
+								BasicRender			( GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines = {} );
+								~BasicRender		( void ) {}
+
+	BasicRender&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
+
+	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
+
+private:
+	
+	GLBuffer*					m_Buffer = nullptr;
+	std::vector<AddedSSBO>		m_SSBOs;
+	std::vector<AddedEntity>	m_Entities;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +191,7 @@ private:
 		,ID
 	};
 
+	GPUEntity&							m_Entity;
 	QueryType							m_Query;
 	QString								m_ParamName;
 	std::variant<fVec2, fVec3, int>		m_QueryParam;
@@ -190,7 +208,7 @@ public:
 								Grid2DCache		( GPUEntity& entity, QString pos_name );
 	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
-	virtual void				Bind			( class PipelineStage& stage ) override;
+	virtual QString				Bind			( std::vector<CommonPipeline::AddedSSBO>& ssbos ) override;
 
 private:
 

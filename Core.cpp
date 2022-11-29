@@ -250,6 +250,10 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 		//	SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
 		//}
 
+		if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
+			unfocus_timeout = 2;
+		}
+
 		// Poll and handle events (inputs, window resize, etc.)
 		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
 		// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -258,10 +262,6 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 
-			if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
-				unfocus_timeout = 2;
-				continue;
-			}
 			if (unfocus_timeout > 0) {
 				unfocus_timeout--;
 				continue;

@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-CommonPipeline::CommonPipeline(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
-	m_Entity			( entity )
-	,m_ShaderName		( shader_name )
+CommonPipeline::CommonPipeline(QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
+	m_ShaderName		( shader_name )
 	,m_ReplaceMain		( replace_main )
 	,m_ShaderDefines	( shader_defines )
 {
@@ -64,10 +63,11 @@ QString CommonPipeline::GetUniformVectorStructCode(AddedUniformVector& uniform, 
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, BaseCache* cache) :
-	CommonPipeline		( entity, shader_name, replace_main, shader_defines )
+	CommonPipeline		( shader_name, replace_main, shader_defines )
+	,m_Entity			( entity )
 {
 	if (cache) {
-		cache->Bind(*this);
+		m_ExtraCode += cache->Bind(m_SSBOs);
 	}
 }
 
@@ -75,7 +75,7 @@ PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replac
 PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, false });
 	if (cache) {
-		cache->Bind(*this);
+		m_ExtraCode += cache->Bind(m_SSBOs);
 	}
 	return *this;
 }
@@ -84,7 +84,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, true });
 	if (cache) {
-		cache->Bind(*this);
+		m_ExtraCode += cache->Bind(m_SSBOs);
 	}
 	return *this;
 }
@@ -202,7 +202,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("//////////////// Entity %1").arg(name);
 		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
 		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
-		if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
+		if (entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
 			integer_vars.push_back({ QString("i_%1Tex").arg(name), insertion_images.size() });
 			glBindImageTexture(insertion_images.size(), entity.GetTex(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
 			insertion_images += QString("layout(binding = %1, r32f) uniform image2D i_%2Tex;").arg(e + 1).arg(name);
@@ -367,7 +367,8 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 ////////////////////////////////////////////////////////////////////////////////
 EntityRender::EntityRender(GPUEntity& entity, QString shader_name, const std::vector<QString>& shader_defines) :
-	CommonPipeline		( entity, shader_name, false, shader_defines )
+	CommonPipeline		( shader_name, false, shader_defines )
+	,m_Entity			( entity )
 {
 }
 
@@ -470,8 +471,118 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+BasicRender::BasicRender(GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines) :
+	CommonPipeline	( shader_name, false, shader_defines )
+	,m_Buffer		( buffer )
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
+BasicRender& BasicRender::AddEntity(GPUEntity& entity, BaseCache* cache) {
+	m_Entities.push_back({ entity, false });
+	if (cache) {
+		m_ExtraCode += cache->Bind(m_SSBOs);
+	}
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void BasicRender::Render(std::optional<std::function<void(GLShader* program)>> pre_execute) {
+
+	QStringList insertion;
+	QStringList insertion_images;
+	QStringList insertion_buffers;
+	QStringList insertion_uniforms;
+	std::vector<std::pair<QString, int>> integer_vars;
+	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
+	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
+
+	for (auto str : m_ShaderDefines) {
+		insertion += QString("#define %1").arg(str);
+	}
+	insertion += QString("#define BUFFER_TEX_SIZE %1").arg(BUFFER_TEX_SIZE);
+
+	for (int b = 0; b < m_SSBOs.size(); b++) {
+		auto& ssbo = m_SSBOs[b];
+		int buffer_index = insertion_buffers.size();
+		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
+		insertion_buffers += QString("layout(std430, binding = %1) readonly buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name);
+	}
+
+	struct EntityControl {
+		int		p_MaxIndex;
+		int		p_NextId;
+		int		p_FreeCount;
+	};
+	for (int e = 0; e < m_Entities.size(); e++) {
+		GPUEntity& entity = m_Entities[e].p_Entity;
+		QString name = entity.GetName();
+		insertion += QString("//////////////// Entity %1").arg(name);
+		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
+		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
+		if (entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
+			integer_vars.push_back({ QString("i_%1Tex").arg(name), insertion_images.size() });
+			glBindImageTexture(insertion_images.size(), entity.GetTex(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+			insertion_images += QString("layout(binding = %1, r32f) uniform image2D i_%2Tex;").arg(e + 1).arg(name);
+		} else {
+			int buffer_index = insertion_buffers.size();
+			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
+			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
+		}
+		insertion += entity.GetGPUInsertion();
+		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
+	}
+
+	if (!m_UniformVectors.empty()) {
+		insertion += "//////////////// Uniform vector helpers";
+	}
+	for (auto& uniform : m_UniformVectors) {
+		insertion += GetUniformVectorStructCode(uniform, insertion_uniforms, integer_vars, vector_vars);
+	}
+
+	insertion += "////////////////";
+
+	insertion.push_front(insertion_uniforms.join("\n"));
+	insertion.push_front(insertion_buffers.join("\n"));
+	insertion.push_front(insertion_images.join("\n"));
+
+	if (!m_ExtraCode.isNull()) {
+		insertion += "////////////////";
+		insertion += m_ExtraCode;
+	}
+
+	QString insertion_str = insertion.join("\n");
+	GLShader* prog = Neshny::GetShader(m_ShaderName, insertion_str);
+	prog->UseProgram();
+	m_Buffer->UseBuffer(prog);
+
+	for (const auto& var: integer_vars) {
+		glUniform1i(prog->GetUniform(var.first), var.second);
+	}
+	for (const auto& var : vector_vars) {
+		glUniform1fv(prog->GetUniform(var.first), (int)var.second->size(), &((*var.second)[0]));
+	}
+	for (auto& ssbo : ssbo_binds) {
+		ssbo.first->Bind(ssbo.second);
+	}
+
+	if (pre_execute.has_value()) {
+		pre_execute.value()(prog);
+	}
+
+	////////////////////////////////////////////////////
+	m_Buffer->Draw();
+	////////////////////////////////////////////////////
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 QueryEntities::QueryEntities(GPUEntity& entity) :
-	CommonPipeline		( entity, "Query", true, {} )
+	CommonPipeline		( "Query", true, {} )
+	,m_Entity			( entity )
 {
 }
 
@@ -619,14 +730,14 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Grid2DCache::Bind(PipelineStage& stage) {
+QString Grid2DCache::Bind(std::vector<CommonPipeline::AddedSSBO>& ssbos) {
 
 	auto name = m_Entity.GetName();
-	stage.AddSSBO(QString("b_%1GridIndices").arg(name), m_GridIndices, MemberSpec::Type::T_INT);
-	stage.AddSSBO(QString("b_%1GridItems").arg(name), m_GridItems, MemberSpec::Type::T_INT);
 
-	stage.AddCode(
-		QString(
+	ssbos.push_back({ m_GridIndices, QString("b_%1GridIndices").arg(name), MemberSpec::Type::T_INT, true });
+	ssbos.push_back({ m_GridItems, QString("b_%1GridItems").arg(name), MemberSpec::Type::T_INT, true });
+
+	return QString(
 			"ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size); // forward declare \n"
 			"ivec2 Get%1IndexRangeAt(ivec2 grid_pos) {\n"
 			"\tint index = (grid_pos.x + grid_pos.y * %6) * 3;\n"
@@ -648,5 +759,5 @@ void Grid2DCache::Bind(PipelineStage& stage) {
 		.arg(m_GridMax.y, 0, 'f', 6)
 		.arg(m_GridSize.x)
 		.arg(m_GridSize.y)
-	);
+	;
 }

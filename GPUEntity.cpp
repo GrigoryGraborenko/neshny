@@ -310,8 +310,16 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 
 		auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 		if (state != GL_FRAMEBUFFER_COMPLETE) {
-			//auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-			//bool FRAMEBUFFER_UNSUPPORTED = (state == GL_FRAMEBUFFER_UNSUPPORTED);
+			auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			bool FRAMEBUFFER_UNSUPPORTED = (state == GL_FRAMEBUFFER_UNSUPPORTED);
+			bool FRAMEBUFFER_UNDEFINED = (state == GL_FRAMEBUFFER_UNDEFINED);
+			bool FRAMEBUFFER_INCOMPLETE_ATTACHMENT = (state == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+			bool FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = (state == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT);
+			bool FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER = (state == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER);
+			bool FRAMEBUFFER_INCOMPLETE_READ_BUFFER = (state == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER);
+			bool FRAMEBUFFER_INCOMPLETE_MULTISAMPLE = (state == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE);
+			bool FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS = (state == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS);
+				
 			glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
 			return Token();
 		}
@@ -322,12 +330,9 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
-	//GLint prev_view[4];
-	//glGetIntegerv(GL_VIEWPORT, prev_view);
 	glViewport(0, 0, width, height);
 	return Token([draw_fbo]() {
 		glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
-		//glViewport(prev_view[0], prev_view[1], prev_view[2], prev_view[3]);
 	});
 }
 
