@@ -478,6 +478,12 @@ BasicRender::BasicRender(GLBuffer* buffer, QString shader_name, const std::vecto
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+BasicRender& BasicRender::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type) {
+	m_SSBOs.push_back({ ssbo, name, array_type });
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 BasicRender& BasicRender::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, false });
 	if (cache) {

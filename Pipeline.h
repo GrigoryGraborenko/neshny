@@ -144,6 +144,7 @@ public:
 								BasicRender			( GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines = {} );
 								~BasicRender		( void ) {}
 
+	BasicRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type );
 	BasicRender&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 
 	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
