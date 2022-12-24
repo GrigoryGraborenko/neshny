@@ -72,6 +72,13 @@ struct BaseVec3 {
 		}
 		return BaseVec3<T>(x, y, new_val);
 	}
+	inline T			GetAxis			( Axis axis ) const {
+		switch(axis) {
+			case Axis::X: return x;
+			case Axis::Y: return y;
+		}
+		return z;
+	}
 	inline bool			Nearby			( const BaseVec3<T>& other, T tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance) && (fabs(other.z - z) < tolerance); };
 	inline T			MinVal			( void ) const { return std::min(x, std::min(y, z)); }
 	inline T			MaxVal			( void ) const { return std::max(x, std::max(y, z)); }

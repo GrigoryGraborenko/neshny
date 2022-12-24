@@ -38,3 +38,8 @@ int RoundUpPowerTwo(int value) {
     int pow_two = int(ceil(log2(double(value))));
     return 1 << pow_two;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+uint64_t TimeSinceEpochMilliseconds() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+}

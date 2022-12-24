@@ -67,6 +67,28 @@ void RemoveUnordered(std::vector<T>& vect, typename std::vector<T>::iterator ite
 	}
 	vect.resize(vect.size() - 1);
 }
+////////////////////////////////////////////////////////////////////////////////
+template <class T>
+void Shuffle(std::vector<T>& vect) {
+	int s = (int)vect.size();
+	std::vector<std::pair<int, int>> indices;
+	indices.reserve(s);
+	for (int i = 0; i < s; i++) {
+		indices.push_back({ i, rand() + rand() * RAND_MAX });
+	}
+	std::sort(indices.begin(), indices.end(), [&indices](const std::pair<int, int>& a, const std::pair<int, int>& b) -> bool {
+		return a.second < b.second;
+	});
+
+	std::vector<T> output;
+	output.reserve(s);
+	for (const auto& ind : indices) {
+		output.push_back(vect[ind.first]);
+	}
+	vect = std::move(output);
+}
+////////////////////////////////////////////////////////////////////////////////
+uint64_t TimeSinceEpochMilliseconds();
 
 #include "GLUtils.h"
 #include "Triple.h"

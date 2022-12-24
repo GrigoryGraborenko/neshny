@@ -369,7 +369,8 @@ bool Neshny::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 void Neshny::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
-	if (ImGui::Button(m_Interface.p_InfoView.p_Visible ? "Hide info view" : "Show info view")) {
+	auto info_label = QString("[%2 FPS] %1 info view###info_view").arg(m_Interface.p_InfoView.p_Visible ? "Hide" : "Show").arg((double)ImGui::GetIO().Framerate, 0, 'f', 2).toLocal8Bit();
+	if (ImGui::Button(info_label.constData(), ImVec2(250, 0))) {
 		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
 	}
 	ImGui::SameLine();
