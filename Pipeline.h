@@ -170,16 +170,12 @@ public:
 	QueryEntities&				ByNearestPosition	( QString param_name, fVec3 pos );
 	QueryEntities&				ById				( int id );
 
-	template<typename T>
-	std::optional<T>			Run					( int* index_result = nullptr ) {
+	std::optional<int>			Run					( void ) {
 		int index = ExecuteQuery();
 		if (index < 0) {
 			return std::nullopt;
 		}
-		if (index_result) {
-			*index_result = index;
-		}
-		return m_Entity.ExtractSingle<T>(index);
+		return index;
 	}
 
 private:
