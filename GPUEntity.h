@@ -324,31 +324,29 @@ class RTT {
 public:
 
 	enum class Mode {
-		NONE
-		,RGBA
-		,RGBA_FLOAT
-		,RGBA_DEPTH_STENCIL
-		,DEPTH_STENCIL
+		RGBA
+		,RGBA_FLOAT32
+		,RGBA_FLOAT16
 	};
 
 								RTT			( void ) {}
 								~RTT		( void ) { Destroy(); }
 
-	Token						Activate	( Mode mode, int width, int height, bool clear = true );
+	Token						Activate	( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
 
-	inline GLuint				GetColorTex	( void ) { return m_ColorTex; }
+	inline GLuint				GetColorTex	( int index ) { return index >= m_ColorTextures.size() ? 0 : m_ColorTextures[index]; }
 	inline GLuint				GetDepthTex	( void ) { return m_DepthTex; }
 
 private:
 
 	void						Destroy		( void );
 
-	Mode						m_Mode = Mode::NONE;
+	std::vector<Mode>			m_Modes = {};
+	bool						m_CaptureDepthStencil = false;
 	int							m_Width = 0;
 	int							m_Height = 0;
 	GLuint						m_FrameBuffer = 0;
-	GLuint						m_ColorTex = 0;
+	std::vector<GLuint>			m_ColorTextures;
 	GLuint						m_DepthTex = 0;
-	GLuint						m_ColorBuffer = 0; // not used
 	GLuint						m_DepthBuffer = 0;
 };

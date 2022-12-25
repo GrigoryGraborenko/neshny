@@ -632,7 +632,7 @@ auto Scrapbook2D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
-	return self.m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, self.m_Width, self.m_Height, reset);
+	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,7 +695,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImVec2 im_size(m_Width, m_Height);
 	ImGui::SetCursorPos(im_pos);
 	auto im_screen_pos = ImGui::GetCursorScreenPos();
-	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex();
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::SetCursorPos(im_pos);
@@ -731,7 +731,7 @@ auto Scrapbook3D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
-	return self.m_RTT.Activate(RTT::Mode::RGBA_DEPTH_STENCIL, self.m_Width, self.m_Height, reset);
+	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +781,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);
 	ImGui::SetCursorPos(im_pos);
-	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex();
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::SetCursorPos(im_pos);

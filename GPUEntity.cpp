@@ -255,19 +255,25 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token RTT::Activate(Mode mode, int width, int height, bool clear) {
+Token RTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear) {
 
 	GLint draw_fbo;
 	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
 
+	bool modes_same = color_attachments.size() == m_Modes.size();
+	for (int i = 0; modes_same && (i < color_attachments.size()); i++) {
+		modes_same = modes_same && (m_Modes[i] == color_attachments[i]);
+	}
+
 	// set up the stuff if it doesn't exist
-	if ((m_Mode != mode) || (m_Width != width) || (m_Height != height)) {
+	if ((!modes_same) || (capture_depth_stencil != m_CaptureDepthStencil) || (m_Width != width) || (m_Height != height)) {
 
 		Destroy();
-		m_Mode = mode;
+		m_Modes = color_attachments;
 		m_Width = width;
 		m_Height = height;
-		if (mode == Mode::NONE) {
+		m_CaptureDepthStencil = capture_depth_stencil;
+		if (m_Modes.empty()) {
 			return Token();
 		}
 		clear = true;
@@ -275,26 +281,29 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 		glGenFramebuffers(1, &m_FrameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
 
-		if (mode != Mode::DEPTH_STENCIL) {
-			glGenTextures(1, &m_ColorTex);
-			glBindTexture(GL_TEXTURE_2D, m_ColorTex);
-			if (m_Mode == Mode::RGBA_FLOAT) {
+		std::vector<unsigned int> attachments;
+		for (int i = 0; i < m_Modes.size(); i++) {
+			auto mode = m_Modes[i];
+			GLuint tex;
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+			if (mode == Mode::RGBA_FLOAT32) {
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, NULL);
+			} else if(mode == Mode::RGBA_FLOAT16) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, NULL);
 			} else {
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 			}
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorTex, 0);
-		} else {
-
-			//glGenRenderbuffers(1, &m_ColorBuffer);
-			//glBindRenderbuffer(GL_RENDERBUFFER, m_ColorBuffer);
-			//glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, m_Width, m_Height);
-			//glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_ColorBuffer);
+			unsigned int attach = GL_COLOR_ATTACHMENT0 + i;
+			attachments.push_back(attach);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, attach, GL_TEXTURE_2D, tex, 0);
+			m_ColorTextures.push_back(tex);
 		}
+		glDrawBuffers((int)attachments.size(), &attachments[0]);
 
-		if ((mode == Mode::RGBA_DEPTH_STENCIL) || (mode == Mode::DEPTH_STENCIL)) {
+		if (m_CaptureDepthStencil) {
 			glGenTextures(1, &m_DepthTex);
 			glBindTexture(GL_TEXTURE_2D, m_DepthTex);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_Width, m_Height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
@@ -319,7 +328,7 @@ Token RTT::Activate(Mode mode, int width, int height, bool clear) {
 			bool FRAMEBUFFER_INCOMPLETE_READ_BUFFER = (state == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER);
 			bool FRAMEBUFFER_INCOMPLETE_MULTISAMPLE = (state == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE);
 			bool FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS = (state == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS);
-				
+
 			glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
 			return Token();
 		}
@@ -343,17 +352,13 @@ void RTT::Destroy(void) {
 		glDeleteFramebuffers(1, &m_FrameBuffer);
 		m_FrameBuffer = 0;
 	}
-	if (m_ColorTex) {
-		glDeleteTextures(1, &m_ColorTex);
-		m_ColorTex = 0;
+	for (auto col : m_ColorTextures) {
+		glDeleteTextures(1, &col);
 	}
+	m_ColorTextures.clear();
 	if (m_DepthTex) {
 		glDeleteTextures(1, &m_DepthTex);
 		m_DepthTex = 0;
-	}
-	if (m_ColorBuffer) {
-		glDeleteRenderbuffers(1, &m_ColorBuffer);
-		m_ColorBuffer = 0;
 	}
 	if (m_DepthBuffer) {
 		glDeleteRenderbuffers(1, &m_DepthBuffer);
