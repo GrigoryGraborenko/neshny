@@ -57,6 +57,10 @@ void GPUEntity::Destroy(void) {
 		delete m_FreeList;
 		m_FreeList = nullptr;
 	}
+	if (m_CopyBuffer) {
+		delete m_CopyBuffer;
+		m_CopyBuffer = nullptr;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,9 +203,14 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
-
 	if (m_SSBO) {
-		glGetNamedBufferSubData(m_SSBO->Get(), offset, size, ptr);
+		
+		if (!m_CopyBuffer) {
+			m_CopyBuffer = new GLSSBO();
+		}
+		m_CopyBuffer->EnsureSize(size, false);
+		glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
+		glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 		return;
 	}
 	// todo: this is untested

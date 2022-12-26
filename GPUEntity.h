@@ -309,6 +309,7 @@ protected:
 
 	GLSSBO*						m_ControlSSBO = nullptr;
 	GLSSBO*						m_FreeList = nullptr;
+	GLSSBO*						m_CopyBuffer = nullptr;
 
 	int							m_CurrentCount = 0;
 	int							m_MaxIndex = 0;
