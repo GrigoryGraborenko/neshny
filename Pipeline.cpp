@@ -137,12 +137,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	}
 	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
 
-	// inserts main entity code
-	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-		integer_vars.push_back({ QString("i_%1Tex").arg(m_Entity.GetName()), insertion_images.size() });
-		glBindImageTexture(insertion_images.size(), m_Entity.GetTex(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-		insertion_images += QString("layout(binding = 0, r32f) uniform image2D i_%2Tex;").arg(m_Entity.GetName());
-	} else {
+	{
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ m_Entity.GetSSBO(), buffer_index });
 		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
@@ -163,12 +158,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
 	}
 	insertion += QString("void Destroy%1(int index) {").arg(m_Entity.GetName());
-
-	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-		insertion += QString("\tint y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));\n\tivec2 base = ivec2(index - y * BUFFER_TEX_SIZE, y * FLOATS_PER_%1);").arg(m_Entity.GetName());
-	} else {
-		insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity.GetName());
-	}
+	insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity.GetName());
 	insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity.GetName());
 
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
@@ -202,11 +192,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("//////////////// Entity %1").arg(name);
 		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
 		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
-		if (entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-			integer_vars.push_back({ QString("i_%1Tex").arg(name), insertion_images.size() });
-			glBindImageTexture(insertion_images.size(), entity.GetTex(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
-			insertion_images += QString("layout(binding = %1, r32f) uniform image2D i_%2Tex;").arg(e + 1).arg(name);
-		} else {
+		{
 			int buffer_index = insertion_buffers.size();
 			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
 			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
@@ -353,9 +339,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetControlSSBO(), MemberSpec::Type::T_INT);
 
-	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::SSBO) {
-		//DebugGPU::Checkpoint("PostRun", m_Entity);
-	}
+	//DebugGPU::Checkpoint("PostRun", m_Entity);
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 		//DebugGPU::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
 	}
@@ -403,11 +387,7 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 	insertion += QString("#define BUFFER_TEX_SIZE %1").arg(BUFFER_TEX_SIZE);
 
 	// inserts main entity code
-	if (m_Entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-		integer_vars.push_back({ QString("i_%1Tex").arg(m_Entity.GetName()), insertion_images.size() });
-		glBindImageTexture(insertion_images.size(), m_Entity.GetTex(), 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32F);
-		insertion_images += QString("layout(binding = 0, r32f) uniform image2D i_%2Tex;").arg(m_Entity.GetName());
-	} else {
+	{
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ replace.get() ? replace.get() : m_Entity.GetSSBO(), buffer_index });
 		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
@@ -526,15 +506,9 @@ void BasicRender::Render(std::optional<std::function<void(GLShader* program)>> p
 		insertion += QString("//////////////// Entity %1").arg(name);
 		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
 		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
-		if (entity.GetStoreMode() == GPUEntity::StoreMode::TEXTURE) {
-			integer_vars.push_back({ QString("i_%1Tex").arg(name), insertion_images.size() });
-			glBindImageTexture(insertion_images.size(), entity.GetTex(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
-			insertion_images += QString("layout(binding = %1, r32f) uniform image2D i_%2Tex;").arg(e + 1).arg(name);
-		} else {
-			int buffer_index = insertion_buffers.size();
-			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
-			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
-		}
+		int buffer_index = insertion_buffers.size();
+		ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
+		insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
 		insertion += entity.GetGPUInsertion();
 		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
 	}

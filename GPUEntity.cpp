@@ -3,23 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 bool GPUEntity::Init(void) {
 
-	if (m_StoreMode == StoreMode::SSBO) {
-		m_SSBO = new GLSSBO(BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float)); // TODO: what is the deal with this size? should be somewhat specified
-	} else {
-		if (m_Texture) {
-			return false;
-		}
-
-		glGenTextures(1, &m_Texture);
-		glBindTexture(GL_TEXTURE_2D, m_Texture);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, BUFFER_TEX_SIZE, BUFFER_TEX_SIZE, 0, GL_RED, GL_FLOAT, NULL);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-		float clear_val = 0;
-		glClearTexImage(m_Texture, 0, GL_RED, GL_FLOAT, &clear_val);
-	}
+	m_SSBO = new GLSSBO(BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float)); // TODO: what is the deal with this size? should be somewhat specified
 	m_ControlSSBO = new GLSSBO();
 	m_FreeList = new GLSSBO();
 
@@ -41,10 +25,6 @@ void GPUEntity::Clear(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::Destroy(void) {
 	Clear();
-	if (m_Texture) {
-		glDeleteTextures(1, &m_Texture);
-		m_Texture = 0;
-	}
 	if (m_SSBO) {
 		delete m_SSBO;
 		m_SSBO = nullptr;
@@ -77,14 +57,8 @@ int GPUEntity::AddInstance(void* data) {
 		m_MaxIndex++;
 	}
 
-	if (m_SSBO) {
-		int base = creation_index * m_NumDataFloats;
-		glNamedBufferSubData(m_SSBO->Get(), base * sizeof(float), m_NumDataFloats * sizeof(float), data);
-	} else {
-		int x = creation_index % BUFFER_TEX_SIZE;
-		int y = creation_index / BUFFER_TEX_SIZE;
-		glTextureSubImage2D(m_Texture, 0, x, y * m_NumDataFloats, 1, m_NumDataFloats, GL_RED, GL_FLOAT, data);
-	}
+	int base = creation_index * m_NumDataFloats;
+	glNamedBufferSubData(m_SSBO->Get(), base * sizeof(float), m_NumDataFloats * sizeof(float), data);
 
 	m_CurrentCount++;
 	m_NextId++;
@@ -95,11 +69,6 @@ int GPUEntity::AddInstance(void* data) {
 void GPUEntity::DeleteInstance(int index) {
 
 	int size_item = m_NumDataFloats * sizeof(float);
-	if (!m_SSBO) {
-		// TODO - implement this
-		return;
-	}
-
 	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
 
 		int pos_index = 0;
@@ -133,11 +102,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	m_ControlSSBO->EnsureSize(sizeof(int));
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
-	if (m_SSBO) {
-		defines += "\n#define USE_SSBO\n";
-	} else {
-		defines += QString("\n#define BUFFER_TEX_SIZE %1\n").arg(BUFFER_TEX_SIZE);
-	}
+	defines += "\n#define USE_SSBO\n";
 
 	GLShader* death_prog = Neshny::GetComputeShader("Death", defines);
 	death_prog->UseProgram();
@@ -145,12 +110,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	m_ControlSSBO->Bind(0);
 	m_FreeList->Bind(1);
 
-	if (m_SSBO) {
-		m_SSBO->Bind(2);
-	} else {
-		glBindImageTexture(0, m_Texture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
-		glUniform1i(death_prog->GetUniform("uTexture"), 0);
-	}
+	m_SSBO->Bind(2);
 	glUniform1i(death_prog->GetUniform("uLifeCount"), m_MaxIndex);
 
 	Neshny::DispatchMultiple(death_prog, death_count);
@@ -203,60 +163,12 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
-	if (m_SSBO) {
-		
-		if (!m_CopyBuffer) {
-			m_CopyBuffer = new GLSSBO();
-		}
-		m_CopyBuffer->EnsureSize(size, false);
-		glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
-		glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
-		return;
+	if (!m_CopyBuffer) {
+		m_CopyBuffer = new GLSSBO();
 	}
-	// todo: this is untested
-
-	const int entity_size = m_NumDataFloats * sizeof(float);
-	const int row_size = BUFFER_TEX_SIZE * entity_size;
-	const int rows = (int)ceil((double)m_MaxIndex / BUFFER_TEX_SIZE);
-
-	unsigned char* row_ptr = new unsigned char[row_size];
-
-	/*
-	int entire_size = BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float);
-	unsigned char* entire_ptr = new unsigned char[entire_size];
-	glGetTextureImage(m_Texture, 0, GL_RED, GL_FLOAT, entire_size, entire_ptr);
-	delete[] entire_ptr;
-	*/
-
-	//GLenum err;
-	//while ((err = glGetError()) != GL_NO_ERROR)
-	//{
-	//	bool INVALID_ENUM = (err == GL_INVALID_ENUM);
-	//	bool INVALID_VALUE = (err == GL_INVALID_VALUE);
-	//	bool INVALID_OPERATION = (err == GL_INVALID_OPERATION);
-	//	int brk = 0;
-	//}
-
-	int entity_num = 0;
-	for (int r = 0; r < rows; r++) {
-
-		glGetTextureSubImage(m_Texture, 0, 0, 0, 0, BUFFER_TEX_SIZE, 1, 1, GL_RED, GL_FLOAT, row_size, row_ptr);
-	
-		// de-stride
-		for (int c = 0; c < BUFFER_TEX_SIZE; c++) {
-			if (entity_num >= m_MaxIndex) {
-				break;
-			}
-			for (int i = 0; i < m_NumDataFloats; i++) {
-				unsigned char* float_ptr = row_ptr + (i * BUFFER_TEX_SIZE + c) * sizeof(float);
-				memcpy(ptr + entity_num * entity_size + i * sizeof(float), float_ptr, sizeof(float));
-			}
-
-			entity_num--;
-		}
-	}
-
-	delete[] row_ptr;
+	m_CopyBuffer->EnsureSize(size, false);
+	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
+	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

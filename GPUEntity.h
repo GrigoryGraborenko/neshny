@@ -131,7 +131,7 @@ private:
 };
 
 template<typename T>
-void SerializeStructInfo(StructInfo& info, QString get_base_str, bool use_ssbo) {
+void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 	Serialiser<T> serializeFunc(info.p_Members);
 	meta::doForAllMembers<T>(serializeFunc);
 
@@ -153,7 +153,7 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str, bool use_ssbo) 
 		QString get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index);
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
 		functions += QString("%1 Get%3%2(int index) {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
-		if (use_ssbo && member.p_Type == MemberSpec::Type::T_INT) {
+		if (member.p_Type == MemberSpec::Type::T_INT) {
 			functions += QString("#define Access%3%1(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
 		}
 		pos_index += member.p_Size / sizeof(float);
@@ -205,40 +205,26 @@ class GPUEntity {
 
 public:
 
-	enum class StoreMode {
-		TEXTURE
-		,SSBO
-	};
-
 	enum class DeleteMode {
 		MOVING_COMPACT
 		,STABLE_WITH_GAPS
 	};
 
 	// TODO: figure out better way of passing in T, perhaps template entire class
-	template <typename T> GPUEntity(QString name, StoreMode store_mode, DeleteMode delete_mode, int T::* id_ptr, QString id_name) :
-			m_StoreMode(store_mode)
-			,m_DeleteMode(delete_mode)
+	template <typename T> GPUEntity(QString name, DeleteMode delete_mode, int T::* id_ptr, QString id_name) :
+			m_DeleteMode(delete_mode)
 			,m_Name(name)
 			,m_NumDataFloats(sizeof(T) / sizeof(float))
 			,m_IDName(id_name)
 		{
-		QString get_base_str = (m_StoreMode == StoreMode::SSBO) ?
-			QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name)
-			:
-			"\tint y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));\n\tivec2 base = ivec2(index - y * BUFFER_TEX_SIZE, y * FLOATS_PER_%1);";
+		QString get_base_str = QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name);
 
-		SerializeStructInfo<T>(m_Specs, get_base_str, m_StoreMode == StoreMode::SSBO);
+		SerializeStructInfo<T>(m_Specs, get_base_str);
 
 		QStringList insertion;
 		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
-		if (m_StoreMode == StoreMode::SSBO) {
-			insertion += QString("#define %1_LOOKUP(base, index) (b_%1.i[(base) + (index)])").arg(m_Name);
-			insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
-		} else {
-			insertion += QString("#define %1_LOOKUP(base, index) (imageLoad(i_%1Tex, (base) + ivec2(0, (index))).r)").arg(m_Name);
-			insertion += QString("#define %1_SET(base, index, value) (imageStore(i_%1Tex, (base) + ivec2(0, (index)), vec4(value)).r)").arg(m_Name);
-		}
+		insertion += QString("#define %1_LOOKUP(base, index) (b_%1.i[(base) + (index)])").arg(m_Name);
+		insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
 		m_GPUInsertion = insertion.join("\n");
 	}
 	~GPUEntity(void) { Destroy(); }
@@ -269,10 +255,8 @@ public:
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopy			( void );
 
-	inline StoreMode			GetStoreMode			( void ) const { return m_StoreMode; }
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	inline QString				GetName					( void ) const { return m_Name; }
-	inline GLuint				GetTex					( void ) const { return m_Texture; }
 	inline GLSSBO*				GetSSBO					( void ) const { return m_SSBO; }
 	inline GLSSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
 	inline GLSSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
@@ -296,7 +280,6 @@ protected:
 
 	void						Destroy					( void );
 
-	StoreMode					m_StoreMode;
 	DeleteMode					m_DeleteMode;
 	QString						m_Name;
 	StructInfo					m_Specs;
@@ -304,7 +287,6 @@ protected:
 	QString						m_IDName;
 	int							m_NumDataFloats = 0;
 
-	GLuint						m_Texture = 0;
 	GLSSBO*						m_SSBO = nullptr;
 
 	GLSSBO*						m_ControlSSBO = nullptr;
