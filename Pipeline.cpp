@@ -140,10 +140,20 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	{
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ m_Entity.GetSSBO(), buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
+		if (m_Entity.IsDoubleBuffering()) {
+			insertion_buffers += QString("layout(std430, binding = %1) readonly buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
+			buffer_index++;
+			ssbo_binds.push_back({ m_Entity.GetOuputSSBO(), buffer_index });
+			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer MainEntityOutputBuffer { int i[]; } b_Output%2;").arg(buffer_index).arg(m_Entity.GetName());
+		} else {
+			insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity.GetName());
+		}
 	}
-
-	insertion += m_Entity.GetGPUInsertion();
+	if (m_Entity.IsDoubleBuffering()) {
+		insertion += m_Entity.GetDoubleBufferGPUInsertion();
+	} else {
+		insertion += m_Entity.GetGPUInsertion();
+	}
 	insertion += m_Entity.GetSpecs().p_GPUInsertion;
 
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
@@ -249,7 +259,11 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
 			"\tif (item_index >= uCount) return;\n"
 			"\t%1 item = Get%1(item_index);";
-		insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity.GetIDName());
+		if (m_Entity.IsDoubleBuffering()) {
+			insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity.GetIDName()).arg("%1");
+		} else {
+			insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity.GetIDName());
+		}
 		insertion +=
 			"\t%1 new_item = item;\n"
 			"\tbool should_destroy = %1Main(item_index, item, new_item);\n"
@@ -303,6 +317,9 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	////////////////////////////////////////////////////
 	Neshny::DispatchMultiple(prog, m_Entity.GetMaxIndex());
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	if (m_Entity.IsDoubleBuffering()) {
+		m_Entity.SwapInputOutputSSBOs();
+	}
 	////////////////////////////////////////////////////
 
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
@@ -337,11 +354,11 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		m_Entity.ProcessStableDeaths(entity_deaths);
 	}
 
-	//DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetControlSSBO(), MemberSpec::Type::T_INT);
+	//BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetControlSSBO(), MemberSpec::Type::T_INT);
 
-	//DebugGPU::Checkpoint("PostRun", m_Entity);
+	//BufferViewer::Checkpoint("PostRun", m_Entity);
 	if (m_Entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-		//DebugGPU::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
+		//BufferViewer::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
 	}
 }
 

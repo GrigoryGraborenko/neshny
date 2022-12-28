@@ -1,9 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GPUEntity::Init(void) {
+bool GPUEntity::Init(int expected_max_count) {
 
-	m_SSBO = new GLSSBO(BUFFER_TEX_SIZE * BUFFER_TEX_SIZE * sizeof(float)); // TODO: what is the deal with this size? should be somewhat specified
+	int max_size = expected_max_count * m_NumDataFloats * sizeof(float);
+	m_SSBO = new GLSSBO(max_size);
+	if (m_DoubleBuffering) {
+		m_OutputSSBO = new GLSSBO(max_size);
+	}
+
 	m_ControlSSBO = new GLSSBO();
 	m_FreeList = new GLSSBO();
 
@@ -28,6 +33,10 @@ void GPUEntity::Destroy(void) {
 	if (m_SSBO) {
 		delete m_SSBO;
 		m_SSBO = nullptr;
+	}
+	if (m_OutputSSBO) {
+		delete m_OutputSSBO;
+		m_OutputSSBO = nullptr;
 	}
 	if (m_ControlSSBO) {
 		delete m_ControlSSBO;
@@ -143,6 +152,16 @@ void GPUEntity::ProcessStableCreates(int new_max_index, int new_next_id, int new
 	m_CurrentCount += added_num;
 	m_MaxIndex = new_max_index;
 	m_NextId = new_next_id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::SwapInputOutputSSBOs(void) {
+	if (!m_DoubleBuffering) {
+		return;
+	}
+	GLSSBO* tmp = m_SSBO;
+	m_SSBO = m_OutputSSBO;
+	m_OutputSSBO = tmp;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

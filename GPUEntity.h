@@ -211,11 +211,12 @@ public:
 	};
 
 	// TODO: figure out better way of passing in T, perhaps template entire class
-	template <typename T> GPUEntity(QString name, DeleteMode delete_mode, int T::* id_ptr, QString id_name) :
+	template <typename T> GPUEntity(QString name, DeleteMode delete_mode, int T::* id_ptr, QString id_name, bool double_buffer = true) :
 			m_DeleteMode(delete_mode)
 			,m_Name(name)
 			,m_NumDataFloats(sizeof(T) / sizeof(float))
 			,m_IDName(id_name)
+			,m_DoubleBuffering(double_buffer)
 		{
 		QString get_base_str = QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name);
 
@@ -224,8 +225,11 @@ public:
 		QStringList insertion;
 		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
 		insertion += QString("#define %1_LOOKUP(base, index) (b_%1.i[(base) + (index)])").arg(m_Name);
+		QStringList insertion_double_buffer = insertion;
 		insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
+		insertion_double_buffer += QString("#define %1_SET(base, index, value) (b_Output%1.i[(base) + (index)] = (value))").arg(m_Name);
 		m_GPUInsertion = insertion.join("\n");
+		m_GPUInsertionDoubleBuffer = insertion_double_buffer.join("\n");
 	}
 	~GPUEntity(void) { Destroy(); }
 
@@ -246,7 +250,7 @@ public:
 	}
 
 
-	bool						Init					( void );
+	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
 	int							AddInstance				( void* data );
@@ -258,6 +262,7 @@ public:
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline GLSSBO*				GetSSBO					( void ) const { return m_SSBO; }
+	inline GLSSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline GLSSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
 	inline GLSSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
 	inline int					GetCount				( void ) const { return m_CurrentCount; }
@@ -267,12 +272,15 @@ public:
 	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
 	inline QString				GetGPUInsertion			( void ) const { return m_GPUInsertion; }
+	inline QString				GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
 	inline QString				GetIDName				( void ) const { return m_IDName; }
+	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
 	void						ProcessMoveDeaths		( int death_count );
 	void						ProcessStableDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
+	void						SwapInputOutputSSBOs	( void );
 
 protected:
 
@@ -284,10 +292,13 @@ protected:
 	QString						m_Name;
 	StructInfo					m_Specs;
 	QString						m_GPUInsertion;
+	QString						m_GPUInsertionDoubleBuffer;
 	QString						m_IDName;
 	int							m_NumDataFloats = 0;
 
+	bool						m_DoubleBuffering = true;
 	GLSSBO*						m_SSBO = nullptr;
+	GLSSBO*						m_OutputSSBO = nullptr;
 
 	GLSSBO*						m_ControlSSBO = nullptr;
 	GLSSBO*						m_FreeList = nullptr;
