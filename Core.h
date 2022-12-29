@@ -367,6 +367,7 @@ public:
 	static inline const std::map<QString, ResourceContainer>	GetResources	( void ) { return Singleton().m_Resources; }
 
 	void								UnloadAllShaders		( void );
+	void								UnloadAllResources		( void );
 
 	static void							DispatchMultiple		( GLShader* prog, int count, bool mem_barrier = true );
 	template <class T>

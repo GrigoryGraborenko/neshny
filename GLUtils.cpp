@@ -386,10 +386,10 @@ bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
 ////////////////////////////////////////////////////////////////////////////////
 void GLTexture::Common2DInit(GLint wrap_mode, unsigned char* data) {
 	auto internal_format = GL_RGB;
-	auto format = GL_RGB;
+	auto format = GL_BGR;
 	if (m_DepthBytes == 4) {
 		internal_format = GL_RGBA;
-		format = GL_RGBA;
+		format = GL_BGRA;
 		//format = GL_BGRA;
 		//format = GL_AGB;
 	}

@@ -646,6 +646,14 @@ void Neshny::UnloadAllShaders(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Neshny::UnloadAllResources(void) {
+	for (auto& resource : m_Resources) {
+		delete resource.second.m_Resource;
+	}
+	m_Resources.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int Neshny::CreateGLContext(void) {
 #ifdef SDL_h_
 	auto previous = SDL_GL_GetCurrentContext();
