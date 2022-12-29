@@ -10,7 +10,7 @@ class CommonPipeline {
 
 public:
 
-								CommonPipeline		( QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+								CommonPipeline		( GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~CommonPipeline		( void ) {}
 
 	struct AddedSSBO {
@@ -35,6 +35,11 @@ protected:
 		bool		p_Creatable = false;
 	};
 
+	struct AddedInOut {
+		QString					p_Name;
+		int* p_Ptr;
+	};
+
 	template <class T>
 	void						AddUniformVectorBase( QString name, const std::vector<T>& items ) {
 		
@@ -57,10 +62,15 @@ protected:
 		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
 	);
 
+	GPUEntity*					m_Entity = nullptr;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
 	QString						m_ExtraCode;
+
+	std::vector<AddedEntity>	m_Entities;
+	std::vector<AddedSSBO>		m_SSBOs;
+	std::vector<AddedInOut>		m_Vars;
 
 	std::vector<AddedUniformVector>		m_UniformVectors;
 };
@@ -97,15 +107,6 @@ public:
 
 private:
 
-	struct AddedInOut {
-		QString					p_Name;
-		int*					p_Ptr;
-	};
-
-	GPUEntity&					m_Entity;
-	std::vector<AddedEntity>	m_Entities;
-	std::vector<AddedSSBO>		m_SSBOs;
-	std::vector<AddedInOut>		m_Vars;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,8 +131,6 @@ public:
 
 private:
 
-	GPUEntity&					m_Entity;
-	std::vector<AddedSSBO>		m_SSBOs;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,8 +151,6 @@ public:
 private:
 	
 	GLBuffer*					m_Buffer = nullptr;
-	std::vector<AddedSSBO>		m_SSBOs;
-	std::vector<AddedEntity>	m_Entities;
 
 };
 
@@ -187,7 +184,7 @@ public:
 		if (index_result) {
 			*index_result = index;
 		}
-		return m_Entity.ExtractSingle<T>(index);
+		return m_Entity->ExtractSingle<T>(index);
 	}
 
 private:
@@ -200,7 +197,6 @@ private:
 		,ID
 	};
 
-	GPUEntity&							m_Entity;
 	QueryType							m_Query;
 	QString								m_ParamName;
 	std::variant<fVec2, fVec3, int>		m_QueryParam;
