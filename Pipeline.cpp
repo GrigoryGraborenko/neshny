@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLBuffer* buffer, BaseCache* cache) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
@@ -94,7 +94,7 @@ QString PipelineStage::GetUniformVectorStructCode(AddedUniformVector& uniform, Q
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::RunCommon(const std::optional<std::function<void(GLShader* program)>>& pre_execute) {
+void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pre_execute) {
 
 	// TODO: investigate GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS
 	// TODO: debug of SSBOs is optional
@@ -155,8 +155,6 @@ void PipelineStage::RunCommon(const std::optional<std::function<void(GLShader* p
 		} else {
 			insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity->GetName());
 		}
-	}
-	if (m_Entity) {
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
 			insertion += m_Entity->GetDoubleBufferGPUInsertion();
 		} else {

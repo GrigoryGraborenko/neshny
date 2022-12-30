@@ -13,19 +13,22 @@ public:
 	enum class RunType {
 		ENTITY_PROCESS,
 		ENTITY_RENDER,
-		ENTITY_ITERATE,
+		ENTITY_ITERATE, // TODO
 		BASIC_RENDER,
-		BASIC_COMPUTE
+		BASIC_COMPUTE // TODO
 	};
 
 	static PipelineStage MoveEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_PROCESS, &entity, shader_name, replace_main, shader_defines, nullptr, cache);
+		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
 	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
-		return PipelineStage(RunType::ENTITY_RENDER, &entity, shader_name, false, shader_defines, buffer);
+		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, false, shader_defines);
 	}
+	//static PipelineStage IterateEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
+	//	return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, nullptr, shader_name, replace_main, shader_defines);
+	//}
 	static PipelineStage RenderBuffer(QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
-		return PipelineStage(RunType::BASIC_RENDER, nullptr, shader_name, false, shader_defines, buffer);
+		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, shader_defines);
 	}
 
 								~PipelineStage		( void ) {}
@@ -35,8 +38,7 @@ public:
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
 	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
 	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
-	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt ) { RunCommon(pre_execute); }
-	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt ) { RunCommon(pre_execute); }
+	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
 	PipelineStage&				AddUniformVector	( QString name, const std::vector<T>& items ) {
@@ -53,7 +55,7 @@ public:
 
 protected:
 
-								PipelineStage		( RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLBuffer* buffer = nullptr, class BaseCache* cache = nullptr );
+								PipelineStage		( RunType type, GPUEntity* entity, GLBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 
 	struct AddedUniformVector {
 		QString					p_Name;
@@ -94,8 +96,6 @@ protected:
 		,std::vector<std::pair<QString, int>>& integer_vars
 		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
 	);
-
-	void						RunCommon(const std::optional<std::function<void(GLShader* program)>>& pre_execute);
 
 	RunType						m_RunType;
 	GPUEntity*					m_Entity = nullptr;
