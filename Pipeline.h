@@ -161,8 +161,6 @@ public:
 	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 private:
-	
-	GLBuffer*					m_Buffer = nullptr;
 
 };
 

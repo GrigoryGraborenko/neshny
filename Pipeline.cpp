@@ -80,7 +80,7 @@ void CommonPipeline::RunCommon(const std::optional<std::function<void(GLShader* 
 	std::vector<std::pair<int, int*>> var_vals;
 
 	std::shared_ptr<GLSSBO> replace = nullptr;
-	int num_entities = m_Entity->GetMaxIndex();
+	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
 	if (is_render && m_Entity) {
 		insertion_uniforms += "uniform int uCount;";
 		integer_vars.push_back({ QString("uCount").arg(m_Entity->GetName()), num_entities });
@@ -308,8 +308,6 @@ void CommonPipeline::RunCommon(const std::optional<std::function<void(GLShader* 
 		} else {
 			m_Buffer->Draw();
 		}
-		// TODO rendering processing
-//#error finish this
 	}
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
 		m_Entity->SwapInputOutputSSBOs();
@@ -320,11 +318,13 @@ void CommonPipeline::RunCommon(const std::optional<std::function<void(GLShader* 
 		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
 
-	std::vector<int> control_values;
-	control_ssbo->GetValues<int>(control_values, (int)var_vals.size());
-	for(int v = 0; v < var_vals.size(); v++) {
-		if (var_vals[v].second) {
-			*var_vals[v].second = control_values[v];
+	if (control_ssbo) {
+		std::vector<int> control_values;
+		control_ssbo->GetValues<int>(control_values, (int)var_vals.size());
+		for (int v = 0; v < var_vals.size(); v++) {
+			if (var_vals[v].second) {
+				*var_vals[v].second = control_values[v];
+			}
 		}
 	}
 
@@ -437,8 +437,8 @@ void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLS
 ////////////////////////////////////////////////////////////////////////////////
 BasicRender::BasicRender(GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines) :
 	CommonPipeline	( RunType::BASIC_RENDER, nullptr, shader_name, false, shader_defines )
-	,m_Buffer		( buffer )
 {
+	m_Buffer = buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,83 +458,7 @@ BasicRender& BasicRender::AddEntity(GPUEntity& entity, BaseCache* cache) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void BasicRender::Render(std::optional<std::function<void(GLShader* program)>> pre_execute) {
-
-	QStringList insertion;
-	QStringList insertion_images;
-	QStringList insertion_buffers;
-	QStringList insertion_uniforms;
-	std::vector<std::pair<QString, int>> integer_vars;
-	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
-	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
-
-	for (auto str : m_ShaderDefines) {
-		insertion += QString("#define %1").arg(str);
-	}
-
-	for (int b = 0; b < m_SSBOs.size(); b++) {
-		int buffer_index = insertion_buffers.size();
-		auto& ssbo = m_SSBOs[b];
-		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name).arg(ssbo.p_ReadOnly ? "readonly " : "");
-	}
-
-	struct EntityControl {
-		int		p_MaxIndex;
-		int		p_NextId;
-		int		p_FreeCount;
-	};
-	for (int e = 0; e < m_Entities.size(); e++) {
-		GPUEntity& entity = m_Entities[e].p_Entity;
-		QString name = entity.GetName();
-		insertion += QString("//////////////// Entity %1").arg(name);
-		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
-		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
-		int buffer_index = insertion_buffers.size();
-		ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
-		insertion += entity.GetGPUInsertion();
-		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
-	}
-
-	if (!m_UniformVectors.empty()) {
-		insertion += "//////////////// Uniform vector helpers";
-	}
-	for (auto& uniform : m_UniformVectors) {
-		insertion += GetUniformVectorStructCode(uniform, insertion_uniforms, integer_vars, vector_vars);
-	}
-
-	insertion += "////////////////";
-	insertion.push_front(insertion_uniforms.join("\n"));
-	insertion.push_front(insertion_buffers.join("\n"));
-	insertion.push_front(insertion_images.join("\n"));
-
-	if (!m_ExtraCode.isNull()) {
-		insertion += "////////////////";
-		insertion += m_ExtraCode;
-	}
-
-	QString insertion_str = insertion.join("\n");
-	GLShader* prog = Neshny::GetShader(m_ShaderName, insertion_str);
-	prog->UseProgram();
-
-	for (const auto& var: integer_vars) {
-		glUniform1i(prog->GetUniform(var.first), var.second);
-	}
-	for (const auto& var : vector_vars) {
-		glUniform1fv(prog->GetUniform(var.first), (int)var.second->size(), &((*var.second)[0]));
-	}
-	for (auto& ssbo : ssbo_binds) {
-		ssbo.first->Bind(ssbo.second);
-	}
-
-	if (pre_execute.has_value()) {
-		pre_execute.value()(prog);
-	}
-
-	////////////////////////////////////////////////////
-	m_Buffer->UseBuffer(prog);
-	m_Buffer->Draw();
-	////////////////////////////////////////////////////
+	RunCommon(pre_execute);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
