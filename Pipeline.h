@@ -6,7 +6,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class CommonPipeline {
+class PipelineStage {
 
 public:
 
@@ -18,8 +18,31 @@ public:
 		BASIC_COMPUTE
 	};
 
-								CommonPipeline		( RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
-								~CommonPipeline		( void ) {}
+	static PipelineStage MoveEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
+		return PipelineStage(RunType::ENTITY_PROCESS, &entity, shader_name, replace_main, shader_defines, nullptr, cache);
+	}
+	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
+		return PipelineStage(RunType::ENTITY_RENDER, &entity, shader_name, false, shader_defines, buffer);
+	}
+	static PipelineStage RenderBuffer(QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
+		return PipelineStage(RunType::BASIC_RENDER, nullptr, shader_name, false, shader_defines, buffer);
+	}
+
+								~PipelineStage		( void ) {}
+
+	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
+	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
+	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
+	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
+	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
+	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt ) { RunCommon(pre_execute); }
+	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt ) { RunCommon(pre_execute); }
+
+	template <class T>
+	PipelineStage&				AddUniformVector	( QString name, const std::vector<T>& items ) {
+		AddUniformVectorBase(name, items);
+		return *this;
+	}
 
 	struct AddedSSBO {
 		GLSSBO& p_Buffer;
@@ -29,6 +52,8 @@ public:
 	};
 
 protected:
+
+								PipelineStage		( RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLBuffer* buffer = nullptr, class BaseCache* cache = nullptr );
 
 	struct AddedUniformVector {
 		QString					p_Name;
@@ -92,76 +117,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class BaseCache {
 public:
-	virtual QString Bind(std::vector<CommonPipeline::AddedSSBO>& ssbos ) = 0;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
-class PipelineStage : public CommonPipeline {
-
-public:
-								PipelineStage		( GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, BaseCache* cache = nullptr );
-								~PipelineStage		( void ) {}
-
-	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
-	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
-	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
-	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
-	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
-	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
-
-	template <class T>
-	PipelineStage&				AddUniformVector	( QString name, const std::vector<T>& items ) {
-		AddUniformVectorBase(name, items);
-		return *this;
-	}
-
-private:
-
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
-class EntityRender : public CommonPipeline {
-
-public:
-
-								EntityRender		( GPUEntity& entity, QString shader_name, const std::vector<QString>& shader_defines = {} );
-								~EntityRender		( void ) {}
-
-	EntityRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type );
-	EntityRender&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
-	void						Render				( GLBuffer* buffer, std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
-
-	template <class T>
-	EntityRender& AddUniformVector(QString name, const std::vector<T>& items) {
-		AddUniformVectorBase(name, items);
-		return *this;
-	}
-
-private:
-
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
-class BasicRender : CommonPipeline {
-
-public:
-
-								BasicRender			( GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines = {} );
-								~BasicRender		( void ) {}
-
-	BasicRender&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type );
-	BasicRender&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
-
-	void						Render				( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
-
-private:
-
+	virtual QString Bind(std::vector<PipelineStage::AddedSSBO>& ssbos ) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +179,7 @@ public:
 								Grid2DCache		( GPUEntity& entity, QString pos_name );
 	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
-	virtual QString				Bind			( std::vector<CommonPipeline::AddedSSBO>& ssbos ) override;
+	virtual QString				Bind			( std::vector<PipelineStage::AddedSSBO>& ssbos ) override;
 
 private:
 

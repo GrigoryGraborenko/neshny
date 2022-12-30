@@ -1,17 +1,51 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-CommonPipeline::CommonPipeline(RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLBuffer* buffer, BaseCache* cache) :
 	m_RunType			( type )
 	,m_Entity			( entity )
+	,m_Buffer			( buffer )
 	,m_ShaderName		( shader_name )
 	,m_ReplaceMain		( replace_main )
 	,m_ShaderDefines	( shader_defines )
 {
+	if (cache) {
+		m_ExtraCode += cache->Bind(m_SSBOs);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString CommonPipeline::GetUniformVectorStructCode(AddedUniformVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, std::vector<std::pair<QString, std::vector<float>*>>& vector_vars) {
+PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
+	m_Entities.push_back({ entity, false });
+	if (cache) {
+		m_ExtraCode += cache->Bind(m_SSBOs);
+	}
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
+	m_Entities.push_back({ entity, true });
+	if (cache) {
+		m_ExtraCode += cache->Bind(m_SSBOs);
+	}
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+PipelineStage& PipelineStage::AddInputOutputVar(QString name, int* in_out) {
+	m_Vars.push_back({ name, in_out });
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+PipelineStage& PipelineStage::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only) {
+	m_SSBOs.push_back({ ssbo, name, array_type, read_only });
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+QString PipelineStage::GetUniformVectorStructCode(AddedUniformVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, std::vector<std::pair<QString, std::vector<float>*>>& vector_vars) {
 
 	QStringList insertion;
 
@@ -60,7 +94,7 @@ QString CommonPipeline::GetUniformVectorStructCode(AddedUniformVector& uniform, 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void CommonPipeline::RunCommon(const std::optional<std::function<void(GLShader* program)>>& pre_execute) {
+void PipelineStage::RunCommon(const std::optional<std::function<void(GLShader* program)>>& pre_execute) {
 
 	// TODO: investigate GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS
 	// TODO: debug of SSBOs is optional
@@ -364,108 +398,6 @@ void CommonPipeline::RunCommon(const std::optional<std::function<void(GLShader* 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, BaseCache* cache) :
-	CommonPipeline		( RunType::ENTITY_PROCESS, &entity, shader_name, replace_main, shader_defines )
-{
-	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
-	m_Entities.push_back({ entity, false });
-	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
-	}
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
-	m_Entities.push_back({ entity, true });
-	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
-	}
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddInputOutputVar(QString name, int* in_out) {
-	m_Vars.push_back({ name, in_out });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only) {
-	m_SSBOs.push_back({ ssbo, name, array_type, read_only });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pre_execute) {
-	RunCommon(pre_execute);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-EntityRender::EntityRender(GPUEntity& entity, QString shader_name, const std::vector<QString>& shader_defines) :
-	CommonPipeline		( RunType::ENTITY_RENDER, &entity, shader_name, false, shader_defines )
-{
-}
-
-////////////////////////////////////////////////////////////////////////////////
-EntityRender& EntityRender::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type) {
-	m_SSBOs.push_back({ ssbo, name, array_type });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void EntityRender::Render(GLBuffer* buffer, std::optional<std::function<void(GLShader* program)>> pre_execute) {
-
-	m_Buffer = buffer;
-	RunCommon(pre_execute);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-BasicRender::BasicRender(GLBuffer* buffer, QString shader_name, const std::vector<QString>& shader_defines) :
-	CommonPipeline	( RunType::BASIC_RENDER, nullptr, shader_name, false, shader_defines )
-{
-	m_Buffer = buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-BasicRender& BasicRender::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type) {
-	m_SSBOs.push_back({ ssbo, name, array_type });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-BasicRender& BasicRender::AddEntity(GPUEntity& entity, BaseCache* cache) {
-	m_Entities.push_back({ entity, false });
-	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
-	}
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void BasicRender::Render(std::optional<std::function<void(GLShader* program)>> pre_execute) {
-	RunCommon(pre_execute);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 QueryEntities::QueryEntities(GPUEntity& entity) :
 	m_Entity(entity)
 {
@@ -513,7 +445,7 @@ int QueryEntities::ExecuteQuery(void) {
 
 	int best_index = -1;
 	int best_dist = std::numeric_limits<int>::max();
-	PipelineStage(
+	PipelineStage::MoveEntity( // TODO, make this an iterate entity
 		m_Entity
 		,"Query"
 		,true
@@ -564,7 +496,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		QString("void ItemMain(int item_index, vec2 pos);\nbool %1Main(int item_index, %1 item, inout %1 new_item) { ItemMain(item_index, item.%2); return false; }")
 		.arg(m_Entity.GetName()).arg(m_PosName);
 
-	PipelineStage(
+	PipelineStage::MoveEntity( // TODO, make this an iterate entity
 		m_Entity
 		,"GridCache2D"
 		,true
@@ -579,7 +511,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	});
 
 	int alloc_count = 0;
-	PipelineStage(
+	PipelineStage::MoveEntity( // TODO, make this an iterate entity
 		m_Entity
 		,"GridCache2D"
 		,true
@@ -596,7 +528,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache", "Gen", m_GridIndices, MemberSpec::Type::T_INT);
 
-	PipelineStage(
+	PipelineStage::MoveEntity( // TODO, make this an iterate entity
 		m_Entity
 		,"GridCache2D"
 		,true
@@ -615,7 +547,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString Grid2DCache::Bind(std::vector<CommonPipeline::AddedSSBO>& ssbos) {
+QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
 
 	auto name = m_Entity.GetName();
 
