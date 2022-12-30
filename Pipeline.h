@@ -71,8 +71,8 @@ protected:
 	};
 
 	struct AddedInOut {
-		QString					p_Name;
-		int* p_Ptr;
+		QString		p_Name;
+		int*		p_Ptr;
 	};
 
 	template <class T>

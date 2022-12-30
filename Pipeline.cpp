@@ -130,19 +130,19 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	for (auto str : m_ShaderDefines) {
 		insertion += QString("#define %1").arg(str);
 	}
+	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
 	if(m_Entity && entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			var_vals.push_back({ 0, nullptr });
+			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			var_vals.push_back({ 0, &entity_deaths });
-			var_vals.push_back({ entity_free_count, &entity_free_count });
+			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
+			m_Vars.push_back({ "ioEntityFreeCount", &entity_free_count });
 		}
 	}
 	for (const auto& var : m_Vars) {
 		insertion += QString("#define %1 (b_Control.i[%2])").arg(var.p_Name).arg((int)var_vals.size());
 		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
 	}
-	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
 
 	if(m_Entity) {
 		int buffer_index = insertion_buffers.size();
@@ -152,12 +152,9 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			buffer_index++;
 			ssbo_binds.push_back({ m_Entity->GetOuputSSBO(), buffer_index });
 			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer MainEntityOutputBuffer { int i[]; } b_Output%2;").arg(buffer_index).arg(m_Entity->GetName());
-		} else {
-			insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity->GetName());
-		}
-		if (entity_processing && m_Entity->IsDoubleBuffering()) {
 			insertion += m_Entity->GetDoubleBufferGPUInsertion();
 		} else {
+			insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity->GetName());
 			insertion += m_Entity->GetGPUInsertion();
 		}
 		if (entity_processing) {
@@ -184,12 +181,11 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetName());
 
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			insertion += QString("\tint death_index = atomicAdd(b_Control.i[%1], 1);").arg((int)var_vals.size());
+			insertion += "\tint death_index = atomicAdd(ioEntityDeaths, 1);";
 			insertion += QString("\tb_Death.i[death_index] = index;");
-			var_vals.push_back({ 0, &entity_deaths });
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			insertion += "\tatomicAdd(b_Control.i[0], 1);"; // assume b_Control has 0 and 1 reserved for death
-			insertion += "\tint free_index = atomicAdd(b_Control.i[1], 1);";
+			insertion += "\tatomicAdd(ioEntityDeaths, 1);";
+			insertion += "\tint free_index = atomicAdd(ioEntityFreeCount, 1);";
 			insertion += "\tb_FreeList.i[free_index] = index;";
 		}
 		insertion += "}";
