@@ -1,15 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
-#ifdef BUFFER_TEX_SIZE
-    layout (binding = 0, r32f) uniform image2D uTexture;
-#endif
-
 layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;
 layout(std430, binding = 1) readonly buffer DeathBuffer { int i[]; } b_Death;
-#ifdef USE_SSBO
-    layout(std430, binding = 2) buffer EntityBuffer { float f[]; } b_Entity;
-#endif
+layout(std430, binding = 2) buffer EntityBuffer { float f[]; } b_Entity;
 
 #include "Utils.glsl"
 
@@ -27,9 +21,6 @@ void main() {
         return;
     }
     int dead_index = b_Death.i[comp_index];
-#ifdef BUFFER_TEX_SIZE
-    ivec2 base_dead_index = GetBaseLocation(dead_index, FLOATS_PER);
-#endif
 
     //////////////////////////////////
     int remain_goal = uLifeCount - uCount;
@@ -40,43 +31,16 @@ void main() {
     while(true) {
         int end_counter = atomicAdd(b_Control.i[0], 1);
         int alive_index = uLifeCount - end_counter - 1;
-//        if(alive_index < remain_goal) {
-//            break;
-//        }
 
-#ifdef BUFFER_TEX_SIZE
-        ivec2 base_alive_index = GetBaseLocation(alive_index, FLOATS_PER);
-        float value = IM_LOOKUP(uTexture, base_alive_index, 0);
-#else
         float value = b_Entity.f[alive_index * FLOATS_PER];
-#endif
         if(value >= 0) {
 
             for(int i = 0; i < FLOATS_PER; i++) {
-#ifdef BUFFER_TEX_SIZE
-                value = IM_LOOKUP(uTexture, base_alive_index, i);
-                IM_SET(uTexture, base_dead_index, i, value);
-#else
                 value = b_Entity.f[alive_index * FLOATS_PER + i];
                 b_Entity.f[dead_index * FLOATS_PER + i] = value;
-#endif
             }
 
             break;
         }
     }
-
-
-    //////////////////////////////////
-
-    /*
-    int alive_index = uLifeCount - uCount + comp_index;
-    ivec2 base_alive_index = GetBaseLocation(alive_index, FLOATS_PER);
-
-    for(int i = 0; i < FLOATS_PER; i++) {
-        float value = IM_LOOKUP(uTexture, base_alive_index, i);
-        IM_SET(uTexture, base_dead_index, i, value);
-    }
-    */
-
 }

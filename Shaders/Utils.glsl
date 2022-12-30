@@ -8,14 +8,6 @@
 #define INV_256 0.00390625
 #define ALMOST_ZERO 0.0001f
 
-#ifdef BUFFER_TEX_SIZE
-////////////////////////////////////////////////////////////////////////////////
-ivec2 GetBaseLocation(int index, int item_size) {
-    int y = int(floor(float(index) / float(BUFFER_TEX_SIZE)));
-    return ivec2(index - y * BUFFER_TEX_SIZE, y * item_size);
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 vec3 SafeNormalize(vec3 val) {
     float len = length(val);

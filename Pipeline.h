@@ -10,7 +10,15 @@ class CommonPipeline {
 
 public:
 
-								CommonPipeline		( GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+	enum class RunType {
+		ENTITY_PROCESS,
+		ENTITY_RENDER,
+		ENTITY_ITERATE,
+		BASIC_RENDER,
+		BASIC_COMPUTE
+	};
+
+								CommonPipeline		( RunType type, GPUEntity* entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 								~CommonPipeline		( void ) {}
 
 	struct AddedSSBO {
@@ -41,7 +49,7 @@ protected:
 	};
 
 	template <class T>
-	void						AddUniformVectorBase( QString name, const std::vector<T>& items ) {
+	void						AddUniformVectorBase(QString name, const std::vector<T>& items) {
 		
 		int floats_per = sizeof(T) / sizeof(float);
 		m_UniformVectors.push_back({ name, (int)items.size(), floats_per });
@@ -62,7 +70,11 @@ protected:
 		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
 	);
 
+	void						RunCommon(const std::optional<std::function<void(GLShader* program)>>& pre_execute);
+
+	RunType						m_RunType;
 	GPUEntity*					m_Entity = nullptr;
+	GLBuffer*					m_Buffer = nullptr;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
@@ -157,7 +169,7 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class QueryEntities : CommonPipeline {
+class QueryEntities {
 
 public:
 
@@ -184,7 +196,7 @@ public:
 		if (index_result) {
 			*index_result = index;
 		}
-		return m_Entity->ExtractSingle<T>(index);
+		return m_Entity.ExtractSingle<T>(index);
 	}
 
 private:
@@ -197,10 +209,10 @@ private:
 		,ID
 	};
 
+	GPUEntity&							m_Entity;
 	QueryType							m_Query;
 	QString								m_ParamName;
 	std::variant<fVec2, fVec3, int>		m_QueryParam;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
