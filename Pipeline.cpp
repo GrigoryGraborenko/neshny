@@ -557,10 +557,10 @@ QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
 			"\treturn ivec2(start, start + count);\n"
 			"}\n"
 			"int Get%1IndexAtCache(int index) {\n"
-			"\treturn b_%1GridItems.i[index];"
+			"\treturn b_%1GridItems.i[index];\n"
 			"}\n"
 			"ivec2 Get%1GridPosAt(vec2 pos) {\n"
-			"\treturn GetGridPos(pos, vec2(%2, %3), vec2(%4, %5), ivec2(%6, %7));\n"
+			"\treturn GetGridPos(pos, vec2(%2, %3), vec2(%4, %5), ivec2(%6, %7));\n" // TODO: should you be hardcoding in the grid params?
 			"}"
 		)
 		.arg(name)

@@ -34,8 +34,9 @@ bool GLShader::InitCompute(QString& err_msg, const std::function<QByteArray(QStr
 	if (!linked) {
 		char err_buff[512];
 		int len;
-		glGetShaderInfoLog(program, 512, &len, err_buff);
+		glGetProgramInfoLog(program, 512, &len, err_buff);
 		err_msg = QString(QByteArray(err_buff, len));
+		this->m_Sources[0].m_Error = err_msg;
 		return false;
 	}
 
