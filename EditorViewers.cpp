@@ -45,7 +45,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 
 	GLShader* debug_prog = Neshny::GetShader("Debug");
 	debug_prog->UseProgram();
-	GLBuffer* line_buffer = Neshny::GetBuffer("Line");
+	GLBuffer* line_buffer = Neshny::GetBuffer("DebugLine");
 	line_buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
@@ -126,12 +126,30 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
 
+	Vec2 offset2d(offset.x, offset.y);
 	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
 
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
-		Vec3 dpos = (it->p_Pos - offset) * scale;
-		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, dpos.z);
+		Vec2 dpos = (it->p_Pos - offset2d) * scale;
+		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, 0.0);
 		glUniform1f(debug_prog->GetUniform("uSize"), it->p_Radius * scale);
+		buffer->Draw();
+	}
+	
+	debug_prog = Neshny::GetShader("Debug");
+	debug_prog->UseProgram();
+	buffer = Neshny::GetBuffer("DebugSquare");
+	buffer->UseBuffer(debug_prog);
+
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+
+	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
+
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		Vec2 dmin_pos = (it->p_MinPos - offset2d) * scale;
+		Vec2 dmax_pos = (it->p_MaxPos - offset2d) * scale;
+		glUniform3f(debug_prog->GetUniform("uPosA"), dmin_pos.x, dmin_pos.y, 0.0);
+		glUniform3f(debug_prog->GetUniform("uPosB"), dmax_pos.x, dmax_pos.y, 0.0);
 		buffer->Draw();
 	}
 

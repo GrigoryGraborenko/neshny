@@ -591,6 +591,15 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 			ang += seg_rads;
 		}
 		new_buffer->Init(2, GL_LINE_LOOP, vertices);
+	} else if(name == "SquareOutline") {
+		new_buffer->Init(2, GL_LINE_LOOP
+			,std::vector<GLfloat>({
+				-1.0f, -1.0f
+				,1.0f, -1.0f
+				,1.0f, 1.0f
+				,-1.0f, 1.0f
+			})
+			,std::vector<GLuint>({ 0, 2, 1, 0, 3, 2 }));
 	} else if(name == "Cylinder") {
 
 		new_buffer = new GLBuffer();
@@ -612,9 +621,12 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 			ang += seg_rads;
 		}
 		new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
-	} else if(name == "Line") {
+	} else if(name == "DebugLine") {
 		new_buffer = new GLBuffer();
-		new_buffer->Init(2, GL_LINES, std::vector<GLfloat>({1, 0, 0, 1}));
+		new_buffer->Init(3, GL_LINES, std::vector<GLfloat>({0, 0, 0, 1, 1, 1}));
+	} else if(name == "DebugSquare") {
+		new_buffer = new GLBuffer();
+		new_buffer->Init(2, GL_LINE_LOOP, std::vector<GLfloat>({0, 0, 0, 1, 1, 1, 1, 0 }));
 	} else if(name == "DebugTriangle") {
 		new_buffer = new GLBuffer();
 		new_buffer->Init(2, GL_TRIANGLES, std::vector<GLfloat>({0, 0, 1, 0, 0, 1}));

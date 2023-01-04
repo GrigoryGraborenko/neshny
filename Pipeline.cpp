@@ -103,7 +103,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
-	bool is_render = m_Buffer && ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
+	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 
 	QStringList insertion_images;
 	QStringList insertion_buffers;
@@ -330,6 +330,9 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		Neshny::DispatchMultiple(prog, num_entities);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if(is_render) {
+		if (!m_Buffer) {
+			throw std::invalid_argument("Render buffer not found");
+		}
 		m_Buffer->UseBuffer(prog);
 		if (m_Entity) {
 			m_Buffer->DrawInstanced(num_entities);

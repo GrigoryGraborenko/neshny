@@ -15,7 +15,7 @@ struct BaseVec3 {
 
 						BaseVec3		( void ) : x(0), y(0), z(0) {}
 						BaseVec3		( T e0, T e1, T e2 ) : x(e0), y(e1), z(e2) {}
-						BaseVec3		( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {}
+						BaseVec3		( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {} // TODO: clean up any refs to QT maths
 						BaseVec3		( QVector4D v ) : x(v.x()), y(v.y()), z(v.z()) {}
 						BaseVec3		( const BaseVec3<int>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
 						BaseVec3		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
@@ -193,8 +193,6 @@ struct BaseVec2 {
 	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) { return BaseVec3<T>(x, y, z); }
 	inline BaseVec2<int>	ToIVec2			( void ) { return BaseVec2<int>(x, y); }
 	inline BaseVec2<double>	ToVec2		( void ) { return BaseVec2<double>(x, y); }
-	inline QPointF		ToPointF		( void ) { return QPointF(x, y); }
-	inline QVector2D	ToQVec			( void ) { return QVector2D(x, y); }
 
 	inline void			operator=		( const BaseVec2<T>& t2 ) { x = t2.x; y = t2.y; }
 	inline BaseVec2<T>	operator+		( const BaseVec2<T>& t2 ) const { return BaseVec2<T>(x + t2.x, y + t2.y); }
