@@ -401,6 +401,44 @@ public:
 		Json::FromJson<T>(file.readAll(), items, err);
 		return !err;
 	}
+	template <class T>
+	static bool							LoadJSON				( T& item, QString filename ) {
+		QFile file(filename);
+		if (!file.open(QIODevice::ReadOnly)) {
+			return false;
+		}
+		Json::ParseError err;
+		Json::FromJson<T>(file.readAll(), item, err);
+		return !err;
+	}
+
+	template <class T>
+	static bool							SaveJSON				( std::vector<T>& items, QString filename ) {
+		QFile file(filename);
+		if (!file.open(QIODevice::WriteOnly)) {
+			return false;
+		}
+		Json::ParseError err;
+		auto data = Json::ToJson(items, err);
+		if (err) {
+			return false;
+		}
+		return file.write(data) == data.size();
+	}
+	template <class T>
+	static bool							SaveJSON				( T& item, QString filename ) {
+		QFile file(filename);
+		if (!file.open(QIODevice::WriteOnly)) {
+			return false;
+		}
+		Json::ParseError err;
+		auto data = Json::ToJson(item, err);
+		if (err) {
+			return false;
+		}
+		return file.write(data) == data.size();
+	}
+
 
 	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }

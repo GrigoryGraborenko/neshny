@@ -119,6 +119,22 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		buffer->Draw();
 	}
 
+	debug_prog = Neshny::GetShader("DebugPoint");
+	debug_prog->UseProgram();
+	buffer = Neshny::GetBuffer("Circle");
+	buffer->UseBuffer(debug_prog);
+
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+
+	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
+
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		Vec3 dpos = (it->p_Pos - offset) * scale;
+		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, dpos.z);
+		glUniform1f(debug_prog->GetUniform("uSize"), it->p_Radius * scale);
+		buffer->Draw();
+	}
+
 	glDisable(GL_BLEND);
 	glDepthMask(GL_TRUE);
 }

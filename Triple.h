@@ -188,6 +188,8 @@ struct BaseVec2 {
 						BaseVec2		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0) {}
 
 	inline void			Set				( T e0, T e1 ) { x = e0; y = e1; }
+	template <typename G>
+	inline BaseVec3<G>	ToVec3			( G z = 0.0 ) { return BaseVec3<G>(x, y, z); }
 	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) { return BaseVec3<T>(x, y, z); }
 	inline BaseVec2<int>	ToIVec2			( void ) { return BaseVec2<int>(x, y); }
 	inline BaseVec2<double>	ToVec2		( void ) { return BaseVec2<double>(x, y); }

@@ -576,12 +576,27 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 				,2, 0, 3
 			})
 		);
+	} else if(name == "Circle") {
+
+		new_buffer = new GLBuffer();
+
+		constexpr int num_segments = 16;
+		constexpr double seg_rads = (2 * PI) / num_segments;
+
+		std::vector<GLfloat> vertices;
+		double ang = 0;
+		for (int i = 0; i < num_segments; i++) {
+			vertices.push_back(cos(ang));
+			vertices.push_back(sin(ang));
+			ang += seg_rads;
+		}
+		new_buffer->Init(2, GL_LINE_LOOP, vertices);
 	} else if(name == "Cylinder") {
 
 		new_buffer = new GLBuffer();
 
 		constexpr int num_segments = 16;
-		const double seg_rads = (2 * PI) / num_segments;
+		constexpr double seg_rads = (2 * PI) / num_segments;
 
 		std::vector<GLfloat> vertices;
 		double ang = 0;

@@ -72,6 +72,7 @@ public:
     inline void									AddPoint            ( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(DebugPoint{pos, std::string(""), color, on_top}); }
     inline void									AddPoint            ( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { m_Points.push_back(DebugPoint{pos, text, color, on_top}); }
     inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
+    inline void									AddCircle			( Vec3 a, double radius, QVector4D color, bool filled = false ) { m_Circles.push_back(DebugCircle{a, radius, color, filled}); }
 
     //static inline void                          AddString           ( const QString& str ) { Singleton().m_Strings.push_back(str); }
     //static inline void                          AddPersistString    ( QString key, QString val ) { Singleton().m_PersistStrings.insert_or_assign(key, val); }
@@ -94,12 +95,20 @@ protected:
 		QVector4D p_Col;
 	};
 
+	struct DebugCircle {
+		Vec3 p_Pos;
+		double p_Radius;
+		QVector4D p_Col;
+		bool p_Filled = false;
+	};
+
 	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
-    inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); }
+    inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); }
 
     std::vector<DebugLine>						m_Lines;
     std::vector<DebugPoint>						m_Points;
     std::vector<DebugTriangle>					m_Triangles;
+	std::vector<DebugCircle>					m_Circles;
     //std::vector<QString> 						m_Strings;
 	//std::unordered_map<QString, QString>		m_PersistStrings;
 };
@@ -121,6 +130,7 @@ public:
 	static inline void                          Point				( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
 	static inline void                          Point				( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void                          Triangle			( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+	static inline void                          Circle				( Vec3 pos, double radius, QVector4D color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
 protected:
 												DebugRender			( void ) {}
 };
@@ -223,6 +233,7 @@ public:
 	static inline void			Point					( Vec2 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos.ToVec3(), color, on_top); }
 	static inline void			Point					( Vec2 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos.ToVec3(), text, color, on_top); }
 	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, QVector4D color ) { Singleton().AddTriangle(a.ToVec3(), b.ToVec3(), c.ToVec3(), color); }
+	static inline void          Circle					( Vec2 pos, double radius, QVector4D color, bool filled = false ) { Singleton().AddCircle(pos.ToVec3(), radius, color, filled); }
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
@@ -260,6 +271,7 @@ public:
 	static inline void			Point						( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
 	static inline void			Point						( Vec3 pos, std::string text, QVector4D color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void			Triangle					( Vec3 a, Vec3 b, Vec3 c, QVector4D color ) { Singleton().AddTriangle(a, b, c, color); }
+	static inline void          Circle						( Vec3 pos, double radius, QVector4D color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
 	static inline void			Controls					( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static void					RenderImGui					( InterfaceScrapbook3D& data ) { Singleton().IRenderImGui(data); }
