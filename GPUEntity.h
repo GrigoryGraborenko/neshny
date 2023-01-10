@@ -247,11 +247,19 @@ public:
 		return item;
 	}
 
+	template <typename T> void PlaceAll(const std::vector<T>& items, int offset = 0) {
+		m_SSBO->SetValues<T>(items, offset);
+	}
+
+	template <typename T> void PlaceSingle(int index, T item) {
+		m_SSBO->SetSingleValue<T>(index, item);
+	}
+
 
 	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
-	int							AddInstance				( void* data );
+	int							AddInstance				( void* data, int* index = nullptr );
 	void						DeleteInstance			( int index );
 
 	QString						GetDebugInfo			( void );

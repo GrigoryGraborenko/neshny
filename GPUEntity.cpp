@@ -53,7 +53,7 @@ void GPUEntity::Destroy(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int GPUEntity::AddInstance(void* data) {
+int GPUEntity::AddInstance(void* data, int* index) {
 
 	int id = m_NextId;
 	*((int*)data) = id; // todo: can this be a specified position
@@ -68,6 +68,9 @@ int GPUEntity::AddInstance(void* data) {
 
 	int base = creation_index * m_NumDataFloats;
 	glNamedBufferSubData(m_SSBO->Get(), base * sizeof(float), m_NumDataFloats * sizeof(float), data);
+	if (index) {
+		*index = creation_index;
+	}
 
 	m_CurrentCount++;
 	m_NextId++;
