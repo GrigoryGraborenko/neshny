@@ -37,6 +37,7 @@ public:
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
 	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
+	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
 	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
@@ -75,6 +76,11 @@ protected:
 		int*		p_Ptr;
 	};
 
+	struct AddedTexture {
+		QString		p_Name;
+		GLuint		p_Tex;
+	};
+
 	template <class T>
 	void						AddUniformVectorBase(QString name, const std::vector<T>& items) {
 		
@@ -108,6 +114,7 @@ protected:
 	std::vector<AddedEntity>	m_Entities;
 	std::vector<AddedSSBO>		m_SSBOs;
 	std::vector<AddedInOut>		m_Vars;
+	std::vector<AddedTexture>	m_Textures;
 
 	std::vector<AddedUniformVector>		m_UniformVectors;
 };

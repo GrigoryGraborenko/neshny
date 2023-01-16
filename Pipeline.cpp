@@ -197,6 +197,9 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
 		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name).arg(ssbo.p_ReadOnly ? "readonly " : "");
 	}
+	for (const auto& tex : m_Textures) {
+		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
+	}
 	
 	struct EntityControl {
 		int		p_MaxIndex;
@@ -320,6 +323,13 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	for (auto& ssbo : ssbo_binds) {
 		ssbo.first->Bind(ssbo.second);
 	}
+	for (int b = 0; b < m_Textures.size(); b++) {
+		auto& tex = m_Textures[b];
+		glUniform1i(prog->GetUniform(tex.p_Name), b);
+		glActiveTexture(GL_TEXTURE0 + b);
+		glBindTexture(GL_TEXTURE_2D, tex.p_Tex);
+	}
+	glActiveTexture(GL_TEXTURE0);
 
 	if (pre_execute.has_value()) {
 		pre_execute.value()(prog);
