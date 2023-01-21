@@ -8,9 +8,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 class FileResource : public Resource {
 public:
+	struct Params {};
+
 	virtual				~FileResource(void) {}
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) = 0;
-	virtual bool		Init(QString path, QString& err) {
+
+	bool				Load(QString path, QString& err) {
 		QFile file(path);
 		if (!file.open(QIODevice::ReadOnly)) {
 			err = file.errorString();
@@ -26,9 +29,11 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 class SoundFile : public FileResource {
 public:
-	virtual				~SoundFile(void) {
-		Mix_FreeChunk(m_Chuck);
-	}
+	struct Params {};
+
+	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chuck); }
+	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
+
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 		SDL_RWops* rw = SDL_RWFromMem(data, length);
 		m_Chuck = Mix_LoadWAV_RW(rw, 0);
@@ -43,7 +48,7 @@ public:
 	void Play(void) {
 		Mix_PlayChannel(-1, m_Chuck, 0);
 	}
-private:
+protected:
 	Mix_Chunk*	m_Chuck;
 };
 
@@ -52,7 +57,11 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 class Texture2D : public FileResource {
 public:
+	struct Params {};
+
 	virtual				~Texture2D(void) {}
+	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
+
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 		QByteArray arr((const char*)data, length);
 		return m_Texture.Init(arr);
@@ -60,9 +69,93 @@ public:
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
-private:
+protected:
 
 	GLTexture	m_Texture;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class TextureTileset : public FileResource {
+public:
+	struct Params {
+		int		p_TileHeight;
+		int		p_TileWidth;
+		GLint	p_WrapMode;
+		bool	p_LinearInterp;
+		bool	p_Mipmaps;
+	};
+
+	virtual				~TextureTileset(void) {}
+	bool				Init(QString path, Params params, QString& err) { m_Params = params; return Load(path, err); }
+
+	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
+
+		QByteArray bytes((const char*)data, length);
+		QImage im;
+		if (!im.loadFromData(bytes)) {
+			return false;
+		}
+		int wid = im.width();
+		int hei = im.height();
+		m_DepthBytes = im.depth() / 8;
+		im = im.mirrored();
+
+		int num_wid = wid / m_Params.p_TileWidth;
+		int num_hei = wid / m_Params.p_TileHeight;
+		m_TileCount = num_wid * num_hei;
+
+		const unsigned char* image_data = im.bits();
+
+		int levels = m_Params.p_Mipmaps ? int(ceil(log(double(std::max(m_Params.p_TileWidth, m_Params.p_TileHeight))) / log(2))) : 1;
+
+		glGenTextures(1, &m_Texture);
+		glBindTexture(GL_TEXTURE_2D_ARRAY, m_Texture);
+		glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, GL_RGBA8, m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
+
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, m_Params.p_WrapMode);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, m_Params.p_WrapMode);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, m_Params.p_LinearInterp ? GL_LINEAR : GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, m_Params.p_LinearInterp ? (m_Params.p_Mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR) : GL_NEAREST);
+
+		int row_size = m_Params.p_TileWidth * m_DepthBytes;
+		int tile_size = m_Params.p_TileHeight * row_size;
+		unsigned char* layer_data = new unsigned char[tile_size];
+		for (int i = 0; i < m_TileCount; i++) {
+
+			int tx = i % num_wid;
+			int ty = num_hei - (i / num_wid) - 1;
+
+			for (int r = 0; r < m_Params.p_TileHeight; r++) {
+				int src_offset = (tx * row_size + ty * tile_size * num_wid) + r * row_size * num_wid;
+				memcpy(layer_data + r * row_size, image_data + src_offset, row_size);
+			}
+
+			glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, i, m_Params.p_TileWidth, m_Params.p_TileHeight, 1, GL_BGRA, GL_UNSIGNED_BYTE, layer_data);
+		}
+		delete[] layer_data;
+
+		if (m_Params.p_Mipmaps) {
+			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+		}
+
+		return true;
+	};
+
+	inline const GLuint&	GetTexture		( void ) const { return m_Texture; }
+	inline const int		GetWidth		( void ) const { return m_TileWidth; }
+	inline const int		GetHeight		( void ) const { return m_TileHeight; }
+
+protected:
+
+	Params		m_Params;
+	GLuint		m_Texture = 0;
+	int			m_TileCount = 0;
+	int			m_TileWidth = 0;
+	int			m_TileHeight = 0;
+	int			m_DepthBytes = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,8 +163,10 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 class TextureSkybox : public Resource {
 public:
+	struct Params {};
+
 	virtual				~TextureSkybox(void) {}
-	virtual bool		Init(QString path, QString& err) {
+	virtual bool		Init(QString path, Params params, QString& err) {
 		return m_Texture.InitSkybox(path, err);
 	};
 
@@ -99,7 +194,7 @@ public:
 		glEnable(GL_CULL_FACE);
 	}
 
-private:
+protected:
 
 	GLTexture	m_Texture;
 };

@@ -54,6 +54,7 @@ double Random(void);
 double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);
 int RoundUpPowerTwo(int value);
+size_t HashMemory(unsigned char* mem, int size);
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

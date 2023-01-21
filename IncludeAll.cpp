@@ -40,6 +40,11 @@ int RoundUpPowerTwo(int value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+size_t HashMemory(unsigned char* mem, int size) {
+    return std::hash<std::string_view>()(std::string_view((char*)mem, size));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 uint64_t TimeSinceEpochMilliseconds() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }

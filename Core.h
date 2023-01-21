@@ -310,7 +310,6 @@ private:
 class Resource {
 public:
 	virtual				~Resource		( void ) {}
-	virtual bool		Init			( QString path, QString& err ) = 0;
 protected:
 };
 
@@ -360,8 +359,10 @@ public:
 	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }
-	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
-	static inline const ResourceResult<T> GetResource			( QString path ) { return Singleton().IGetResource<T>(path); }
+
+	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
+	static inline const ResourceResult<T> GetResource(QString path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(path, params); }
+
 	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
 	static inline const InterfaceCore&	GetInterfaceData		( void ) { return Singleton().m_Interface; }
 	static inline const std::map<QString, ResourceContainer>	GetResources	( void ) { return Singleton().m_Resources; }
@@ -460,18 +461,26 @@ private:
 	GLBuffer*							IGetBuffer				( QString name );
 	GLShader*							IGetComputeShader		( QString name, QString insertion );
 
-	template<class T>
-	inline const ResourceResult<T>		IGetResource			( QString path ) {
-		auto found = m_Resources.find(path);
+	template<class T, typename P = T::Params>
+	inline const ResourceResult<T>		IGetResource			( QString path, const P& params ) {
+
+		QString key = path;
+		int size_params = sizeof(P);
+		if (size_params > 1) {
+			size_t hash = HashMemory((unsigned char*)&params, sizeof(P));
+			key += QString(":%2").arg(hash);
+		}
+
+		auto found = m_Resources.find(key);
 		if (found != m_Resources.end()) {
 			return ResourceResult<T>(found->second);
 		}
-		ResourceContainer& resource = m_Resources.insert_or_assign(path, ResourceContainer{}).first->second;
+		ResourceContainer& resource = m_Resources.insert_or_assign(key, ResourceContainer{}).first->second;
 
-		m_ResourceThreads.DoTask([path]() -> void* {
+		m_ResourceThreads.DoTask([path, params]() -> void* {
 			T* result = new T();
 			QString err;
-			bool valid = result->Init(path, err);
+			bool valid = result->Init(path, params, err);
 			if (!valid) {
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
