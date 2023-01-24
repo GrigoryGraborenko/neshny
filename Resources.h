@@ -57,7 +57,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class Texture2D : public FileResource {
 public:
-	struct Params {};
+	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
 
 	virtual				~Texture2D(void) {}
 	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
@@ -68,6 +68,17 @@ public:
 	};
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
+
+	bool Save(QString filename) {
+		int size = m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes();
+		unsigned char* data = new unsigned char[size];
+		glGetTextureImage(m_Texture.GetTexture(), 0, GL_RGBA, GL_UNSIGNED_BYTE, size, data);
+		QImage im(data, m_Texture.GetWidth(), m_Texture.GetHeight(), QImage::Format_RGBA8888);
+		im = im.mirrored();
+		bool result = im.save(filename);
+		delete[] data;
+		return result;
+	}
 
 protected:
 

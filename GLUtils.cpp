@@ -140,6 +140,21 @@ GLuint GLShader::CreateShader(QString& err_msg, const std::function<QByteArray(Q
 		return 0;
 	}
 
+	QString source_type = "Compute";
+	QString preamble = "#version 450\nprecision highp float;\nprecision highp int;\n";
+	if (type == GL_VERTEX_SHADER) {
+		preamble += "#define IS_VERTEX_SHADER\n";
+		source_type = "Vertex";
+	} else if (type == GL_FRAGMENT_SHADER) {
+		preamble += "#define IS_FRAGMENT_SHADER\n";
+		source_type = "Fragment";
+	} else if (type == GL_GEOMETRY_SHADER) {
+		preamble += "#define IS_GEOMETRY_SHADER\n";
+		source_type = "Geometry";
+	}
+	preamble += insertion + "\n";
+	arr = preamble.toLocal8Bit() + arr;
+
 	{ // replace all #include
 		QString search_term = "#include \"";
 		QRegularExpression regex(search_term + "(?<fileName>[\\w.\\w]+)\"");
@@ -179,21 +194,6 @@ GLuint GLShader::CreateShader(QString& err_msg, const std::function<QByteArray(Q
 			replacePos = foundPos + it->second.length();
 		}
 	}
-
-	QString source_type = "Compute";
-	QString preamble = "#version 450\nprecision highp float;\nprecision highp int;\n";
-	if (type == GL_VERTEX_SHADER) {
-		preamble += "#define IS_VERTEX_SHADER\n";
-		source_type = "Vertex";
-	} else if (type == GL_FRAGMENT_SHADER) {
-		preamble += "#define IS_FRAGMENT_SHADER\n";
-		source_type = "Fragment";
-	} else if (type == GL_GEOMETRY_SHADER) {
-		preamble += "#define IS_GEOMETRY_SHADER\n";
-		source_type = "Geometry";
-	}
-	preamble += insertion + "\n";
-	arr = preamble.toLocal8Bit() + arr;
 
 	unsigned char* start = (unsigned char*)arr.data();
 	int len = arr.count();

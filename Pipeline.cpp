@@ -143,6 +143,16 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("#define %1 (b_Control.i[%2])").arg(var.p_Name).arg((int)var_vals.size());
 		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
 	}
+	const bool rand_gen = true; // add by default, why not
+	if (rand_gen) {
+
+		int control_ind = (int)var_vals.size();
+		int seed = rand();
+		var_vals.push_back({ seed, nullptr });
+
+		insertion += "#include \"Random.glsl\"\n";
+		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, float(atomicAdd(b_Control.i[%1], 1))); }").arg(control_ind);
+	}
 
 	if(m_Entity) {
 		int buffer_index = insertion_buffers.size();

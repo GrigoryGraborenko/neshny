@@ -32,21 +32,6 @@ float SafeDivide(float numer, float denom) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-float TrigHash(float num) {
-	return fract(sin(num * 0.01 + 0.45) + cos(num * 1.04573 + 0.1) + sin(num * 11.32523 + 1.674) + sin(num * 1076.043 + 563.50));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-float Hash(float num) {
-	return TrigHash(TrigHash(TrigHash(TrigHash(num))));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-float Random(float min_val, float max_val, float seed) {
-    return Hash(seed) * (max_val - min_val) + min_val;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 uint ConvertFromFour(uvec4 col) {
     return uint((col.x << 24) | (col.y << 16) | (col.z << 8) | col.w);
 }
