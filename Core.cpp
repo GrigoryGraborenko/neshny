@@ -580,7 +580,7 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 
 		new_buffer = new GLBuffer();
 
-		constexpr int num_segments = 16;
+		constexpr int num_segments = 32;
 		constexpr double seg_rads = (2 * PI) / num_segments;
 
 		std::vector<GLfloat> vertices;

@@ -471,7 +471,7 @@ public:
                             m_Error.AddMessage(QString("Parsing member %1").arg(member.getName()));
                             return;
                         }
-                        member.getRef(m_ClassObj).insert_or_assign(membType);
+                        member.getRef(m_ClassObj).emplace(std::move(membType));
                     }
                 } else {
                     m_Error.AddMessage(QString("cannot get reference to std::optional member %1").arg(member.getName()));
