@@ -26,7 +26,8 @@
 #define STRING(x) STRING2(x)
 #define msg(str) message(__FILE__ "(" STRING(__LINE__) ") ____________________ " str " ____________________")
 
-#define RADIANS_TO_DEGREES 57.29577951
+constexpr double RADIANS_TO_DEGREES = 57.29577951;
+constexpr double DEGREES_TO_RADIANS = 1.0 / RADIANS_TO_DEGREES;
 
 #define GETSIGN(x) (((x) < 0) ? -1 : (((x) > 0) ? 1 : 0))
 #define GETCLAMP(x, min_val, max_val) (((x) < (min_val)) ? (min_val) : (((x) > (max_val)) ? (max_val) : (x)))

@@ -83,7 +83,9 @@ protected:
 
 	template <class T>
 	void						AddUniformVectorBase(QString name, const std::vector<T>& items) {
-		
+		if (items.empty()) {
+			return;
+		}
 		int floats_per = sizeof(T) / sizeof(float);
 		m_UniformVectors.push_back({ name, (int)items.size(), floats_per });
 		AddedUniformVector& ref = m_UniformVectors.back();
