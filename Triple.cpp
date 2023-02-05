@@ -2,7 +2,7 @@
 
 // might consider templating this func
 ////////////////////////////////////////////////////////////////////////////////
-bool Vec4::LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {
+bool LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {
 
 	Vec4 p43 = b1 - b0;
 	if ((fabs(p43.x) < ALMOST_ZERO) && (fabs(p43.y) < ALMOST_ZERO) && (fabs(p43.z) < ALMOST_ZERO) && (fabs(p43.w) < ALMOST_ZERO)) {
@@ -14,11 +14,11 @@ bool Vec4::LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Ve
 	}
 	Vec4 p13 = a0 - b0;
 
-	double d1343 = p13 * p43;
-	double d4321 = p43 * p21;
-	double d1321 = p13 * p21;
-	double d4343 = p43 * p43;
-	double d2121 = p21 * p21;
+	double d1343 = p13 | p43;
+	double d4321 = p43 | p21;
+	double d1321 = p13 | p21;
+	double d4343 = p43 | p43;
+	double d2121 = p21 | p21;
 
 	double denom = d2121 * d4343 - d4321 * d4321;
 	if (fabs(denom) < ALMOST_ZERO) {

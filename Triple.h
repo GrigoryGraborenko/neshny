@@ -185,13 +185,13 @@ struct BaseVec2 {
 						BaseVec2		( const BaseVec2<int>& t2 ) : x((T)t2.x), y((T)t2.y) {}
 						BaseVec2		( const BaseVec2<float>& t2 ) : x((T)t2.x), y((T)t2.y) {}
 						BaseVec2		( const BaseVec2<double>& t2 ) : x((T)t2.x), y((T)t2.y) {}
-						BaseVec2		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0) {}
+						BaseVec2		( Axis ax, T v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0) {}
 
 	inline void			Set				( T e0, T e1 ) { x = e0; y = e1; }
 	template <typename G>
 	inline BaseVec3<G>	ToVec3			( G z = 0.0 ) { return BaseVec3<G>(x, y, z); }
 	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) { return BaseVec3<T>(x, y, z); }
-	inline BaseVec2<int>	ToIVec2			( void ) { return BaseVec2<int>(x, y); }
+	inline BaseVec2<int>	ToIVec2		( void ) { return BaseVec2<int>(x, y); }
 	inline BaseVec2<double>	ToVec2		( void ) { return BaseVec2<double>(x, y); }
 
 	inline void			operator=		( const BaseVec2<T>& t2 ) { x = t2.x; y = t2.y; }
@@ -302,36 +302,89 @@ using iVec2 = BaseVec2<int>;
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-struct Vec4 {
+template<typename T>
+struct BaseVec4 {
 
-public:
+	T x, y, z, w;
 
-	double x, y, z, w;
+	enum class Axis {
+		X, Y, Z, W
+	};
 
-	Vec4(void) : x(0), y(0), z(0), w(0) {}
-	Vec4(double e0, double e1, double e2, double e3) : x(e0), y(e1), z(e2), w(e3) {}
+	BaseVec4(void) : x(0), y(0), z(0), w(0) {}
+	BaseVec4(T e0, T e1, T e2, T e3) : x(e0), y(e1), z(e2), w(e3) {}
+	BaseVec4(const BaseVec4<int>& t2) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
+	BaseVec4(Axis ax, T v) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0), w(ax == Axis::W ? v : 0) {}
 
-	void			operator=		(const Vec4& t2) { x = t2.x; y = t2.y; z = t2.z; w = t2.w; }
-	Vec4			operator+		(const Vec4& t2) const { return Vec4(x + t2.x, y + t2.y, z + t2.z, w + t2.w); }
-	void			operator+=		(const Vec4& t2) { x += t2.x; y += t2.y; z += t2.z; w += t2.w; }
-	Vec4			operator-		(const Vec4& t2) const { return Vec4(x - t2.x, y - t2.y, z - t2.z, w - t2.w); }
-	Vec4			operator*		(double f) const { return Vec4(x * f, y * f, z * f, w * f); }
-	double			operator*		(const Vec4& t2) const { return (x * t2.x + y * t2.y + z * t2.z + w * t2.w); }
-	bool			operator==		(const Vec4& t2) const { return ((x == t2.x) && (y == t2.y) && (z == t2.z) && (w == t2.w)); }
+	inline void			Set(T e0, T e1, T e2, T e3) { x = e0; y = e1; z = e2; w = e3; }
 
-	inline double	lengthSquared(void) { return (x * x + y * y + z * z + w * w); }
-	inline double	length(void) { return sqrt(lengthSquared()); }
-	void			normalize(void) {
-		double inv_len = 1.0 / length();
-		x *= inv_len; y *= inv_len; z *= inv_len; w *= inv_len;
+	inline void			operator=		(const BaseVec4<T>& t2) { x = t2.x; y = t2.y; z = t2.z; w = t2.w; }
+	inline BaseVec4<T>	operator+		(const BaseVec4<T>& t2) const { return BaseVec4<T>(x + t2.x, y + t2.y, z + t2.z, w + t2.w); }
+	inline void			operator+=		(const BaseVec4<T>& t2) { x = x + t2.x; y = y + t2.y; z = z + t2.z; w = w + t2.w; }
+	inline BaseVec4<T>	operator-		(const BaseVec4<T>& t2) const { return BaseVec4<T>(x - t2.x, y - t2.y, z - t2.z, w - t2.w); }
+	inline void			operator-=		(const BaseVec4<T>& t2) { x = x - t2.x; y = y - t2.y; z = z - t2.z; w = w - t2.w; }
+	inline BaseVec4<T>	operator*		(T f) const { return BaseVec4<T>(x * f, y * f, z * f, w * f); };
+	inline void			operator*=		(T f) { x *= f; y *= f; z *= f; w *= f; }
+	inline BaseVec4<T>	operator/		(T f) const { return BaseVec4<T>(x / f, y / f, z / f, w / f); };
+	inline void			operator/=		(T f) { x /= f; y /= f; z /= f; w /= f; }
+	inline BaseVec4<T>	operator*		(const BaseVec4<T>& t2) const { return BaseVec4<T>(x * t2.x, y * t2.y, z * t2.z, w * t2.w); }
+	inline BaseVec4<T>	operator/		(const BaseVec4<T>& t2) const { return BaseVec4<T>(x / t2.x, y / t2.y, z / t2.z, w / t2.w); }
+	inline bool			operator==		(const  BaseVec4<T>& t2) const { return (x == t2.x) && (y == t2.y) && (z == t2.z) && (w == t2.w); }
+
+	inline T			Dot(BaseVec4<T> t2) const { return x * t2.x + y * t2.y + z * t2.z + w * t2.w; }
+	inline T			operator|		(const BaseVec4<T>& t2) const { return Dot(t2); }
+
+	inline BaseVec4<T>	Round(void) const { return BaseVec4<T>(floor(x + (T)0.5), floor(y + (T)0.5), floor(z + (T)0.5), floor(w + (T)0.5)); };
+	inline BaseVec4<T>	Ceil(void) const { return BaseVec4<T>(ceil(x), ceil(y), ceil(z), ceil(w)); };
+	inline BaseVec4<T>	Floor(void) const { return BaseVec4<T>(floor(x), floor(y), floor(z), floor(w)); };
+	inline BaseVec4<T>	Abs(void) const { return BaseVec4<T>(fabs(x), fabs(y), fabs(z), fabs(w)); };
+	inline BaseVec4<T>	Inv(void) const { return BaseVec4<T>(1.0 / x, 1.0 / y, 1.0 / z, 1.0 / w); };
+
+	inline BaseVec4<T>	Sign(void) const { return BaseVec4<T>(SIGN(x), SIGN(y), SIGN(z), SIGN(w)); };
+	inline BaseVec4<T>	Step(T step) const { return BaseVec4<T>(STEP(x, step), STEP(y, step), STEP(z, step), STEP(w, step)); }
+	inline BaseVec4<T>	Step(BaseVec4<T> step) const { return BaseVec4<T>(STEP(x, step.x), STEP(y, step.y), STEP(z, step.z), STEP(w, step.w)); }
+
+	inline T			LengthSquared(void) const { return x * x + y * y + z * z + w * w; }
+	inline T			Length(void) const { return sqrt(x * x + y * y + z * z + w * w); }
+	inline void			Normalize(void) {
+		T dist = Length();
+		dist = dist == 0 ? ALMOST_ZERO : dist;
+		x = x / dist; y = y / dist; z = z / dist; w = w / dist;
 	}
-	Vec4			normalizeCopy(void) {
-		double inv_len = 1.0 / length();
-		return Vec4(x * inv_len, y * inv_len, z * inv_len, w * inv_len);
+	inline BaseVec4<T>	NormalizeCopy(void) const {
+		T dist = Length();
+		dist = dist == 0 ? ALMOST_ZERO : dist;
+		return BaseVec4<T>(x / dist, y / dist, z / dist, w / dist);
 	}
+	inline BaseVec4<T>	Modify(T new_val, Axis axis) const {
+		switch (axis) {
+		case Axis::X: return BaseVec4<T>(new_val, y, z, w);
+		case Axis::Y: return BaseVec4<T>(x, new_val, z, w);
+		case Axis::Z: return BaseVec4<T>(x, y, new_val, w);
+		}
+		return BaseVec4<T>(x, y, z, new_val);
+	}
+	inline T			GetAxis(Axis axis) const {
+		switch (axis) {
+		case Axis::X: return x;
+		case Axis::Y: return y;
+		case Axis::Z: return z;
+		}
+		return w;
+	}
+	inline T			MinVal(void) const { return std::min(x, std::min(y, std::min(z, w))); }
+	inline T			MaxVal(void) const { return std::max(x, std::max(y, std::min(z, w))); }
 
-	static bool		LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac = nullptr, double* b_frac = nullptr);
+	inline static BaseVec4<T>	Min(BaseVec4<T> a, BaseVec4<T> b) { return BaseVec4<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)); }
+	inline static BaseVec4<T>	Max(BaseVec4<T> a, BaseVec4<T> b) { return BaseVec4<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z), std::max(a.w, b.w)); }
+	inline static Axis			IntToAxis(int ax) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : (ax == 2 ? Axis::Z : Axis::W)); }
 };
+
+using Vec4 = BaseVec4<double>;
+using fVec4 = BaseVec4<float>;
+using iVec4 = BaseVec4<int>;
+
+bool		LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac = nullptr, double* b_frac = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 //
