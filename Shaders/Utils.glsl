@@ -100,6 +100,10 @@ bool GetInterceptPosition(vec2 target_pos, vec2 target_vel, vec2 start_pos, floa
 
 	float dist = length(delta);
 	float a_speed = length(target_vel);
+	if (a_speed <= 0.0) {
+		intercept_pos = target_pos;
+		return true;
+	}
 	float r = intercept_speed / a_speed;
 	float a = r * r - 1.0;
 

@@ -7,6 +7,9 @@ std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 
 
 	double dist = delta.Length();
 	double a_speed = target_vel.Length();
+	if (a_speed <= 0) {
+		return target_pos;
+	}
 	double r = intercept_speed / a_speed;
 	double a = r * r - 1.0;
 
