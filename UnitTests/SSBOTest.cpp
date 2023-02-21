@@ -4,7 +4,7 @@ namespace Test {
 
     void Test_SSBOEnsureSize(void) {
 
-        GLSSBO buffer;
+        Neshny::GLSSBO buffer;
         buffer.EnsureSize(5 * sizeof(int));
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 

@@ -1,4 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+namespace Neshny {
 
 Core* g_StaticInstance = nullptr;
 
@@ -720,3 +723,5 @@ void Core::OpenGLSync(void) {
 	GLsync fenceId = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	glClientWaitSync(fenceId, GL_SYNC_FLUSH_COMMANDS_BIT, GLuint64(1000000000)); // 1 second timeout
 }
+
+} // namespace Neshny

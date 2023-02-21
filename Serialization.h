@@ -8,6 +8,8 @@ template <typename T>
 struct is_optional< std::optional<T> > : std::true_type {};
 }
 
+namespace Neshny {
+
 ////////////////////////////////////////////////////////////////////////////////
 // JSON Serialization/Deserialization
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,3 +867,5 @@ inline QDataStream &operator>>(QDataStream &in, long &args) {
     in >> (qint64&)args;
     return in;
 }
+
+} // namespace Neshny

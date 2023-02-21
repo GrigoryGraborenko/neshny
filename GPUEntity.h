@@ -1,6 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+namespace Neshny {
+
 struct MemberSpec {
 
 	enum Type {
@@ -69,17 +71,6 @@ struct StructInfo {
 	QString					p_GPUInsertion;
 	QString					p_GPUReadOnlyInsertion;
 };
-
-namespace meta {
-	template<>
-	inline auto registerMembers<QVector3D>() {
-		return members(
-			member("x", &QVector3D::x),
-			member("y", &QVector3D::y),
-			member("z", &QVector3D::z)
-		);
-	}
-}
 
 template<typename T>
 class Serialiser {
@@ -350,3 +341,17 @@ private:
 	GLuint						m_DepthTex = 0;
 	GLuint						m_DepthBuffer = 0;
 };
+
+} // namespace Neshny
+
+// TODO: remove me
+namespace meta {
+	template<>
+	inline auto registerMembers<QVector3D>() {
+		return members(
+			member("x", &QVector3D::x),
+			member("y", &QVector3D::y),
+			member("z", &QVector3D::z)
+		);
+	}
+}

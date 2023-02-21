@@ -1,5 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+namespace Neshny {
+
 // might consider templating this func
 ////////////////////////////////////////////////////////////////////////////////
 bool LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& out_b, double* a_frac, double* b_frac) {
@@ -530,3 +532,5 @@ bool CircumSphere(Vec3 p0, Vec3 p1, Vec3 p2, Vec3& out_centre) {
 	out_centre = (intersect_a + intersect_b) * 0.5;
 	return true;
 }
+
+} // namespace Neshny

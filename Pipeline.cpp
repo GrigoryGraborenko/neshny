@@ -1,4 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
@@ -595,3 +598,5 @@ QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
 		.arg(m_GridSize.y)
 	;
 }
+
+} // namespace Neshny

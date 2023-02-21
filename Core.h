@@ -1,6 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+namespace Neshny {
+
 struct Camera2D {
 
 	// TODO: replace with double-based matrix
@@ -161,86 +163,90 @@ struct InterfaceCore {
 	InterfaceScrapbook3D	p_Scrapbook3D;
 };
 
+} // namespace Neshny
+
 namespace meta {
-	template<> inline auto registerMembers<InterfaceCore>() {
+	template<> inline auto registerMembers<Neshny::InterfaceCore>() {
 		return members(
-			member("Version", &InterfaceCore::p_Version)
-			,member("ShowImGuiDemo", &InterfaceCore::p_ShowImGuiDemo)
-			,member("InfoView", &InterfaceCore::p_InfoView)
-			,member("BufferView", &InterfaceCore::p_BufferView)
-			,member("ShaderView", &InterfaceCore::p_ShaderView)
-			,member("ResourceView", &InterfaceCore::p_ResourceView)
-			,member("Scrapbook2D", &InterfaceCore::p_Scrapbook2D)
-			,member("Scrapbook3D", &InterfaceCore::p_Scrapbook3D)
+			member("Version", &Neshny::InterfaceCore::p_Version)
+			,member("ShowImGuiDemo", &Neshny::InterfaceCore::p_ShowImGuiDemo)
+			,member("InfoView", &Neshny::InterfaceCore::p_InfoView)
+			,member("BufferView", &Neshny::InterfaceCore::p_BufferView)
+			,member("ShaderView", &Neshny::InterfaceCore::p_ShaderView)
+			,member("ResourceView", &Neshny::InterfaceCore::p_ResourceView)
+			,member("Scrapbook2D", &Neshny::InterfaceCore::p_Scrapbook2D)
+			,member("Scrapbook3D", &Neshny::InterfaceCore::p_Scrapbook3D)
 		);
 	}
-	template<> inline auto registerMembers<InterfaceInfoViewer>() {
+	template<> inline auto registerMembers<Neshny::InterfaceInfoViewer>() {
 		return members(
-			member("Visible", &InterfaceInfoViewer::p_Visible)
+			member("Visible", &Neshny::InterfaceInfoViewer::p_Visible)
 		);
 	}
-	template<> inline auto registerMembers<InterfaceBufferViewer>() {
+	template<> inline auto registerMembers<Neshny::InterfaceBufferViewer>() {
 		return members(
-			member("Visible", &InterfaceBufferViewer::p_Visible)
-			,member("AllEnabled", &InterfaceBufferViewer::p_AllEnabled)
-			,member("MaxFrames", &InterfaceBufferViewer::p_MaxFrames)
-			,member("Items", &InterfaceBufferViewer::p_Items)
+			member("Visible", &Neshny::InterfaceBufferViewer::p_Visible)
+			,member("AllEnabled", &Neshny::InterfaceBufferViewer::p_AllEnabled)
+			,member("MaxFrames", &Neshny::InterfaceBufferViewer::p_MaxFrames)
+			,member("Items", &Neshny::InterfaceBufferViewer::p_Items)
 		);
 	}
-	template<> inline auto registerMembers<InterfaceShaderViewer>() {
+	template<> inline auto registerMembers<Neshny::InterfaceShaderViewer>() {
 		return members(
-			member("Visible", &InterfaceShaderViewer::p_Visible)
-			,member("Search", &InterfaceShaderViewer::p_Search)
-			,member("Items", &InterfaceShaderViewer::p_Items)
-		);
-	}
-
-	template<> inline auto registerMembers<InterfaceResourceViewer>() {
-		return members(
-			member("Visible", &InterfaceResourceViewer::p_Visible)
-		);
-	}
-	template<> inline auto registerMembers<InterfaceScrapbook2D>() {
-		return members(
-			member("Visible", &InterfaceScrapbook2D::p_Visible)
-			,member("Cam", &InterfaceScrapbook2D::p_Cam)
-		);
-	}
-	template<> inline auto registerMembers<InterfaceScrapbook3D>() {
-		return members(
-			member("Visible", &InterfaceScrapbook3D::p_Visible)
-			,member("Cam", &InterfaceScrapbook3D::p_Cam)
+			member("Visible", &Neshny::InterfaceShaderViewer::p_Visible)
+			,member("Search", &Neshny::InterfaceShaderViewer::p_Search)
+			,member("Items", &Neshny::InterfaceShaderViewer::p_Items)
 		);
 	}
 
-	template<> inline auto registerMembers<InterfaceCollapsible>() {
+	template<> inline auto registerMembers<Neshny::InterfaceResourceViewer>() {
 		return members(
-			member("Name", &InterfaceCollapsible::p_Name)
-			,member("Open", &InterfaceCollapsible::p_Open)
-			,member("Enabled", &InterfaceCollapsible::p_Enabled)
+			member("Visible", &Neshny::InterfaceResourceViewer::p_Visible)
+		);
+	}
+	template<> inline auto registerMembers<Neshny::InterfaceScrapbook2D>() {
+		return members(
+			member("Visible", &Neshny::InterfaceScrapbook2D::p_Visible)
+			,member("Cam", &Neshny::InterfaceScrapbook2D::p_Cam)
+		);
+	}
+	template<> inline auto registerMembers<Neshny::InterfaceScrapbook3D>() {
+		return members(
+			member("Visible", &Neshny::InterfaceScrapbook3D::p_Visible)
+			,member("Cam", &Neshny::InterfaceScrapbook3D::p_Cam)
 		);
 	}
 
-	template<> inline auto registerMembers<Camera3DOrbit>() {
+	template<> inline auto registerMembers<Neshny::InterfaceCollapsible>() {
 		return members(
-			member("Pos", &Camera3DOrbit::p_Pos)
-			,member("Zoom", &Camera3DOrbit::p_Zoom)
-			,member("HorizontalDegrees", &Camera3DOrbit::p_HorizontalDegrees)
-			,member("VerticalDegrees", &Camera3DOrbit::p_VerticalDegrees)
-			,member("FovDegrees", &Camera3DOrbit::p_FovDegrees)
-			,member("NearPlane", &Camera3DOrbit::p_NearPlane)
-			,member("FarPlane", &Camera3DOrbit::p_FarPlane)
+			member("Name", &Neshny::InterfaceCollapsible::p_Name)
+			,member("Open", &Neshny::InterfaceCollapsible::p_Open)
+			,member("Enabled", &Neshny::InterfaceCollapsible::p_Enabled)
 		);
 	}
-	template<> inline auto registerMembers<Camera2D>() {
+
+	template<> inline auto registerMembers<Neshny::Camera3DOrbit>() {
 		return members(
-			member("Pos", &Camera2D::p_Pos)
-			,member("Zoom", &Camera2D::p_Zoom)
-			,member("RotationAngle", &Camera2D::p_RotationAngle)
+			member("Pos", &Neshny::Camera3DOrbit::p_Pos)
+			,member("Zoom", &Neshny::Camera3DOrbit::p_Zoom)
+			,member("HorizontalDegrees", &Neshny::Camera3DOrbit::p_HorizontalDegrees)
+			,member("VerticalDegrees", &Neshny::Camera3DOrbit::p_VerticalDegrees)
+			,member("FovDegrees", &Neshny::Camera3DOrbit::p_FovDegrees)
+			,member("NearPlane", &Neshny::Camera3DOrbit::p_NearPlane)
+			,member("FarPlane", &Neshny::Camera3DOrbit::p_FarPlane)
+		);
+	}
+	template<> inline auto registerMembers<Neshny::Camera2D>() {
+		return members(
+			member("Pos", &Neshny::Camera2D::p_Pos)
+			,member("Zoom", &Neshny::Camera2D::p_Zoom)
+			,member("RotationAngle", &Neshny::Camera2D::p_RotationAngle)
 		);
 	}
 
 }
+
+namespace Neshny {
 
 class IEngine {
 public:
@@ -514,3 +520,5 @@ private:
 	std::vector<SDL_GLContext>			m_Contexts;
 #endif
 };
+
+} // namespace Neshny
