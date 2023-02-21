@@ -316,7 +316,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Neshny {
+class Core {
 
 public:
 
@@ -342,7 +342,7 @@ public:
 		QString			m_Error;
 	};
 
-	inline static Neshny&				Singleton				( void ) { static Neshny core; return core; }
+	inline static Core&					Singleton				( void ) { static Core core; return core; }
 
 	void								SetEmbeddableFileLoader	( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
 	inline void							SetTicksOverride		( int ticks ) { m_Ticks = ticks; }
@@ -454,8 +454,8 @@ public:
 
 private:
 
-										Neshny					( void );
-										~Neshny					( void );
+										Core					( void );
+										~Core					( void );
 
 	GLShader*							IGetShader				( QString name, QString insertion );
 	GLBuffer*							IGetBuffer				( QString name );

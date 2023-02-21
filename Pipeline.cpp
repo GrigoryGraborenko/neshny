@@ -119,9 +119,9 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion_uniforms += "uniform int uCount;";
 		integer_vars.push_back({ QString("uCount").arg(m_Entity->GetName()), num_entities });
 
-		int time_slider = Neshny::GetInterfaceData().p_BufferView.p_TimeSlider;
+		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
-			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Neshny::GetTicks() - time_slider, num_entities);
+			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
 		}
 	} else if(m_Entity) {
 		insertion_uniforms += "uniform int uCount;";
@@ -315,7 +315,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
 	QString insertion_str = m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n");
-	GLShader* prog = is_render ? Neshny::GetShader(m_ShaderName, insertion_str) : Neshny::GetComputeShader(m_ShaderName, insertion_str);
+	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str) : Core::GetComputeShader(m_ShaderName, insertion_str);
 	prog->UseProgram();
 
 	//DebugGPU::Checkpoint("PostRun", m_Entity);
@@ -347,7 +347,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	////////////////////////////////////////////////////
 	if (entity_processing || (m_RunType == RunType::ENTITY_ITERATE)) {
-		Neshny::DispatchMultiple(prog, num_entities);
+		Core::DispatchMultiple(prog, num_entities);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if(is_render) {
 		if (!m_Buffer) {

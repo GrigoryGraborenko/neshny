@@ -185,9 +185,9 @@ public:
 
 	void Render(const QMatrix4x4& vp, Vec3 cam_pos) {
 		
-		GLShader* prog = Neshny::GetShader("Skybox");
+		GLShader* prog = Core::GetShader("Skybox");
 		prog->UseProgram();
-		GLBuffer* square_buffer = Neshny::GetBuffer("Cube");
+		GLBuffer* square_buffer = Core::GetBuffer("Cube");
 		square_buffer->UseBuffer(prog);
 		
 		glActiveTexture(GL_TEXTURE0);

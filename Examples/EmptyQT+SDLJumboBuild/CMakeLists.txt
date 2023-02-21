@@ -1,4 +1,5 @@
 ###############################################################################
+# example: cmake -G "Visual Studio 16 2019" -A x64 .
 
 # modify this
 set(PROJECT_NAME "EmptyQT+SDLJumboBuild")

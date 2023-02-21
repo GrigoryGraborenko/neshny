@@ -116,7 +116,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
 	defines += "\n#define USE_SSBO\n";
 
-	GLShader* death_prog = Neshny::GetComputeShader("Death", defines);
+	GLShader* death_prog = Core::GetComputeShader("Death", defines);
 	death_prog->UseProgram();
 
 	m_ControlSSBO->Bind(0);
@@ -125,7 +125,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	m_SSBO->Bind(2);
 	glUniform1i(death_prog->GetUniform("uLifeCount"), m_MaxIndex);
 
-	Neshny::DispatchMultiple(death_prog, death_count);
+	Core::DispatchMultiple(death_prog, death_count);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 	m_MaxIndex -= death_count;

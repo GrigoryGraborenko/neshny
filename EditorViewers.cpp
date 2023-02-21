@@ -43,9 +43,9 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
 
-	GLShader* debug_prog = Neshny::GetShader("Debug");
+	GLShader* debug_prog = Core::GetShader("Debug");
 	debug_prog->UseProgram();
-	GLBuffer* line_buffer = Neshny::GetBuffer("DebugLine");
+	GLBuffer* line_buffer = Core::GetBuffer("DebugLine");
 	line_buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
@@ -93,9 +93,9 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		ImGui::Text(it->p_Str.c_str());
 	}
 
-	debug_prog = Neshny::GetShader("DebugTriangle");
+	debug_prog = Core::GetShader("DebugTriangle");
 	debug_prog->UseProgram();
-	GLBuffer* buffer = Neshny::GetBuffer("DebugTriangle");
+	GLBuffer* buffer = Core::GetBuffer("DebugTriangle");
 	buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
@@ -119,9 +119,9 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		buffer->Draw();
 	}
 
-	debug_prog = Neshny::GetShader("DebugPoint");
+	debug_prog = Core::GetShader("DebugPoint");
 	debug_prog->UseProgram();
-	buffer = Neshny::GetBuffer("Circle");
+	buffer = Core::GetBuffer("Circle");
 	buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
@@ -136,9 +136,9 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		buffer->Draw();
 	}
 	
-	debug_prog = Neshny::GetShader("Debug");
+	debug_prog = Core::GetShader("Debug");
 	debug_prog->UseProgram();
-	buffer = Neshny::GetBuffer("DebugSquare");
+	buffer = Core::GetBuffer("DebugSquare");
 	buffer->UseBuffer(debug_prog);
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
@@ -267,19 +267,19 @@ void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
 
 	std::shared_ptr<unsigned char[]> mem = nullptr;
-	if (Neshny::IsBufferEnabled(name)) {
+	if (Core::IsBufferEnabled(name)) {
 		mem = buffer.MakeCopy(count * item_size);
 	}
-	IStoreCheckpoint(name, { stage, "", count, Neshny::GetTicks(), false, mem }, info, type);
+	IStoreCheckpoint(name, { stage, "", count, Core::GetTicks(), false, mem }, info, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 	std::shared_ptr<unsigned char[]> mem = nullptr;
-	if (Neshny::IsBufferEnabled(buffer.GetName())) {
+	if (Core::IsBufferEnabled(buffer.GetName())) {
 		mem = buffer.MakeCopy();
 	}
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Neshny::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const Str
 			existing->second.p_StructSize += member.p_Size;
 		}
 	}
-	int max_frames = Neshny::GetInterfaceData().p_BufferView.p_MaxFrames;
+	int max_frames = Core::GetInterfaceData().p_BufferView.p_MaxFrames;
 	existing->second.p_Frames.push_front(data);
 	while (existing->second.p_Frames.size() > max_frames) {
 		existing->second.p_Frames.pop_back();
@@ -322,7 +322,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 		return;
 	}
 
-	int curr_tick = Neshny::GetTicks();
+	int curr_tick = Core::GetTicks();
 	int min_stored_tick = curr_tick;
 	for (const auto& buffer: m_Frames) {
 		for (const auto& frame : buffer.second.p_Frames) {
@@ -524,8 +524,8 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	ImGui::SetCursorPos(ImVec2(8, size_banner));
 	ImGui::BeginChild("ShaderList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	auto shaders = Neshny::Singleton().GetShaders();
-	auto compute_shaders = Neshny::Singleton().GetComputeShaders();
+	auto shaders = Core::Singleton().GetShaders();
+	auto compute_shaders = Core::Singleton().GetComputeShaders();
 
 	for (auto& shader : compute_shaders) {
 		auto info = RenderShader(data, shader.first, shader.second, true, search);
@@ -644,12 +644,12 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	//ImGui::SetCursorPos(ImVec2(8, size_banner));
 	//ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-	const auto& resources = Neshny::GetResources();
+	const auto& resources = Core::GetResources();
 	for (const auto& resource : resources) {
 		QString state = "Pending";
-		if (resource.second.m_State == Neshny::ResourceState::DONE) {
+		if (resource.second.m_State == Core::ResourceState::DONE) {
 			state = "Done";
-		} else if (resource.second.m_State == Neshny::ResourceState::IN_ERROR) {
+		} else if (resource.second.m_State == Core::ResourceState::IN_ERROR) {
 			state = "Error - " + resource.second.m_Error;
 		}
 		QByteArray info = QString("%1: %2").arg(resource.first).arg(state).toLocal8Bit();

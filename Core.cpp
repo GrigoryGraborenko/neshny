@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Neshny* g_StaticInstance = nullptr;
+Core* g_StaticInstance = nullptr;
 
 #define EDITOR_INTERFACE_FILENAME "interface.json"
 //#define EDITOR_INTERFACE_FILENAME "interface.bin"
@@ -16,11 +16,11 @@ void WorkerThreadPool::Start(int thread_count) {
 		m_Threads.push_back({});
 		ThreadInfo& info = m_Threads.back();
 
-		info.m_GLContext = Neshny::Singleton().CreateGLContext();
+		info.m_GLContext = Core::Singleton().CreateGLContext();
 
 		info.m_Thread = new std::thread([&info, &lock = m_Lock, &tasks = m_Tasks, &finished = m_FinishedTasks]() {
 
-			bool valid = Neshny::Singleton().ActivateGLContext(info.m_GLContext);
+			bool valid = Core::Singleton().ActivateGLContext(info.m_GLContext);
 			//auto err = SDL_GetError();
 
 			while (true) {
@@ -34,7 +34,7 @@ void WorkerThreadPool::Start(int thread_count) {
 					tasks.pop_front();
 					lock.unlock();
 					task->p_Result = task->p_Task();
-					Neshny::OpenGLSync();
+					Core::OpenGLSync();
 					lock.lock();
 					finished.push_back(task);
 					lock.unlock();
@@ -58,7 +58,7 @@ void WorkerThreadPool::Stop(void) {
 	for (auto& thread : m_Threads) {
 		thread.m_Thread->join();
 		delete thread.m_Thread;
-		Neshny::Singleton().DeleteGLContext(thread.m_GLContext);
+		Core::Singleton().DeleteGLContext(thread.m_GLContext);
 	}
 	m_Threads.clear();
 }
@@ -86,7 +86,7 @@ void WorkerThreadPool::Sync(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-Neshny::Neshny(void) {
+Core::Core(void) {
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
@@ -103,7 +103,7 @@ Neshny::Neshny(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Neshny::~Neshny(void) {
+Core::~Core(void) {
 
 	m_ResourceThreads.Stop();
 
@@ -127,7 +127,7 @@ Neshny::~Neshny(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::LoopInit(IEngine* engine) {
+bool Core::LoopInit(IEngine* engine) {
 
 	m_ResourceThreads.Start(1); // started here so you have access to m_Window value
 
@@ -163,7 +163,7 @@ bool Neshny::LoopInit(IEngine* engine) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_hover) {
+void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_hover) {
 
 	ImGui::SetNextWindowPos(ImVec2(-2, -2), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(width + 4, height + 4), ImGuiCond_Always);
@@ -216,7 +216,7 @@ void Neshny::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_
 
 #ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
+bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	m_Window = window;
 	if (!LoopInit(engine)) {
@@ -318,7 +318,7 @@ bool Neshny::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 #ifdef QT_LOOP
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::QTLoop(QOpenGLWindow* window, IEngine* engine) {
+bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 
 	if (!LoopInit(engine)) {
 		return false;
@@ -366,7 +366,7 @@ bool Neshny::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::IRenderEditor(void) {
+void Core::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
 	auto info_label = QString("[%2 FPS] %1 info view###info_view").arg(m_Interface.p_InfoView.p_Visible ? "Hide" : "Show").arg((double)ImGui::GetIO().Framerate, 0, 'f', 2).toLocal8Bit();
@@ -426,7 +426,7 @@ void Neshny::IRenderEditor(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::IIsBufferEnabled(QString name) {
+bool Core::IIsBufferEnabled(QString name) {
 	if (m_Interface.p_BufferView.p_AllEnabled) {
 		return true;
 	}
@@ -439,7 +439,7 @@ bool Neshny::IIsBufferEnabled(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
+void Core::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
 	glUniform1i(prog->GetUniform("uCount"), count);
 	constexpr int max_dispatch = 4 * 4 * 4 * 8 * 8 * 8;
 	for (int offset = 0; offset < count; offset += max_dispatch) {
@@ -452,7 +452,7 @@ void Neshny::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Neshny::IGetShader(QString name, QString insertion) {
+GLShader* Core::IGetShader(QString name, QString insertion) {
 
 	if (!m_EmbeddableLoader.has_value()) {
 		return nullptr;
@@ -483,7 +483,7 @@ GLShader* Neshny::IGetShader(QString name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Neshny::IGetComputeShader(QString name, QString insertion) {
+GLShader* Core::IGetComputeShader(QString name, QString insertion) {
 
 	if (!m_EmbeddableLoader.has_value()) {
 		return nullptr;
@@ -514,7 +514,7 @@ GLShader* Neshny::IGetComputeShader(QString name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLBuffer* Neshny::IGetBuffer(QString name) {
+GLBuffer* Core::IGetBuffer(QString name) {
 
 	auto found = m_Buffers.find(name);
 	if (found != m_Buffers.end()) {
@@ -659,7 +659,7 @@ GLBuffer* Neshny::IGetBuffer(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::UnloadAllShaders(void) {
+void Core::UnloadAllShaders(void) {
 
 	for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {
 		delete it->second;
@@ -673,7 +673,7 @@ void Neshny::UnloadAllShaders(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::UnloadAllResources(void) {
+void Core::UnloadAllResources(void) {
 	for (auto& resource : m_Resources) {
 		delete resource.second.m_Resource;
 	}
@@ -681,7 +681,7 @@ void Neshny::UnloadAllResources(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int Neshny::CreateGLContext(void) {
+int Core::CreateGLContext(void) {
 #ifdef SDL_h_
 	auto previous = SDL_GL_GetCurrentContext();
 	auto context = SDL_GL_CreateContext(m_Window);
@@ -694,7 +694,7 @@ int Neshny::CreateGLContext(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Neshny::ActivateGLContext(int index) {
+bool Core::ActivateGLContext(int index) {
 #ifdef SDL_h_
 	if ((index < 0) || (index >= m_Contexts.size())) {
 		return false;
@@ -706,7 +706,7 @@ bool Neshny::ActivateGLContext(int index) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::DeleteGLContext(int index) {
+void Core::DeleteGLContext(int index) {
 #ifdef SDL_h_
 	if ((index < 0) || (index >= m_Contexts.size())) {
 		return;
@@ -716,7 +716,7 @@ void Neshny::DeleteGLContext(int index) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Neshny::OpenGLSync(void) {
+void Core::OpenGLSync(void) {
 	GLsync fenceId = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	glClientWaitSync(fenceId, GL_SYNC_FLUSH_COMMANDS_BIT, GLuint64(1000000000)); // 1 second timeout
 }

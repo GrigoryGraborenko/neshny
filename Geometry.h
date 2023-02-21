@@ -52,4 +52,4 @@ private:
 	iVec2 m_CurrentGrid;
 };
 
-std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);
+std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);std::optional<Neshny::Vec2> GetInterceptPosition(Neshny::Vec2 target_pos, Neshny::Vec2 target_vel, Neshny::Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);
