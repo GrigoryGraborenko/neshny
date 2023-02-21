@@ -15,7 +15,7 @@ public:
 	virtual void			MouseWheel					( bool up );
 	virtual void			Key							( int key, bool is_down );
 
-	virtual void			Init						( void );
+	virtual bool			Init						( void );
 	virtual void			ExitSignal					( void ) { m_ShouldExit = true; }
 	virtual bool			ShouldExit					( void ) { return m_ShouldExit; }
 	virtual bool			Tick						( qint64 delta_nanoseconds, int tick );

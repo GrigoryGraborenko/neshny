@@ -2,6 +2,8 @@
 
 #include "PreCompiledHeader.h"
 
+using namespace Neshny;
+
 #include "Engine.h"
 
 #include "EmbeddedFiles.cpp"
@@ -56,7 +58,7 @@ int main(int, char**) {
 	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	Neshny::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
+	Core::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
 
 #ifdef _DEBUG
 		QFile file;
@@ -83,7 +85,7 @@ int main(int, char**) {
 	});
 
 	Engine engine;
-	bool result = Neshny::Singleton().SDLLoop(window, &engine);
+	bool result = Core::Singleton().SDLLoop(window, &engine);
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
