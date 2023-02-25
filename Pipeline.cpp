@@ -134,7 +134,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += QString("#define %1").arg(str);
 	}
 	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
-	if(m_Entity && entity_processing) {
+	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
@@ -177,7 +177,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		}
 	}
 
-	if(m_Entity && entity_processing) {
+	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 			int buffer_index = insertion_buffers.size();
 			m_Entity->GetFreeListSSBO()->EnsureSize(num_entities * sizeof(int));
@@ -276,7 +276,8 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	insertion.push_front(insertion_uniforms.join("\n"));
 	insertion.push_front(insertion_buffers.join("\n"));
 	insertion.push_front(insertion_images.join("\n"));
-	if (m_Entity && m_ReplaceMain) {
+
+	if (entity_processing && m_ReplaceMain) {
 		insertion +=
 			"bool %1Main(int item_index, %1 item, inout %1 new_item); // forward declaration\n"
 			"void main() {\n"
@@ -294,6 +295,20 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			"\tbool should_destroy = %1Main(item_index, item, new_item);\n"
 			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
 			"}\n////////////////";
+	} else if (m_Entity && m_ReplaceMain) {
+
+		insertion +=
+			"void %1Main(int item_index, %1 item); // forward declaration\n"
+			"void main() {\n"
+			"\tuvec3 global_id = gl_GlobalInvocationID;\n"
+			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
+			"\tif (item_index >= uCount) return;\n"
+			"\t%1 item = Get%1(item_index);";
+		insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
+		insertion +=
+			"\t%1Main(item_index, item);\n"
+			"}\n////////////////";
+
 	}
 
 	// TODO control SSBO should be created if it doesn't exist
@@ -460,12 +475,12 @@ int QueryEntities::ExecuteQuery(void) {
 	}
 
 	QString main_func =
-		QString("void ItemMain%3(int item_index, vec2 pos);\nbool %1Main(int item_index, %1 item, inout %1 new_item) { ItemMain%3(item_index, item.%2); return false; }")
+		QString("void ItemMain%3(int item_index, vec2 pos);\nvoid %1Main(int item_index, %1 item) { ItemMain%3(item_index, item.%2); }")
 		.arg(m_Entity.GetName()).arg(m_ParamName).arg(main_name);
 
 	int best_index = -1;
 	int best_dist = std::numeric_limits<int>::max();
-	PipelineStage::MoveEntity( // TODO, make this an iterate entity
+	PipelineStage::IterateEntity(
 		m_Entity
 		,"Query"
 		,true
@@ -513,10 +528,10 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_GridItems.EnsureSize(m_Entity.GetCount() * sizeof(int));
 
 	QString main_func =
-		QString("void ItemMain(int item_index, vec2 pos);\nbool %1Main(int item_index, %1 item, inout %1 new_item) { ItemMain(item_index, item.%2); return false; }")
+		QString("void ItemMain(int item_index, vec2 pos);\nvoid %1Main(int item_index, %1 item) { ItemMain(item_index, item.%2); }")
 		.arg(m_Entity.GetName()).arg(m_PosName);
 
-	PipelineStage::MoveEntity( // TODO, make this an iterate entity
+	PipelineStage::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true
@@ -531,7 +546,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	});
 
 	int alloc_count = 0;
-	PipelineStage::MoveEntity( // TODO, make this an iterate entity
+	PipelineStage::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true
@@ -548,7 +563,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache", "Gen", m_GridIndices, MemberSpec::Type::T_INT);
 
-	PipelineStage::MoveEntity( // TODO, make this an iterate entity
+	PipelineStage::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true

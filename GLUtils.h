@@ -19,8 +19,8 @@ public:
 													GLShader			( void );
 													~GLShader			( void);
 
-	bool											Init				( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion);
-	bool											InitCompute			( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString shader_filename, QString insertion);
+	bool											Init				( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion );
+	bool											InitCompute			( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString shader_filename, QString insertion );
 
 	void											UseProgram			( void );
 	GLuint											GetAttribute		( QString name );
@@ -29,6 +29,10 @@ public:
 	inline const std::vector<SourceInfo>&			GetSources			( void ) const { return m_Sources; }
 	inline bool										IsValid				( void ) const { return m_Program > 0; }
 
+	inline int										GetLocalSizeX		( void ) const { return m_LocalSizeX; }
+	inline int										GetLocalSizeY		( void ) const { return m_LocalSizeY; }
+	inline int										GetLocalSizeZ		( void ) const { return m_LocalSizeZ; }
+
 private:
 
 	GLuint											CreateProgram		( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion );
@@ -36,6 +40,9 @@ private:
 
 	GLuint											m_Program;
 	std::vector<SourceInfo>							m_Sources;
+	int												m_LocalSizeX = 8;
+	int												m_LocalSizeY = 8;
+	int												m_LocalSizeZ = 8;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
