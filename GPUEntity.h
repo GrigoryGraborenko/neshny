@@ -12,7 +12,10 @@ struct MemberSpec {
 		T_FLOAT,
 		T_VEC2,
 		T_VEC3,
-		T_VEC4
+		T_VEC4,
+		T_IVEC2,
+		T_IVEC3,
+		T_IVEC4
 	};
 
 	static QString GetGPUType(Type type) {
@@ -28,6 +31,12 @@ struct MemberSpec {
 			return "vec3";
 		} else if (type == MemberSpec::T_VEC4) {
 			return "vec4";
+		} else if (type == MemberSpec::T_IVEC2) {
+			return "ivec2";
+		} else if (type == MemberSpec::T_IVEC3) {
+			return "ivec3";
+		} else if (type == MemberSpec::T_IVEC4) {
+			return "ivec4";
 		}
 		return QString();
 	}
@@ -39,6 +48,12 @@ struct MemberSpec {
 			return sizeof(float) * 3;
 		} else if (type == MemberSpec::T_VEC4) {
 			return sizeof(float) * 4;
+		} else if (type == MemberSpec::T_IVEC2) {
+			return sizeof(int) * 2;
+		} else if (type == MemberSpec::T_IVEC3) {
+			return sizeof(int) * 3;
+		} else if (type == MemberSpec::T_IVEC4) {
+			return sizeof(int) * 4;
 		}
 		return sizeof(int);
 	}
@@ -56,6 +71,12 @@ struct MemberSpec {
 			return QString("vec3(intBitsToFloat(%4_LOOKUP(base, %1)), intBitsToFloat(%4_LOOKUP(base, %2)), intBitsToFloat(%4_LOOKUP(base, %3)))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
 		} else if (type == MemberSpec::T_VEC4) {
 			return QString("vec4(intBitsToFloat(%5_LOOKUP(base, %1)), intBitsToFloat(%5_LOOKUP(base, %2)), intBitsToFloat(%5_LOOKUP(base, %3)), intBitsToFloat(%5_LOOKUP(base, %4)))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
+		} else if (type == MemberSpec::T_IVEC2) {
+			return QString("ivec2(%3_LOOKUP(base, %1), %3_LOOKUP(base, %2))").arg(index).arg(index + 1).arg("%1");
+		} else if (type == MemberSpec::T_IVEC3) {
+			return QString("ivec3(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
+		} else if (type == MemberSpec::T_IVEC4) {
+			return QString("ivec4(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
 		}
 		return QString();
 	}
@@ -103,8 +124,14 @@ public:
 			type = MemberSpec::T_VEC2;
 		} else if constexpr (std::is_same<CurrentMemberType, fVec3>::value) {
 			type = MemberSpec::T_VEC3;
-		//} else if constexpr (std::is_same<CurrentMemberType, fVec4>::value) {
-		//	type = MemberSpec::T_VEC4;
+		} else if constexpr (std::is_same<CurrentMemberType, fVec4>::value) {
+			type = MemberSpec::T_VEC4;
+		} else if constexpr (std::is_same<CurrentMemberType, iVec2>::value) {
+			type = MemberSpec::T_IVEC2;
+		} else if constexpr (std::is_same<CurrentMemberType, iVec3>::value) {
+			type = MemberSpec::T_IVEC3;
+		} else if constexpr (std::is_same<CurrentMemberType, iVec4>::value) {
+			type = MemberSpec::T_IVEC4;
 		} else if constexpr (std::is_same<CurrentMemberType, QVector2D>::value) {
 			type = MemberSpec::T_VEC2;
 		} else if constexpr (std::is_same<CurrentMemberType, QVector3D>::value) {
@@ -144,7 +171,17 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 		functions += QString("%1 Get%3%2(int index) {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		if (member.p_Type == MemberSpec::Type::T_INT) {
 			functions += QString("#define Access%3%1(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
+			functions += QString("#define Access%3%1_X(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+			functions += QString("#define Access%3%1_Y(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
+			if (member.p_Type != MemberSpec::Type::T_IVEC2) {
+				functions += QString("#define Access%3%1_Z(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 2).arg("%1");
+				if (member.p_Type == MemberSpec::Type::T_IVEC4) {
+					functions += QString("#define Access%3%1_W(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 3).arg("%1");
+				}
+			}
 		}
+
 		pos_index += member.p_Size / sizeof(float);
 	}
 	read_only_lines += "\treturn result;\n}";
@@ -173,6 +210,15 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 		} else if (member.p_Type == MemberSpec::T_VEC4) {
 			mod_str = QString("\t%6_SET(base, %1, floatBitsToInt(item.%5.x)); %6_SET(base, %2, floatBitsToInt(item.%5.y)); %6_SET(base, %3, floatBitsToInt(item.%5.z)); %6_SET(base, %4, floatBitsToInt(item.%5.z));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(name).arg("%1");
 			value_mod_str = QString("\t%5_SET(base, %1, floatBitsToInt(value.x)); %5_SET(base, %2, floatBitsToInt(value.y)); %5_SET(base, %3, floatBitsToInt(value.z)); %5_SET(base, %4, floatBitsToInt(value.z));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg("%1");
+		} else if (member.p_Type == MemberSpec::T_IVEC2) {
+			mod_str = QString("\t%4_SET(base, %1, item.%3.x); %4_SET(base, %2, item.%3.y);").arg(pos_index).arg(pos_index + 1).arg(name).arg("%1");
+			value_mod_str = QString("\t%3_SET(base, %1, value.x); %3_SET(base, %2, value.y);").arg(pos_index).arg(pos_index + 1).arg("%1");
+		} else if (member.p_Type == MemberSpec::T_IVEC3) {
+			mod_str = QString("\t%5_SET(base, %1, item.%4.x); %5_SET(base, %2, item.%4.y); %5_SET(base, %3, item.%4.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(name).arg("%1");
+			value_mod_str = QString("\t%4_SET(base, %1, value.x); %4_SET(base, %2, value.y); %4_SET(base, %3, value.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg("%1");
+		} else if (member.p_Type == MemberSpec::T_IVEC4) {
+			mod_str = QString("\t%6_SET(base, %1, item.%5.x); %6_SET(base, %2, item.%5.y); %6_SET(base, %3, item.%5.z); %6_SET(base, %4, item.%5.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(name).arg("%1");
+			value_mod_str = QString("\t%5_SET(base, %1, value.x); %5_SET(base, %2, value.y); %5_SET(base, %3, value.z); %5_SET(base, %4, value.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg("%1");
 		}
 		lines += mod_str;
 		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type)).arg("%1") + get_base_str + QString("\n%1\n}").arg(value_mod_str);
