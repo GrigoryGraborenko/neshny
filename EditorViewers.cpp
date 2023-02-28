@@ -370,6 +370,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 	for (auto& buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
 		auto header = (buffer.first + (frames.empty() ? "" : frames.begin()->p_Info) + "###" + buffer.first).toLocal8Bit();
+		bool highlight_buffer = buffer.first == m_HighlightName;
 
 		InterfaceCollapsible* found = nullptr;
 		for (auto& item: data.p_Items) {
@@ -415,6 +416,13 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT });
 					} else if (member.p_Type == MemberSpec::T_VEC4) {
 						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_FLOAT });
+
+					} else if (member.p_Type == MemberSpec::T_IVEC2) {
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT });
+					} else if (member.p_Type == MemberSpec::T_IVEC3) {
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT });
+					} else if (member.p_Type == MemberSpec::T_IVEC4) {
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_INT });
 					} else {
 						struct_types.push_back({ member.p_Name, member.p_Type });
 					}
@@ -479,6 +487,8 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 									ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(255, 0, 128, 200));
 									ImGui::Text("DELETED");
 									continue;
+								} else if (id == m_HighlightID && highlight_buffer) {
+									ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(128, 220, 128, 200));
 								}
 							}
 							if (cast_type == MemberSpec::T_FLOAT) {

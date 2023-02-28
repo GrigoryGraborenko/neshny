@@ -72,6 +72,12 @@ QString PipelineStage::GetUniformVectorStructCode(AddedUniformVector& uniform, Q
 			function += QString("\titem.%1 = vec3(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2]);").arg(name).arg(uniform.p_Name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_VEC4) {
 			function += QString("\titem.%1 = vec4(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2], u%2[index + %3 + 3]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC2) {
+			function += QString("\titem.%1 = ivec2(u%2[index + %3], u%2[index + %3 + 1]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC3) {
+			function += QString("\titem.%1 = ivec3(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC4) {
+			function += QString("\titem.%1 = ivec4(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2], u%2[index + %3 + 3]);").arg(name).arg(uniform.p_Name).arg(pos_index);
 		}
 		pos_index += member.p_Size / sizeof(float);
 

@@ -188,6 +188,9 @@ public:
 
 	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
+	static inline void			Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
+	static inline void			ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
+
 protected:
 
 	struct CheckpointData {
@@ -212,8 +215,11 @@ protected:
 	void					ICheckpoint			( QString stage, class GPUEntity& entity );
 	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	std::shared_ptr<GLSSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
+	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }
 
 	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
+	QString		m_HighlightName;
+	int			m_HighlightID = -1;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
