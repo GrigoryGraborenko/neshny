@@ -489,10 +489,14 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 									continue;
 								} else if (id == m_HighlightID && highlight_buffer) {
 									ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(128, 220, 128, 200));
+									//ImGui::SetNextWindowScroll(ImGui::GetWindowPos());
+									//auto pos = ImGui::GetCursorPos();
+									//ImGui::ScrollToRect(ImGui::GetCurrentWindow(), ImRect(pos, pos));
 								}
 							}
 							if (cast_type == MemberSpec::T_FLOAT) {
-								auto txt = QString("%1").arg(((float*)rawptr)[row], 0, 'f', 4).toLocal8Bit();
+								float val = ((float*)rawptr)[row];
+								auto txt = QString("%1").arg(val, 0, 'f', fabs(val) < 1.0 ? (fabs(val) < 0.001 ? 10 : 6) : 4).toLocal8Bit();
 								ImGui::Text(txt.data());
 							} else if (cast_type == MemberSpec::T_UINT) {
 								ImGui::Text("%i", ((unsigned int*)rawptr)[row]);

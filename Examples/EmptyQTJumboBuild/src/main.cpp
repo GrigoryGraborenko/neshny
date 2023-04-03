@@ -4,7 +4,10 @@
 
 #include "Engine.h"
 
-#include "EmbeddedFiles.cpp"
+#ifndef _DEBUG
+	#include "EmbeddedFiles.cpp"
+#endif
+#include "EmbeddedDirectories.cpp"
 
 int main(int argc, char* argv[]) {
 
@@ -53,8 +56,7 @@ int main(int argc, char* argv[]) {
 			return QByteArray();
 		}
 		return file.readAll();
-#endif
-
+#else		
 		auto byte_path = path.toLocal8Bit();
 		auto found = g_EmbeddedFiles.find(std::string(byte_path.data()));
 		if (found == g_EmbeddedFiles.end()) {
@@ -62,6 +64,7 @@ int main(int argc, char* argv[]) {
 			return QByteArray();
 		}
 		return QByteArray((char*)found->second.p_Data, found->second.p_Size);
+#endif
 	});
 
 	bool result = Neshny::Singleton().QTLoop(&window, &engine);

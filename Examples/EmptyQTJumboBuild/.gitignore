@@ -15,6 +15,9 @@ generated/
 CMakeCache.txt
 cmake_install.cmake
 UserSettings.cmake
+.embedded_token
+EmbeddedFiles.cpp
+EmbeddedDirectories.cpp
 CMakeFiles/
 
 # Compiled Object files
