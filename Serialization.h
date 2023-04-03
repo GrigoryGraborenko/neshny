@@ -868,4 +868,32 @@ inline QDataStream &operator>>(QDataStream &in, long &args) {
     return in;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream& operator<<(QDataStream& out, const BaseVec2<T>& args) {
+    out << args.x << args.y;
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream& operator>>(QDataStream& in, BaseVec2<T>& args) {
+    in >> args.x >> args.y;
+    return in;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream& operator<<(QDataStream& out, const BaseVec3<T>& args) {
+    out << args.x << args.y << args.z;
+    return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+inline QDataStream& operator>>(QDataStream& in, BaseVec3<T>& args) {
+    in >> args.x >> args.y >> args.z;
+    return in;
+}
+
 } // namespace Neshny
