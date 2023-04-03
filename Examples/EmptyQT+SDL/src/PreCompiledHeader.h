@@ -33,5 +33,7 @@
 using namespace Neshny;
 
 extern std::vector<std::string> g_ShaderBaseDirs;
+struct EmbeddedFile { unsigned long long p_Size = 0; const unsigned char* p_Data = nullptr; };
+extern std::unordered_map<std::string, EmbeddedFile> g_EmbeddedFiles;
 
 #pragma msg("Compiling precompiled header...")

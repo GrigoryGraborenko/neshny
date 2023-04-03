@@ -8,7 +8,7 @@ function(create_resources output_fname)
     # create empty output file
     file(WRITE ${output_fname} "")
 
-    set(resource_vector "struct EmbeddedFile{ unsigned long long p_Size=0\\; const unsigned char* p_Data=nullptr\\; }\\;\n std::unordered_map<std::string, EmbeddedFile> g_EmbeddedFiles = {\n")
+    set(resource_vector "std::unordered_map<std::string, EmbeddedFile> g_EmbeddedFiles = {\n")
 
     # iterate through input files
     math(EXPR last "${ARGC} - 1")
