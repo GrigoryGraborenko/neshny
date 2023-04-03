@@ -756,7 +756,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		const double ROTATE_SPEED = 0.2;
 
 		ImGuiIO& io = ImGui::GetIO();
-		auto mpos = ImGui::GetMousePos() - im_screen_pos;
+		ImVec2 mpos(ImGui::GetMousePos().x - im_screen_pos.x, ImGui::GetMousePos().y - im_screen_pos.y);
 		m_LastMousePos = data.p_Cam.ScreenToWorld(Vec2(mpos.x, mpos.y), m_Width, m_Height);
 
 		if (io.MouseWheel != 0.0f) {

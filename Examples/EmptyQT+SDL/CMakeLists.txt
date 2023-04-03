@@ -2,7 +2,7 @@
 # example: cmake -G "Visual Studio 16 2019" -A x64 .
 
 # modify this
-set(PROJECT_NAME "EmptyQT+SDLJumboBuild")
+set(PROJECT_NAME "EmptyQT+SDL")
 
 project(${PROJECT_NAME})
 cmake_minimum_required(VERSION 3.18)
@@ -95,13 +95,9 @@ file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTes
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
-# jumbo build specific - this makes sure all .cpp files are not compiled unless included in main.cpp
-set_source_files_properties(${SourceList} ${NeshnyList} PROPERTIES
+file(GLOB_RECURSE UnitTests CONFIGURE_DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp)
+set_source_files_properties(${NESHNY_DIR}/IncludeAll.cpp ${UnitTests} PROPERTIES
     HEADER_FILE_ONLY TRUE
-)
-# jumbo build specific - the only two files that get compiled
-set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
-    HEADER_FILE_ONLY FALSE
 )
 
 target_sources(${PROJECT_NAME}

@@ -89,9 +89,11 @@ file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTes
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
+# jumbo build specific - this makes sure all .cpp files are not compiled unless included in main.cpp
 set_source_files_properties(${SourceList} ${NeshnyList} PROPERTIES
     HEADER_FILE_ONLY TRUE
 )
+# jumbo build specific - the only two files that get compiled
 set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
     HEADER_FILE_ONLY FALSE
 )
