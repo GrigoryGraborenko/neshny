@@ -20,7 +20,7 @@ struct BaseVec3 {
 						BaseVec3		( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {} // TODO: clean up any refs to QT maths
 						BaseVec3		( QVector4D v ) : x(v.x()), y(v.y()), z(v.z()) {}
 						BaseVec3		( const BaseVec3<int>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
-						BaseVec3		( Axis ax, double v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
+						BaseVec3		( Axis ax, T v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
 
 	inline void			Set				( T e0, T e1, T e2 ) { x = e0; y = e1; z = e2; }
 
@@ -192,7 +192,7 @@ struct BaseVec2 {
 	inline BaseVec3<G>	ToVec3			( G z = 0.0 ) { return BaseVec3<G>(x, y, z); }
 	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) { return BaseVec3<T>(x, y, z); }
 	inline BaseVec2<int>	ToIVec2		( void ) { return BaseVec2<int>(x, y); }
-	inline BaseVec2<double>	ToVec2		( void ) { return BaseVec2<double>(x, y); }
+	inline BaseVec2<double>	ToDoubleVec2	( void ) { return BaseVec2<double>(x, y); }
 
 	inline void			operator=		( const BaseVec2<T>& t2 ) { x = t2.x; y = t2.y; }
 	inline BaseVec2<T>	operator+		( const BaseVec2<T>& t2 ) const { return BaseVec2<T>(x + t2.x, y + t2.y); }
@@ -435,14 +435,13 @@ struct BaseMatrix3 {
 		return ta;
 	}
 
-	BaseMatrix3<T>	operator~		( void ) {
+	BaseMatrix3<T>	operator~		( void ) const {
 		BaseMatrix3<T> ma;
 		for (int i = 0; i < 3; i++) {
 			for (int j = 0; j < 3; j++) {
 				ma.m[i][j] = m[j][i];
 			}
 		}
-
 		return ma;
 	}
 
@@ -493,55 +492,35 @@ struct BaseMatrix4 {
 
 	T m[4][4];
 
-	// default constructor creates IDENTITY matrix
 	BaseMatrix4( void ) { 	m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[0][3] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[1][3] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; m[2][3] = 0; m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 0; }
-	BaseMatrix4( QMatrix4x4 mat ) {
-		auto ptr = mat.data();
-		m[0][0] = ptr[0]; m[0][1] = ptr[4]; m[0][2] = ptr[8]; m[0][3] = ptr[12];
-		m[1][0] = ptr[1]; m[1][1] = ptr[5]; m[1][2] = ptr[9]; m[1][3] = ptr[13];
-		m[2][0] = ptr[2]; m[2][1] = ptr[6]; m[2][2] = ptr[10]; m[2][3] = ptr[14];
-		m[3][0] = ptr[3]; m[3][1] = ptr[7]; m[3][2] = ptr[11]; m[3][3] = ptr[15];
-	}
 	BaseMatrix4( Vec3 row_a, Vec3 row_b, Vec3 row_c, Vec3 row_d ) {
-		m[0][0] = row_a.x;
-		m[0][1] = row_a.y;
-		m[0][2] = row_a.z;
-		m[0][3] = 0.0;
-		m[1][0] = row_b.x;
-		m[1][1] = row_b.y;
-		m[1][2] = row_b.z;
-		m[1][3] = 0.0;
-		m[2][0] = row_c.x;
-		m[2][1] = row_c.y;
-		m[2][2] = row_c.z;
-		m[2][3] = 0.0;
-		m[3][0] = row_d.x;
-		m[3][1] = row_d.y;
-		m[3][2] = row_d.z;
-		m[3][3] = 0.0;
+		m[0][0] = row_a.x; m[0][1] = row_a.y; m[0][2] = row_a.z; m[0][3] = 0.0;
+		m[1][0] = row_b.x; m[1][1] = row_b.y; m[1][2] = row_b.z; m[1][3] = 0.0;
+		m[2][0] = row_c.x; m[2][1] = row_c.y; m[2][2] = row_c.z; m[2][3] = 0.0;
+		m[3][0] = row_d.x; m[3][1] = row_d.y; m[3][2] = row_d.z; m[3][3] = 0.0;
 	}
-	BaseMatrix4( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 ) {
+	BaseMatrix4( T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33 ) {
 		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
 		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
 		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
 	}
 
-	void			Set				( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 ) {
+	void			Set				( T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33 ) {
 		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
 		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
 		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
 	}
 
-	void			operator=		( BaseMatrix4<T> m2 ) {
+	void			operator=		( const BaseMatrix4<T>& m2 ) {
 		for (int a = 0; a < 4; a++) {
 			for (int b = 0; b < 4; b++) {
 				m[a][b] = m2.m[a][b];
 			}
 		}
 	}
-	BaseMatrix4<T> operator+		( BaseMatrix4<T> m2 ) const {
+	BaseMatrix4<T> operator+		( const BaseMatrix4<T>& m2 ) const {
 		BaseMatrix4<T> res;
 		for (int a = 0; a < 4; a++) {
 			for (int b = 0; b < 4; b++) {
@@ -550,7 +529,7 @@ struct BaseMatrix4 {
 		}
 		return res;
 	}
-	BaseMatrix4<T> operator*		( BaseMatrix4<T> m2 ) const {
+	BaseMatrix4<T> operator*		( const BaseMatrix4<T>& m2 ) const {
 		BaseMatrix4<T> ma;
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
@@ -561,6 +540,10 @@ struct BaseMatrix4 {
 		}
 		return ma;
 	}
+	void operator*=( const BaseMatrix4<T>& m2 ) {
+		operator=(operator*(m2));
+	}
+
 	BaseMatrix4<T> operator*		( T m2 ) const {
 		BaseMatrix4<T> res;
 		for (int a = 0; a < 4; a++) {
@@ -598,11 +581,113 @@ struct BaseMatrix4 {
 		return ma;
 	}
 
-	double SubDeterminant2x2(const T m[4][4], int col0, int col1, int row0, int row1) const {
+	static BaseMatrix4<T> Ortho(T left, T right, T bottom, T top, T near_plane, T far_plane) {
+		BaseMatrix4<T> ma;
+		const T inv_width = 1.0 / (right - left);
+		const T inv_height = 1.0 / (top - bottom);
+		const T inv_clip = 1.0 / (far_plane - near_plane);
+		ma.m[0][0] = 2.0 * inv_width; ma.m[0][1] = 0.0; ma.m[0][2] = 0.0; ma.m[0][3] = 0.0;
+		ma.m[1][0] = 0.0; ma.m[1][1] = 2.0 * inv_height; ma.m[1][2] = 0.0; ma.m[1][3] = 0.0;
+		ma.m[2][0] = 0.0; ma.m[2][1] = 0.0; ma.m[2][2] = -2.0 * inv_clip; ma.m[2][3] = 0.0;
+
+		ma.m[3][0] = -(left + right) * inv_width;
+		ma.m[3][1] = -(top + bottom) * inv_height;
+		ma.m[3][2] = -(near_plane + far_plane) * inv_clip;
+		ma.m[3][3] = 1.0;
+		return ma;
+	}
+
+	static BaseMatrix4<T> Perspective(T vertical_angle, T aspect_ratio, T near_plane, T far_plane) {
+		BaseMatrix4<T> ma;
+		const T radians = vertical_angle * 0.5 * DEGREES_TO_RADIANS;
+		const T sin_rad = sin(radians);
+		const T cotan = cos(radians) / sin_rad;
+		const T inv_clip = 1.0 / (far_plane - near_plane);
+		ma.m[0][0] = cotan / aspect_ratio; ma.m[0][1] = 0.0; ma.m[0][2] = 0.0; ma.m[0][3] = 0.0;
+		ma.m[1][0] = 0.0; ma.m[1][1] = cotan; ma.m[1][2] = 0.0; ma.m[1][3] = 0.0;
+
+		ma.m[2][0] = 0.0;
+		ma.m[2][1] = 0.0;
+		ma.m[2][2] = -(near_plane + far_plane) * inv_clip;
+		ma.m[2][3] = -(2.0 * near_plane * far_plane) * inv_clip;
+
+		ma.m[3][0] = 0.0; ma.m[3][1] = 0.0; ma.m[3][2] = -1.0; ma.m[3][3] = 0.0;
+		return ma;
+	}
+
+	static BaseMatrix4<T> Rotation(const QQuaternion& quaternion) {
+		BaseMatrix4<T> ma;
+		const T f2x = quaternion.x() + quaternion.x();
+		const T f2y = quaternion.y() + quaternion.y();
+		const T f2z = quaternion.z() + quaternion.z();
+		const T f2xw = f2x * quaternion.scalar();
+		const T f2yw = f2y * quaternion.scalar();
+		const T f2zw = f2z * quaternion.scalar();
+		const T f2xx = f2x * quaternion.x();
+		const T f2xy = f2x * quaternion.y();
+		const T f2xz = f2x * quaternion.z();
+		const T f2yy = f2y * quaternion.y();
+		const T f2yz = f2y * quaternion.z();
+		const T f2zz = f2z * quaternion.z();
+
+		ma.m[0][0] = 1.0 - (f2yy + f2zz);
+		ma.m[0][1] = f2xy - f2zw;
+		ma.m[0][2] = f2xz + f2yw;
+		ma.m[0][3] = 0.0;
+
+		ma.m[1][0] = f2xy + f2zw;
+		ma.m[1][1] = 1.0 - (f2xx + f2zz);
+		ma.m[1][2] = f2yz - f2xw;
+		ma.m[1][3] = 0.0;
+
+		ma.m[2][0] = f2xz - f2yw;
+		ma.m[2][1] = f2yz + f2xw;
+		ma.m[2][2] = 1.0 - (f2xx + f2yy);
+		ma.m[2][3] = 0.0;
+
+		ma.m[3][0] = 0.0; ma.m[3][1] = 0.0; ma.m[3][2] = 0.0; ma.m[3][3] = 1.0;
+		return ma;
+	}
+
+	static BaseMatrix4<T> Rotation(const T degrees, BaseVec3<T> axis) {
+		axis.Normalize();
+
+		BaseMatrix4<T> ma;
+		const T rads = degrees * DEGREES_TO_RADIANS;
+		const T co = cos(rads), si = sin(rads);
+		const T inv_co = 1.0 - co;
+
+		ma.m[0][0] = axis.x * axis.x * inv_co + co;
+		ma.m[0][1] = axis.x * axis.y * inv_co - axis.z * si;
+		ma.m[0][2] = axis.x * axis.z * inv_co + axis.y * si;
+		ma.m[0][3] = 0.0;
+
+		ma.m[1][0] = axis.y * axis.x * inv_co + axis.z * si;
+		ma.m[1][1] = axis.y * axis.y * inv_co + co;
+		ma.m[1][2] = axis.y * axis.z * inv_co - axis.x * si;
+		ma.m[1][3] = 0.0;
+
+		ma.m[2][0] = axis.x * axis.z * inv_co - axis.y * si;
+		ma.m[2][1] = axis.y * axis.z * inv_co + axis.x * si;
+		ma.m[2][2] = axis.z * axis.z * inv_co + co;
+		ma.m[2][3] = 0.0;
+
+		ma.m[3][0] = 0.0; ma.m[3][1] = 0.0; ma.m[3][2] = 0.0; ma.m[3][3] = 1.0;
+		return ma;
+	}
+
+	void Translate(BaseVec3<T> vect) {
+		m[0][3] += m[0][0] * vect.x + m[0][1] * vect.y + m[0][2] * vect.z;
+		m[1][3] += m[1][0] * vect.x + m[1][1] * vect.y + m[1][2] * vect.z;
+		m[2][3] += m[2][0] * vect.x + m[2][1] * vect.y + m[2][2] * vect.z;
+		m[3][3] += m[3][0] * vect.x + m[3][1] * vect.y + m[3][2] * vect.z;
+	}
+
+	T SubDeterminant2x2(const T m[4][4], int col0, int col1, int row0, int row1) const {
 		return m[col0][row0] * m[col1][row1] - m[col0][row1] * m[col1][row0];
 	}
 
-	double SubDeterminant3x3(const T m[4][4], int col0, int col1, int col2, int row0, int row1, int row2) const {
+	T SubDeterminant3x3(const T m[4][4], int col0, int col1, int col2, int row0, int row1, int row2) const {
 		return m[col0][row0] * SubDeterminant2x2(m, col1, col2, row1, row2) - m[col1][row0] * SubDeterminant2x2(m, col0, col2, row1, row2) + m[col2][row0] * SubDeterminant2x2(m, col0, col1, row1, row2);
 	}
 
@@ -651,9 +736,9 @@ struct BaseMatrix4 {
 	QMatrix4x4		toQMatrix4x4	( void ) const {
 		return QMatrix4x4(
 			(float)m[0][0], (float)m[0][1], (float)m[0][2], (float)m[0][3]
-			, (float)m[1][0], (float)m[1][1], (float)m[1][2], (float)m[1][3]
-			, (float)m[2][0], (float)m[2][1], (float)m[2][2], (float)m[2][3]
-			, (float)m[3][0], (float)m[3][1], (float)m[3][2], (float)m[3][3]
+			,(float)m[1][0], (float)m[1][1], (float)m[1][2], (float)m[1][3]
+			,(float)m[2][0], (float)m[2][1], (float)m[2][2], (float)m[2][3]
+			,(float)m[3][0], (float)m[3][1], (float)m[3][2], (float)m[3][3]
 		);
 	}
 
@@ -663,6 +748,15 @@ struct BaseMatrix4 {
 		scale.m[1][1] = vec.y;
 		scale.m[2][2] = vec.z;
 		return scale;
+	}
+
+	static BaseMatrix4<T> Identity(void) {
+		return BaseMatrix4<T>(
+			1, 0, 0, 0
+			,0, 1, 0, 0
+			,0, 0, 1, 0
+			,0, 0, 0, 1
+		);
 	}
 };
 
@@ -674,15 +768,5 @@ void Matrix4UnitTest(void);
 bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, double y0, double x1, double y1, double& result_t0, double& result_t1);
 bool IntersectLineSphere(Vec3 centre, double radius_sqr, Vec3 p0, Vec3 p1, double& result_t0, double& result_t1);
 bool CircumSphere(Vec3 p0, Vec3 p1, Vec3 p2, Vec3& out_centre);
-
-inline QMatrix3x3 ConvertTo3x3(const QMatrix4x4& mat) {
-	auto d = mat.data();
-	float v[9] = {
-		d[0], d[4], d[8]
-		,d[1], d[5], d[9]
-		,d[2], d[6], d[10]
-	};
-	return QMatrix3x3(v);
-}
 
 } // namespace Neshny

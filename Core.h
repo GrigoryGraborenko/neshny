@@ -62,21 +62,20 @@ struct Camera2D {
 
 struct Camera3DOrbit {
 
-	QMatrix4x4				GetViewMatrix				( void ) const {
-		QMatrix4x4 viewMatrix;
-		viewMatrix.translate(0, 0, -p_Zoom);
-		viewMatrix.rotate(p_VerticalDegrees, 1, 0, 0);
-		viewMatrix.rotate(p_HorizontalDegrees, 0, 1, 0);
-		viewMatrix.translate(float(-p_Pos.x), float(-p_Pos.y), float(-p_Pos.z));
+	Matrix4 GetViewMatrix(void) const {
+		Matrix4 viewMatrix = Matrix4::Identity();
+		viewMatrix.Translate(Vec3(0, 0, -p_Zoom));
+		viewMatrix *= Matrix4::Rotation(p_VerticalDegrees, Vec3(1, 0, 0));
+		viewMatrix *= Matrix4::Rotation(p_HorizontalDegrees, Vec3(0, 1, 0));
+		viewMatrix.Translate(p_Pos * -1);
 		return viewMatrix;
 	}
-	QMatrix4x4				GetViewPerspectiveMatrix	( int width, int height ) const {
-		QMatrix4x4 perspectiveMatrix;
-		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
-		return perspectiveMatrix * GetViewMatrix();
+	QMatrix4x4 GetViewPerspectiveMatrix(int width, int height) const {
+		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
+		return (perspectiveMatrix * GetViewMatrix()).toQMatrix4x4();
 	}
-	Vec3				GetCamRealPos					( void ) const {
-		return GetViewMatrix().inverted() * QVector4D(0, 0, 0, 1);
+	Vec3 GetCamRealPos(void) const {
+		return (GetViewMatrix().Inverse() * Vec4(0, 0, 0, 1)).ToVec3();
 	}
 
 	Vec3		p_Pos;
@@ -89,16 +88,15 @@ struct Camera3DOrbit {
 };
 
 struct Camera3DFPS {
-	QMatrix4x4 GetViewMatrix(void) const {
-		QMatrix4x4 viewMatrix;
-		viewMatrix.rotate(p_Direction);
-		viewMatrix.translate(float(-p_Pos.x), float(-p_Pos.y), float(-p_Pos.z));
+	Matrix4 GetViewMatrix(void) const {
+		Matrix4 viewMatrix = Matrix4::Identity();
+		viewMatrix *= Matrix4::Rotation(p_Direction);
+		viewMatrix.Translate(p_Pos * -1);
 		return viewMatrix;
 	}
 	QMatrix4x4 GetViewPerspectiveMatrix(int width, int height) const {
-		QMatrix4x4 perspectiveMatrix;
-		perspectiveMatrix.perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
-		return perspectiveMatrix * GetViewMatrix();
+		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
+		return (perspectiveMatrix * GetViewMatrix()).toQMatrix4x4();
 	}
 	void GetDirections(Vec3* forward = nullptr, Vec3* up = nullptr, Vec3* side = nullptr) {
 		auto inv = p_Direction.inverted();

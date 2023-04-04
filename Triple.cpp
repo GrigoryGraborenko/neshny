@@ -88,11 +88,20 @@ void Matrix4UnitTest(void) {
 		auto theirs_res = theirs* theirs_b;
 		auto mine_res = mine * mine_b;
 
+		fMatrix4 persp_mine = fMatrix4::Perspective(60.0f, 1.5f, 0.1f, 100.0f);
+		QMatrix4x4 persp_theirs;
+		persp_theirs.perspective(60.0f, 1.5f, 0.1f, 100.0f);
+
 		fVec3 tst(Random(-rad, rad), Random(-rad, rad), Random(-rad, rad));
 		auto my_tst_res = mine_res * fVec4(tst, 1.0);
 		auto their_tst_res = fVec3(theirs_res * tst.toVec4());
 		fVec3 diff = their_tst_res - my_tst_res.ToVec3();
 		double delta = diff.Length();
+
+		auto my_persp_res = persp_mine * fVec4(tst, 1.0);
+		auto their_persp_res = fVec3(persp_theirs * tst.toVec4());
+		double delta_persp = (my_persp_res.ToVec3() - their_persp_res).Length();;
+		assert(delta_persp < 0.001);
 
 		bool theirs_ok = false, mine_ok = false;
 		auto theirs_inv = theirs_res.inverted(&theirs_ok);
