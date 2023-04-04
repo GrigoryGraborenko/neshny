@@ -159,8 +159,6 @@ struct BaseVec3 {
 	QVector3D		toVec			( void ) const { return QVector3D(x, y, z); }
 	QVector4D		toVec4			( void ) const { return QVector4D(x, y, z, 1.0); }
 
-	struct Matrix4	GetScale		( void ) const;
-
 	inline static BaseVec3<T>	Min				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
 	inline static BaseVec3<T>	Max				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
 	inline static Axis			IntToAxis		( int ax ) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : Axis::Z); }
@@ -315,7 +313,8 @@ struct BaseVec4 {
 
 	BaseVec4(void) : x(0), y(0), z(0), w(0) {}
 	BaseVec4(T e0, T e1, T e2, T e3) : x(e0), y(e1), z(e2), w(e3) {}
-	BaseVec4(const BaseVec4<int>& t2) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
+	BaseVec4(const BaseVec4<int>& t2) : x((T)t2.x), y((T)t2.y), z((T)t2.z), w((T)t2.w) {}
+	BaseVec4(const BaseVec3<T>& t2, T w_val) : x((T)t2.x), y((T)t2.y), z((T)t2.z), w(w_val) {}
 	BaseVec4(Axis ax, T v) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0), w(ax == Axis::W ? v : 0) {}
 
 	inline void			Set(T e0, T e1, T e2, T e3) { x = e0; y = e1; z = e2; w = e3; }
@@ -377,6 +376,8 @@ struct BaseVec4 {
 	inline T			MinVal(void) const { return std::min(x, std::min(y, std::min(z, w))); }
 	inline T			MaxVal(void) const { return std::max(x, std::max(y, std::min(z, w))); }
 
+	inline BaseVec3<T> ToVec3() const { return BaseVec3<T>(x, y, z); }
+
 	inline static BaseVec4<T>	Min(BaseVec4<T> a, BaseVec4<T> b) { return BaseVec4<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z), std::min(a.w, b.w)); }
 	inline static BaseVec4<T>	Max(BaseVec4<T> a, BaseVec4<T> b) { return BaseVec4<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z), std::max(a.w, b.w)); }
 	inline static Axis			IntToAxis(int ax) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : (ax == 2 ? Axis::Z : Axis::W)); }
@@ -390,57 +391,283 @@ bool		LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& o
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
-struct Matrix3{
+template<typename T>
+struct BaseMatrix3 {
 
-	double m[3][3];
+	T m[3][3];
 
-					Matrix3			( void );
-					Matrix3			( double e00, double e01, double e02, double e10, double e11, double e12, double e20, double e21, double e22 );
-					Matrix3			( Vec3 t1, Vec3 t2, Vec3 t3 );
+					BaseMatrix3		( void ) { m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; }
+					BaseMatrix3		( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
+					BaseMatrix3		( BaseVec3<T> t1, BaseVec3<T> t2, BaseVec3<T> t3 ) { set(t1.x, t1.y, t1.z, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z); }
 
-	void			set				( double e00, double e01, double e02, double e10, double e11, double e12, double e20, double e21, double e22 );
+	void			Set				( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
 
-	void			operator=		( Matrix3 m2 );
-	Matrix3			operator+		( Matrix3 m2 );
-	Matrix3			operator*		( Matrix3 m2 );
-	Matrix3			operator*		( double m2 );
-	Vec3			operator*		( Vec3 t2 );
-	Matrix3			operator~		( void );
+	void			operator=		( BaseMatrix3<T> m2 ) { Set(m2.m[0][0], m2.m[0][1], m2.m[0][2], m2.m[1][0], m2.m[1][1], m2.m[1][2], m2.m[2][0], m2.m[2][1], m2.m[2][2]); }
+	//BaseMatrix3<T>	operator+		( BaseMatrix3<T> m2 );
+	BaseMatrix3<T>	operator*		( BaseMatrix3<T> m2 ) {
+		BaseMatrix3<T> ma;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				for (int r = 0; r < 3; r++) {
+					ma.m[i][j] += m[i][r] * m2.m[r][j];
+				}
+			}
+		}
+		return ma;
+	}
 
-	double			determinant		( void );
-	Matrix3			adjoint			( void );
-	Matrix3			inverse			( void );
+	BaseMatrix3<T>	operator*		( T m2 ) {
+		BaseMatrix3<T> ma;
+		int i = 0;
+		while (i < 9) {
+			ma.m[i / 3][i % 3] = m2 * m[i / 3][i % 3];
+			i++;
+		}
+		return ma;
+	}
+
+	BaseVec3<T>			operator*	( BaseVec3<T> t2 ) {
+		BaseVec3<T> ta;
+		ta.x = m[0][0] * t2.x + m[0][1] * t2.y + m[0][2] * t2.z;
+		ta.y = m[1][0] * t2.x + m[1][1] * t2.y + m[1][2] * t2.z;
+		ta.z = m[2][0] * t2.x + m[2][1] * t2.y + m[2][2] * t2.z;
+		return ta;
+	}
+
+	BaseMatrix3<T>	operator~		( void ) {
+		BaseMatrix3<T> ma;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				ma.m[i][j] = m[j][i];
+			}
+		}
+
+		return ma;
+	}
+
+	T				Determinant		( void ) {
+		return(
+			m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - 
+			m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+			m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+		);
+	}
+
+	BaseMatrix3<T>	Adjoint			( void ) {
+		BaseMatrix3<T> ma(
+			(m[1][1] * m[2][2]) - (m[2][1] * m[1][2])
+			,-((m[1][0] * m[2][2]) - (m[2][0] * m[1][2]))
+			,(m[1][0] * m[2][1]) - (m[2][0] * m[1][1])
+
+			,-((m[0][1] * m[2][2]) - (m[2][1] * m[0][2]))
+			,(m[0][0] * m[2][2]) - (m[2][0] * m[0][2])
+			,-((m[0][0] * m[2][1]) - (m[2][0] * m[0][1]))
+
+			,(m[0][1] * m[1][2]) - (m[1][1] * m[0][2])
+			,-((m[0][0] * m[1][2]) - (m[1][0] * m[0][2]))
+			,(m[0][0] * m[1][1]) - (m[1][0] * m[0][1])
+		);
+		ma = ~ma;
+		return ma;
+	}
+
+	BaseMatrix3<T>	Inverse			( void ) {
+		T det = Determinant();
+		if (det == 0) {
+			return BaseMatrix3<T>(1, 0, 0, 0, 1, 0, 0, 0, 1);
+		}
+		BaseMatrix3<T> ma = Adjoint();
+		ma = ma * (1 / det);
+		return ma;
+	}
 };
 
+using Matrix3 = BaseMatrix3<double>;
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-struct Matrix4{
+template<typename T>
+struct BaseMatrix4 {
 
-	double m[4][4];
+	T m[4][4];
 
-					Matrix4			( void );
-					Matrix4			( QMatrix4x4 mat );
-					Matrix4			( Vec3 row_a, Vec3 row_b, Vec3 row_c, Vec3 row_d );
-					Matrix4			( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 );
+	// default constructor creates IDENTITY matrix
+	BaseMatrix4( void ) { 	m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[0][3] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[1][3] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; m[2][3] = 0; m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 0; }
+	BaseMatrix4( QMatrix4x4 mat ) {
+		auto ptr = mat.data();
+		m[0][0] = ptr[0]; m[0][1] = ptr[4]; m[0][2] = ptr[8]; m[0][3] = ptr[12];
+		m[1][0] = ptr[1]; m[1][1] = ptr[5]; m[1][2] = ptr[9]; m[1][3] = ptr[13];
+		m[2][0] = ptr[2]; m[2][1] = ptr[6]; m[2][2] = ptr[10]; m[2][3] = ptr[14];
+		m[3][0] = ptr[3]; m[3][1] = ptr[7]; m[3][2] = ptr[11]; m[3][3] = ptr[15];
+	}
+	BaseMatrix4( Vec3 row_a, Vec3 row_b, Vec3 row_c, Vec3 row_d ) {
+		m[0][0] = row_a.x;
+		m[0][1] = row_a.y;
+		m[0][2] = row_a.z;
+		m[0][3] = 0.0;
+		m[1][0] = row_b.x;
+		m[1][1] = row_b.y;
+		m[1][2] = row_b.z;
+		m[1][3] = 0.0;
+		m[2][0] = row_c.x;
+		m[2][1] = row_c.y;
+		m[2][2] = row_c.z;
+		m[2][3] = 0.0;
+		m[3][0] = row_d.x;
+		m[3][1] = row_d.y;
+		m[3][2] = row_d.z;
+		m[3][3] = 0.0;
+	}
+	BaseMatrix4( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 ) {
+		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
+		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
+		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
+		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
+	}
 
-	void			set				( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 );
+	void			Set				( double e00, double e01, double e02, double e03, double e10, double e11, double e12, double e13, double e20, double e21, double e22, double e23, double e30, double e31, double e32, double e33 ) {
+		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
+		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
+		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
+		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
+	}
 
-	void			operator=		( Matrix4 m2 );
-	Matrix4			operator+		( Matrix4 m2 ) const;
-	Matrix4			operator*		( Matrix4 m2 ) const;
-	Matrix4			operator*		( double m2 ) const;
-	Vec3			operator*		( Vec3 v ) const;
-	Matrix4			operator~		( void ) const;
+	void			operator=		( BaseMatrix4<T> m2 ) {
+		for (int a = 0; a < 4; a++) {
+			for (int b = 0; b < 4; b++) {
+				m[a][b] = m2.m[a][b];
+			}
+		}
+	}
+	BaseMatrix4<T> operator+		( BaseMatrix4<T> m2 ) const {
+		BaseMatrix4<T> res;
+		for (int a = 0; a < 4; a++) {
+			for (int b = 0; b < 4; b++) {
+				res.m[a][b] = m[a][b] + m2.m[a][b];
+			}
+		}
+		return res;
+	}
+	BaseMatrix4<T> operator*		( BaseMatrix4<T> m2 ) const {
+		BaseMatrix4<T> ma;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				for (int r = 0; r < 4; r++) {
+					ma.m[i][j] += m[i][r] * m2.m[r][j];
+				}
+			}
+		}
+		return ma;
+	}
+	BaseMatrix4<T> operator*		( T m2 ) const {
+		BaseMatrix4<T> res;
+		for (int a = 0; a < 4; a++) {
+			for (int b = 0; b < 4; b++) {
+				res.m[a][b] = m[a][b] * m2;
+			}
+		}
+		return res;
+	}
+	BaseVec3<T> operator*		( BaseVec3<T> v ) const {
+		BaseVec3<T> res(
+			m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3]
+			,m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3]
+			,m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3]
+		);
+		return res;
+	}
+	BaseVec4<T> operator*		( BaseVec4<T> v ) const {
+		BaseVec4<T> res(
+			m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3] * v.w
+			,m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3] * v.w
+			,m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3] * v.w
+			,m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3] * v.w
+		);
+		return res;
+	}
 
-	double			determinant		( void ) const;
-	Matrix4			inverse			( bool* ok = nullptr ) const;
-	QMatrix4x4		toQMatrix4x4	( void ) const;
+	BaseMatrix4<T> operator~( void ) const {
+		BaseMatrix4<T> ma;
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				ma.m[i][j] = m[j][i];
+			}
+		}
+		return ma;
+	}
 
-	static Matrix4	Identity		( void );
+	double SubDeterminant2x2(const T m[4][4], int col0, int col1, int row0, int row1) const {
+		return m[col0][row0] * m[col1][row1] - m[col0][row1] * m[col1][row0];
+	}
+
+	double SubDeterminant3x3(const T m[4][4], int col0, int col1, int col2, int row0, int row1, int row2) const {
+		return m[col0][row0] * SubDeterminant2x2(m, col1, col2, row1, row2) - m[col1][row0] * SubDeterminant2x2(m, col0, col2, row1, row2) + m[col2][row0] * SubDeterminant2x2(m, col0, col1, row1, row2);
+	}
+
+	T Determinant		( void ) const {
+		T det;
+		det = m[0][0] * SubDeterminant3x3(m, 1, 2, 3, 1, 2, 3);
+		det -= m[1][0] * SubDeterminant3x3(m, 0, 2, 3, 1, 2, 3);
+		det += m[2][0] * SubDeterminant3x3(m, 0, 1, 3, 1, 2, 3);
+		det -= m[3][0] * SubDeterminant3x3(m, 0, 1, 2, 1, 2, 3);
+		return det;
+	}
+
+	BaseMatrix4<T> Inverse			( bool* ok = nullptr ) const {
+		BaseMatrix4<T> inv;
+		T det = Determinant();
+		if (det == 0.0) {
+			if (ok) {
+				*ok = false;
+			}
+			return inv;
+		}
+		det = 1.0 / det;
+
+		inv.m[0][0] = SubDeterminant3x3(m, 1, 2, 3, 1, 2, 3) * det;
+		inv.m[0][1] = -SubDeterminant3x3(m, 0, 2, 3, 1, 2, 3) * det;
+		inv.m[0][2] = SubDeterminant3x3(m, 0, 1, 3, 1, 2, 3) * det;
+		inv.m[0][3] = -SubDeterminant3x3(m, 0, 1, 2, 1, 2, 3) * det;
+		inv.m[1][0] = -SubDeterminant3x3(m, 1, 2, 3, 0, 2, 3) * det;
+		inv.m[1][1] = SubDeterminant3x3(m, 0, 2, 3, 0, 2, 3) * det;
+		inv.m[1][2] = -SubDeterminant3x3(m, 0, 1, 3, 0, 2, 3) * det;
+		inv.m[1][3] = SubDeterminant3x3(m, 0, 1, 2, 0, 2, 3) * det;
+		inv.m[2][0] = SubDeterminant3x3(m, 1, 2, 3, 0, 1, 3) * det;
+		inv.m[2][1] = -SubDeterminant3x3(m, 0, 2, 3, 0, 1, 3) * det;
+		inv.m[2][2] = SubDeterminant3x3(m, 0, 1, 3, 0, 1, 3) * det;
+		inv.m[2][3] = -SubDeterminant3x3(m, 0, 1, 2, 0, 1, 3) * det;
+		inv.m[3][0] = -SubDeterminant3x3(m, 1, 2, 3, 0, 1, 2) * det;
+		inv.m[3][1] = SubDeterminant3x3(m, 0, 2, 3, 0, 1, 2) * det;
+		inv.m[3][2] = -SubDeterminant3x3(m, 0, 1, 3, 0, 1, 2) * det;
+		inv.m[3][3] = SubDeterminant3x3(m, 0, 1, 2, 0, 1, 2) * det;
+		if (ok) {
+			*ok = true;
+		}
+		return inv;
+	}
+
+	QMatrix4x4		toQMatrix4x4	( void ) const {
+		return QMatrix4x4(
+			(float)m[0][0], (float)m[0][1], (float)m[0][2], (float)m[0][3]
+			, (float)m[1][0], (float)m[1][1], (float)m[1][2], (float)m[1][3]
+			, (float)m[2][0], (float)m[2][1], (float)m[2][2], (float)m[2][3]
+			, (float)m[3][0], (float)m[3][1], (float)m[3][2], (float)m[3][3]
+		);
+	}
+
+	static BaseMatrix4<T> GetScale( BaseVec3<T> vec ) {
+		BaseMatrix4<T> scale;
+		scale.m[0][0] = vec.x;
+		scale.m[1][1] = vec.y;
+		scale.m[2][2] = vec.z;
+		return scale;
+	}
 };
+
+using Matrix4 = BaseMatrix4<double>;
+using fMatrix4 = BaseMatrix4<float>;
 
 void Matrix4UnitTest(void);
 
@@ -456,15 +683,6 @@ inline QMatrix3x3 ConvertTo3x3(const QMatrix4x4& mat) {
 		,d[2], d[6], d[10]
 	};
 	return QMatrix3x3(v);
-}
-
-template<typename T>
-Matrix4 BaseVec3<T>::GetScale(void) const {
-	Matrix4 scale = Matrix4::Identity();
-	scale.m[0][0] = x;
-	scale.m[1][1] = y;
-	scale.m[2][2] = z;
-	return scale;
 }
 
 } // namespace Neshny
