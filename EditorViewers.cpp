@@ -41,7 +41,7 @@ QStringList DebugTiming::Report(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
@@ -51,7 +51,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	GLBuffer* line_buffer = Core::GetBuffer("DebugLine");
 	line_buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
 
 	for (auto it = m_Lines.begin(); it != m_Lines.end(); it++) {
 		if (it->p_OnTop) {
@@ -86,12 +86,12 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 		if (it->p_Str.size() <= 0) {
 			continue;
 		}
-		QVector3D result = view_perspective * QVector3D(dpos.x, dpos.y, dpos.z);
-		if (result.z() > 1) {
+		fVec3 result = view_perspective * fVec3(dpos.x, dpos.y, dpos.z);
+		if (result.z > 1) {
 			continue;
 		}
-		int x = (int)floor((result.x() + 1.0) * 0.5 * width);
-		int y = (int)floor((1.0 - result.y()) * 0.5 * height);
+		int x = (int)floor((result.x + 1.0) * 0.5 * width);
+		int y = (int)floor((1.0 - result.y) * 0.5 * height);
 		ImGui::SetCursorPos(ImVec2(x, y));
 		ImGui::Text(it->p_Str.c_str());
 	}
@@ -101,7 +101,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	GLBuffer* buffer = Core::GetBuffer("DebugTriangle");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -127,7 +127,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	buffer = Core::GetBuffer("Circle");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
 
 	Vec2 offset2d(offset.x, offset.y);
 	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
@@ -144,7 +144,7 @@ void BaseDebugRender::IRender3DDebug(const QMatrix4x4& view_perspective, int wid
 	buffer = Core::GetBuffer("DebugSquare");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
 
 	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
 
@@ -726,7 +726,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height);
+	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height).ToOpenGL();
 
 	{
 		auto token = ActivateRTT();
@@ -812,7 +812,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
+	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height).ToOpenGL();
 
 	{
 		auto token = ActivateRTT();

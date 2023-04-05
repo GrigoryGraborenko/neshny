@@ -185,7 +185,7 @@ public:
 
 	inline const GLTexture& Get(void) { return m_Texture; }
 
-	void Render(const QMatrix4x4& vp, Vec3 cam_pos) {
+	void Render(const fMatrix4& vp, Vec3 cam_pos) {
 		
 		GLShader* prog = Core::GetShader("Skybox");
 		prog->UseProgram();
@@ -196,7 +196,7 @@ public:
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_Texture.GetTexture());
 		glUniform1i(prog->GetUniform("uSkybox"), 0);
 		glUniform3f(prog->GetUniform("uOffset"), cam_pos.x, cam_pos.y, cam_pos.z);
-		glUniformMatrix4fv(prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, vp.data());
+		glUniformMatrix4fv(prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, vp.Data());
 		
 		glDepthMask(GL_FALSE);
 		glDisable(GL_DEPTH_TEST);

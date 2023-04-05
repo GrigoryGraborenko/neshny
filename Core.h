@@ -6,14 +6,13 @@ namespace Neshny {
 struct Camera2D {
 
 	// TODO: replace with double-based matrix
-	inline QMatrix4x4		Get4x4Matrix			( int width, int height ) const {
+	inline Matrix4 Get4x4Matrix(int width, int height) const {
 		float aspect = (float)height / width;
 		float view_rad_x = p_Zoom;
 		float view_rad_y = p_Zoom * aspect;
-		QMatrix4x4 viewMatrix;
-		viewMatrix.ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, 1.0, -1.0);
+		Matrix4 viewMatrix = Matrix4::Ortho(p_Pos.x - view_rad_x, p_Pos.x + view_rad_x, p_Pos.y - view_rad_y, p_Pos.y + view_rad_y, 1.0, -1.0);
 		if (p_RotationAngle != 0.0) {
-			viewMatrix.rotate(p_RotationAngle, 0.0, 0.0, 1.0);
+			viewMatrix *= Matrix4::Rotation(p_RotationAngle, Vec3(0.0, 0.0, 1.0));
 		}
 		return viewMatrix;
 	}
@@ -38,9 +37,9 @@ struct Camera2D {
 
 	inline Vec2 WorldToScreen(Vec2 pos, int width, int height) {
 		auto vp = Get4x4Matrix(width, height);
-		QVector4D res = vp * QVector4D(pos.x, pos.y, 0.0, 1.0);
-		double inv_w = 1.0 / res.w();
-		return Vec2((res.x() * inv_w * 0.5 + 0.5) * width, (res.y() * inv_w * -0.5 + 0.5) * height);
+		Vec4 res = vp * Vec4(pos.x, pos.y, 0.0, 1.0);
+		double inv_w = 1.0 / res.w;
+		return Vec2((res.x * inv_w * 0.5 + 0.5) * width, (res.y * inv_w * -0.5 + 0.5) * height);
 	}
 
 	inline void Zoom(double new_zoom, Vec2 mouse_world_pos, int width, int height) {
@@ -70,9 +69,9 @@ struct Camera3DOrbit {
 		viewMatrix.Translate(p_Pos * -1);
 		return viewMatrix;
 	}
-	QMatrix4x4 GetViewPerspectiveMatrix(int width, int height) const {
+	Matrix4 GetViewPerspectiveMatrix(int width, int height) const {
 		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
-		return (perspectiveMatrix * GetViewMatrix()).toQMatrix4x4();
+		return perspectiveMatrix * GetViewMatrix();
 	}
 	Vec3 GetCamRealPos(void) const {
 		return (GetViewMatrix().Inverse() * Vec4(0, 0, 0, 1)).ToVec3();
@@ -94,9 +93,9 @@ struct Camera3DFPS {
 		viewMatrix.Translate(p_Pos * -1);
 		return viewMatrix;
 	}
-	QMatrix4x4 GetViewPerspectiveMatrix(int width, int height) const {
+	Matrix4 GetViewPerspectiveMatrix(int width, int height) const {
 		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
-		return (perspectiveMatrix * GetViewMatrix()).toQMatrix4x4();
+		return perspectiveMatrix * GetViewMatrix();
 	}
 	void GetDirections(Vec3* forward = nullptr, Vec3* up = nullptr, Vec3* side = nullptr) {
 		auto inv = p_Direction.Inverse();

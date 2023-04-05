@@ -650,35 +650,47 @@ struct BaseMatrix4 {
 
 	T m[4][4];
 
-	BaseMatrix4( void ) { 	m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[0][3] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[1][3] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; m[2][3] = 0; m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 0; }
-	BaseMatrix4( Vec3 row_a, Vec3 row_b, Vec3 row_c, Vec3 row_d ) {
+	BaseMatrix4(void) { m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[0][3] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[1][3] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; m[2][3] = 0; m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 0; }
+	BaseMatrix4(BaseVec3<T> row_a, BaseVec3<T> row_b, BaseVec3<T> row_c, BaseVec3<T> row_d) {
 		m[0][0] = row_a.x; m[0][1] = row_a.y; m[0][2] = row_a.z; m[0][3] = 0.0;
 		m[1][0] = row_b.x; m[1][1] = row_b.y; m[1][2] = row_b.z; m[1][3] = 0.0;
 		m[2][0] = row_c.x; m[2][1] = row_c.y; m[2][2] = row_c.z; m[2][3] = 0.0;
 		m[3][0] = row_d.x; m[3][1] = row_d.y; m[3][2] = row_d.z; m[3][3] = 0.0;
 	}
-	BaseMatrix4( T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33 ) {
+	BaseMatrix4(T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33) {
 		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
 		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
 		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
 	}
 
-	void			Set				( T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33 ) {
+	void Set(T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33) {
 		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
 		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
 		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
 	}
 
-	void			operator=		( const BaseMatrix4<T>& m2 ) {
+	BaseMatrix4<float> ToOpenGL(void) const {
+		return BaseMatrix4<float>(
+			(float)m[0][0], (float)m[1][0], (float)m[2][0], (float)m[3][0]
+			,(float)m[0][1], (float)m[1][1], (float)m[2][1], (float)m[3][1]
+			,(float)m[0][2], (float)m[1][2], (float)m[2][2], (float)m[3][2]
+			,(float)m[0][3], (float)m[1][3], (float)m[2][3], (float)m[3][3]
+		);
+	}
+	const T* Data(void) const {
+		return m[0];
+	}
+
+	void operator=(const BaseMatrix4<T>& m2) {
 		for (int a = 0; a < 4; a++) {
 			for (int b = 0; b < 4; b++) {
 				m[a][b] = m2.m[a][b];
 			}
 		}
 	}
-	BaseMatrix4<T> operator+		( const BaseMatrix4<T>& m2 ) const {
+	BaseMatrix4<T> operator+(const BaseMatrix4<T>& m2) const {
 		BaseMatrix4<T> res;
 		for (int a = 0; a < 4; a++) {
 			for (int b = 0; b < 4; b++) {
@@ -687,7 +699,7 @@ struct BaseMatrix4 {
 		}
 		return res;
 	}
-	BaseMatrix4<T> operator*		( const BaseMatrix4<T>& m2 ) const {
+	BaseMatrix4<T> operator*(const BaseMatrix4<T>& m2) const {
 		BaseMatrix4<T> ma;
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {

@@ -112,7 +112,7 @@ protected:
 		bool p_Filled = false;
 	};
 
-	void										IRender3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+	void										IRender3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
     inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
 
     std::vector<DebugLine>						m_Lines;
@@ -133,7 +133,7 @@ public:
 
 	static inline DebugRender&					Singleton			( void ) { static DebugRender instance; return instance; }
 
-	static inline void							Render3DDebug		( const QMatrix4x4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+	static inline void							Render3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }
 
@@ -270,7 +270,7 @@ private:
 	std::optional<Vec2>			m_LastMousePos = std::nullopt;
 	bool						m_NeedsReset = true;
 
-	QMatrix4x4					m_CachedViewPerspective;
+	fMatrix4					m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
 };
@@ -284,7 +284,7 @@ public:
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
 	static auto					ActivateRTT					( void );
-	static QMatrix4x4			GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
+	static fMatrix4				GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
 	static inline void			Line						( Vec3 a, Vec3 b, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
 	static inline void			Point						( Vec3 pos, QVector4D color = QVector4D(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
@@ -303,7 +303,7 @@ private:
 	int							m_Height = 32;
 	bool						m_NeedsReset = true;
 
-	QMatrix4x4					m_CachedViewPerspective;
+	fMatrix4					m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
 };
