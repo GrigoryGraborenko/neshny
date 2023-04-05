@@ -488,6 +488,164 @@ using Matrix3 = BaseMatrix3<double>;
 //
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
+struct BaseQuat {
+
+	enum class Axis {
+		X, Y, Z
+	};
+
+	T m[4];
+
+	BaseQuat(void) { m[0] = 0; m[1] = 0; m[2] = 0; m[3] = 0; }
+	BaseQuat(const BaseVec3<T>& dir) {
+		const T a1 = atan2(-dir.z, dir.x) * RADIANS_TO_DEGREES;
+		const T xzd = sqrt(dir.x * dir.x + dir.z * dir.z);
+		const T a2 = atan2(dir.y, xzd) * RADIANS_TO_DEGREES;
+		if (!dir.x) {
+			a1 = 0;
+		}
+		if (!xzd) {
+			a2 = 0;
+		}
+		operator=(Quat(a1, Axis::Y) * Quat(a2, Axis::Z));
+	}
+	BaseQuat(BaseVec3<T> axis, T degrees) {
+		const T rads = degrees * DEGREES_TO_RADIANS * 0.5;
+		const T si = sin(rads);
+		axis.Normalize();
+		m[0] = cos(rads);
+		m[1] = axis.x * si;
+		m[2] = axis.y * si;
+		m[3] = axis.z * si;
+		Normalize();
+	}
+	BaseQuat(T e0, T e1, T e2, T e3) { m[0] = e0; m[1] = e1; m[2] = e2; m[3] = e3; }
+	BaseQuat(T degrees, Axis axis) {
+		const T ang = degrees * DEGREES_TO_RADIANS * 0.5;
+		if (axis == Axis::X) {
+			Set(cos(ang), sin(ang), 0, 0);
+		} else if (axis == Axis::Y) {
+			Set(cos(ang), 0, sin(ang), 0);
+		} else if (axis == Axis::Z) {
+			Set(cos(ang), 0, 0, sin(ang));
+		} else {
+			Set(1, 0, 0, 0);
+		}
+		Normalize();
+	}
+	BaseQuat(BaseMatrix3<T> rm) {
+		const T tr = rm.m[0][0] + rm.m[1][1] + rm.m[2][2];
+		if (tr > 0) {
+			T S = sqrt(tr + 1.0) * 2; // S=4*qw 
+			m[3] = 0.25 * S;
+			m[0] = (rm.m[2][1] - rm.m[1][2]) / S;
+			m[1] = (rm.m[0][2] - rm.m[2][0]) / S;
+			m[2] = (rm.m[1][0] - rm.m[0][1]) / S;
+		} else if ((rm.m[0][0] > rm.m[1][1]) & (rm.m[0][0] > rm.m[2][2])) {
+			T S = sqrt(1.0 + rm.m[0][0] - rm.m[1][1] - rm.m[2][2]) * 2; // S=4*qx 
+			m[3] = (rm.m[2][1] - rm.m[1][2]) / S;
+			m[0] = 0.25 * S;
+			m[1] = (rm.m[0][1] + rm.m[1][0]) / S;
+			m[2] = (rm.m[0][2] + rm.m[2][0]) / S;
+		} else if (rm.m[1][1] > rm.m[2][2]) {
+			T S = sqrt(1.0 + rm.m[1][1] - rm.m[0][0] - rm.m[2][2]) * 2; // S=4*qy
+			m[3] = (rm.m[0][2] - rm.m[2][0]) / S;
+			m[0] = (rm.m[0][1] + rm.m[1][0]) / S;
+			m[1] = 0.25 * S;
+			m[2] = (rm.m[1][2] + rm.m[2][1]) / S;
+		} else {
+			T S = sqrt(1.0 + rm.m[2][2] - rm.m[0][0] - rm.m[1][1]) * 2; // S=4*qz
+			m[3] = (rm.m[1][0] - rm.m[0][1]) / S;
+			m[0] = (rm.m[0][2] + rm.m[2][0]) / S;
+			m[1] = (rm.m[1][2] + rm.m[2][1]) / S;
+			m[2] = 0.25 * S;
+		}
+	}
+
+	void Set(T e0, T e1, T e2, T e3) { m[0] = e0; m[1] = e1; m[2] = e2; m[3] = e3; }
+	void operator=(const BaseQuat& q2) { m[0] = q2.m[0]; m[1] = q2.m[1]; m[2] = q2.m[2]; m[3] = q2.m[3]; }
+	BaseQuat operator*(const BaseQuat& q2) const {
+		BaseQuat qa;
+		qa.m[0] = m[0] * q2.m[0] - m[1] * q2.m[1] - m[2] * q2.m[2] - m[3] * q2.m[3];
+		qa.m[1] = m[0] * q2.m[1] + m[1] * q2.m[0] + m[2] * q2.m[3] - m[3] * q2.m[2];
+		qa.m[2] = m[0] * q2.m[2] - m[1] * q2.m[3] + m[2] * q2.m[0] + m[3] * q2.m[1];
+		qa.m[3] = m[0] * q2.m[3] + m[1] * q2.m[2] - m[2] * q2.m[1] + m[3] * q2.m[0];
+		return qa;
+	}
+	BaseVec3<T> operator*(BaseVec3<T> vec) const {
+		BaseQuat result = (*this) * BaseQuat(0.0, vec.x, vec.y, vec.z) * BaseQuat(m[0], -m[1], -m[2], -m[3]);
+		return BaseVec3<T>(result.m[1], result.m[2], result.m[3]);
+	}
+	BaseQuat operator*(T f) const {
+		BaseQuat qa;
+		qa.m[0] = m[0] * f;
+		qa.m[1] = m[1] * f;
+		qa.m[2] = m[2] * f;
+		qa.m[3] = m[3] * f;
+		return qa;
+	}
+	BaseQuat operator+(const BaseQuat& q2) const {
+		BaseQuat qa;
+		qa.m[0] = m[0] + q2.m[0];
+		qa.m[1] = m[1] + q2.m[1];
+		qa.m[2] = m[2] + q2.m[2];
+		qa.m[3] = m[3] + q2.m[3];
+		return qa;
+	}
+	BaseQuat operator/(const BaseQuat& q2) const {
+		BaseQuat qa;
+		T denom = q2.m[0] * q2.m[0] + q2.m[1] * q2.m[1] + q2.m[2] * q2.m[2] + q2.m[3] * q2.m[3];
+		if (denom == 0) {
+			denom = ALMOST_ZERO;
+		}
+		T inv_denom = 1.0 / denom;
+		qa.m[0] = (q2.m[0] * m[0] + q2.m[1] * m[1] + q2.m[2] * m[2] + q2.m[3] * m[3]) * inv_denom;
+		qa.m[1] = (q2.m[0] * m[1] - q2.m[1] * m[0] - q2.m[2] * m[3] + q2.m[3] * m[2]) * inv_denom;
+		qa.m[2] = (q2.m[0] * m[2] + q2.m[1] * m[3] - q2.m[2] * m[0] - q2.m[3] * m[1]) * inv_denom;
+		qa.m[3] = (q2.m[0] * m[3] - q2.m[1] * m[2] + q2.m[2] * m[1] - q2.m[3] * m[0]) * inv_denom;
+		return qa;
+	}
+
+	BaseQuat Inverse(void) const {
+		BaseQuat qa;
+		T denom = m[0] * m[0] + m[1] * m[1] + m[2] * m[2] + m[3] * m[3];
+		if (denom == 0) {
+			denom = ALMOST_ZERO;
+		}
+		T inv_denom = 1.0 / denom;
+		qa.m[0] = m[0] * inv_denom;
+		qa.m[1] = -m[1] * inv_denom;
+		qa.m[2] = -m[2] * inv_denom;
+		qa.m[3] = -m[3] * inv_denom;
+		return qa;
+	}
+	void Normalize(void) {
+		T dist = sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2] + m[3] * m[3]);
+		if (dist == 0) {
+			dist = (T)ALMOST_ZERO;
+		}
+		T inv_dist = 1.0 / dist;
+		m[0] = m[0] * inv_dist;
+		m[1] = m[1] * inv_dist;
+		m[2] = m[2] * inv_dist;
+		m[3] = m[3] * inv_dist;
+	}
+	BaseMatrix3<T> ToRotation(void) {
+		return BaseMatrix3<T>(
+			1 - 2 * m[2] * m[2] - 2 * m[3] * m[3], 2 * m[1] * m[2] - 2 * m[0] * m[3], 2 * m[1] * m[3] + 2 * m[0] * m[2],
+			2 * m[1] * m[2] + 2 * m[0] * m[3], 1 - 2 * m[1] * m[1] - 2 * m[3] * m[3], 2 * m[2] * m[3] - 2 * m[0] * m[1],
+			2 * m[1] * m[3] - 2 * m[0] * m[2], 2 * m[2] * m[3] + 2 * m[0] * m[1], 1 - 2 * m[1] * m[1] - 2 * m[2] * m[2]
+		);
+	}
+};
+
+using Quat = BaseQuat<double>;
+using fQuat = BaseQuat<float>;
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
 struct BaseMatrix4 {
 
 	T m[4][4];
@@ -615,20 +773,20 @@ struct BaseMatrix4 {
 		return ma;
 	}
 
-	static BaseMatrix4<T> Rotation(const QQuaternion& quaternion) {
+	static BaseMatrix4<T> Rotation(const BaseQuat<T>& quat) {
 		BaseMatrix4<T> ma;
-		const T f2x = quaternion.x() + quaternion.x();
-		const T f2y = quaternion.y() + quaternion.y();
-		const T f2z = quaternion.z() + quaternion.z();
-		const T f2xw = f2x * quaternion.scalar();
-		const T f2yw = f2y * quaternion.scalar();
-		const T f2zw = f2z * quaternion.scalar();
-		const T f2xx = f2x * quaternion.x();
-		const T f2xy = f2x * quaternion.y();
-		const T f2xz = f2x * quaternion.z();
-		const T f2yy = f2y * quaternion.y();
-		const T f2yz = f2y * quaternion.z();
-		const T f2zz = f2z * quaternion.z();
+		const T f2x = quat.m[1] + quat.m[1];
+		const T f2y = quat.m[2] + quat.m[2];
+		const T f2z = quat.m[3] + quat.m[3];
+		const T f2xw = f2x * quat.m[0];
+		const T f2yw = f2y * quat.m[0];
+		const T f2zw = f2z * quat.m[0];
+		const T f2xx = f2x * quat.m[1];
+		const T f2xy = f2x * quat.m[2];
+		const T f2xz = f2x * quat.m[3];
+		const T f2yy = f2y * quat.m[2];
+		const T f2yz = f2y * quat.m[3];
+		const T f2zz = f2z * quat.m[3];
 
 		ma.m[0][0] = 1.0 - (f2yy + f2zz);
 		ma.m[0][1] = f2xy - f2zw;
@@ -764,6 +922,7 @@ using Matrix4 = BaseMatrix4<double>;
 using fMatrix4 = BaseMatrix4<float>;
 
 void Matrix4UnitTest(void);
+void QuatUnitTest(void);
 
 bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, double y0, double x1, double y1, double& result_t0, double& result_t1);
 bool IntersectLineSphere(Vec3 centre, double radius_sqr, Vec3 p0, Vec3 p1, double& result_t0, double& result_t1);

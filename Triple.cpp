@@ -119,6 +119,54 @@ void Matrix4UnitTest(void) {
 	}
 }
 
+void QuatUnitTest(void) {
+	const float rad = 10;
+	for (int i = 0; i < 32; i++) {
+
+		float vals[4] = {
+			(float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad)
+		};
+		float vals_b[4] = {
+			(float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad)
+		};
+		float vals_c[4] = {
+			(float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad)
+		};
+		float vals_d[3] = {
+			(float)Random(-rad, rad), (float)Random(-rad, rad), (float)Random(-rad, rad)
+		};
+		fQuat mine(vals[0], vals[1], vals[2], vals[3]);
+		QQuaternion theirs(vals[0], vals[1], vals[2], vals[3]);
+
+		fQuat mine_other(vals_b[0], vals_b[1], vals_b[2], vals_b[3]);
+		QQuaternion theirs_other(vals_b[0], vals_b[1], vals_b[2], vals_b[3]);
+
+		fVec3 mine_vect(vals_d[0], vals_d[1], vals_d[2]);
+		QVector3D theirs_vect(vals_d[0], vals_d[1], vals_d[2]);
+
+		fQuat mine_axis(fVec3(vals_c[0], vals_c[1], vals_c[2]), vals_c[3]);
+		QQuaternion theirs_axis = QQuaternion::fromAxisAndAngle(vals_c[0], vals_c[1], vals_c[2], vals_c[3]);
+
+		fQuat mine_res = mine * mine_other;
+		QQuaternion theirs_res = theirs * theirs_other;
+
+		fVec3 mine_vector_res = mine_res * mine_vect;
+		QVector3D theirs_vector_res = theirs_res * theirs_vect;
+
+		fQuat mine_multi_res = mine * mine_axis * mine_other;
+		QQuaternion theirs_multi_res = theirs * theirs_axis * theirs_other;
+
+		fVec3 mine_vector_multi = mine_multi_res * mine_vect;
+		QVector3D theirs_vector_multi = theirs_multi_res * theirs_vect;
+
+		float delta_vect = (mine_vector_res.toVec() - theirs_vector_res).length();
+		assert(delta_vect < 0.5);
+
+		float delta_multi_vect = (mine_vector_multi.toVec() - theirs_vector_multi).length();
+		assert(delta_multi_vect < 0.5);
+	}
+}
+
 #pragma msg("unify these two functions with template")
 ////////////////////////////////////////////////////////////////////////////////
 bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, double y0, double x1, double y1, double& result_t0, double& result_t1) {

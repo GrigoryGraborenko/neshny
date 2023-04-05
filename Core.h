@@ -99,13 +99,13 @@ struct Camera3DFPS {
 		return (perspectiveMatrix * GetViewMatrix()).toQMatrix4x4();
 	}
 	void GetDirections(Vec3* forward = nullptr, Vec3* up = nullptr, Vec3* side = nullptr) {
-		auto inv = p_Direction.inverted();
-		if (forward) { *forward = inv * QVector3D(0, 0, -1); forward->Normalize(); }
-		if (up) { *up = inv * QVector3D(0, 1, 0); up->Normalize(); }
-		if (side) { *side = inv * QVector3D(1, 0, 0); side->Normalize(); }
+		auto inv = p_Direction.Inverse();
+		if (forward) { *forward = inv * Vec3(0, 0, -1); forward->Normalize(); }
+		if (up) { *up = inv * Vec3(0, 1, 0); up->Normalize(); }
+		if (side) { *side = inv * Vec3(1, 0, 0); side->Normalize(); }
 	}
 	Vec3		p_Pos;
-	QQuaternion	p_Direction = QQuaternion(0.0f, 0.0f, 0.0f, 1.0f);
+	Quat		p_Direction = Quat(0.0, 0.0, 0.0, 1.0);
 	float		p_FovDegrees = 60;
 	float		p_NearPlane = 0.1f;
 	float		p_FarPlane = 1000.0f;
