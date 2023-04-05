@@ -17,10 +17,10 @@ struct BaseVec3 {
 
 						BaseVec3		( void ) : x(0), y(0), z(0) {}
 						BaseVec3		( T e0, T e1, T e2 ) : x(e0), y(e1), z(e2) {}
-						BaseVec3		( QVector3D v ) : x(v.x()), y(v.y()), z(v.z()) {} // TODO: clean up any refs to QT maths
-						BaseVec3		( QVector4D v ) : x(v.x()), y(v.y()), z(v.z()) {}
 						BaseVec3		( const BaseVec3<int>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
 						BaseVec3		( Axis ax, T v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
+
+	inline BaseVec3<float> ToFloat3(void) const { return BaseVec3<float>(float(x), float(y), float(z)); }
 
 	inline void			Set				( T e0, T e1, T e2 ) { x = e0; y = e1; z = e2; }
 
@@ -155,9 +155,6 @@ struct BaseVec3 {
 		}
 		return true;
 	}
-
-	QVector3D		toVec			( void ) const { return QVector3D(x, y, z); }
-	QVector4D		toVec4			( void ) const { return QVector4D(x, y, z, 1.0); }
 
 	inline static BaseVec3<T>	Min				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
 	inline static BaseVec3<T>	Max				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
@@ -903,15 +900,6 @@ struct BaseMatrix4 {
 		return inv;
 	}
 
-	QMatrix4x4		toQMatrix4x4	( void ) const {
-		return QMatrix4x4(
-			(float)m[0][0], (float)m[0][1], (float)m[0][2], (float)m[0][3]
-			,(float)m[1][0], (float)m[1][1], (float)m[1][2], (float)m[1][3]
-			,(float)m[2][0], (float)m[2][1], (float)m[2][2], (float)m[2][3]
-			,(float)m[3][0], (float)m[3][1], (float)m[3][2], (float)m[3][3]
-		);
-	}
-
 	static BaseMatrix4<T> GetScale( BaseVec3<T> vec ) {
 		BaseMatrix4<T> scale;
 		scale.m[0][0] = vec.x;
@@ -933,8 +921,8 @@ struct BaseMatrix4 {
 using Matrix4 = BaseMatrix4<double>;
 using fMatrix4 = BaseMatrix4<float>;
 
-void Matrix4UnitTest(void);
-void QuatUnitTest(void);
+//void Matrix4UnitTest(void);
+//void QuatUnitTest(void);
 
 bool IntersectLineCircle(double cx, double cy, double radius_sqr, double x0, double y0, double x1, double y1, double& result_t0, double& result_t1);
 bool IntersectLineSphere(Vec3 centre, double radius_sqr, Vec3 p0, Vec3 p1, double& result_t0, double& result_t1);

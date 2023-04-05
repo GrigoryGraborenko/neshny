@@ -43,6 +43,7 @@ bool LineLineIntersect(Vec4 a0, Vec4 a1, Vec4 b0, Vec4 b1, Vec4& out_a, Vec4& ou
 	return true;
 }
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 void Matrix4UnitTest(void) {
 
@@ -165,7 +166,7 @@ void QuatUnitTest(void) {
 		float delta_multi_vect = (mine_vector_multi.toVec() - theirs_vector_multi).length();
 		assert(delta_multi_vect < 0.5);
 	}
-}
+}*/
 
 #pragma msg("unify these two functions with template")
 ////////////////////////////////////////////////////////////////////////////////

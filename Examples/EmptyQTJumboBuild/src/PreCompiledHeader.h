@@ -10,10 +10,6 @@
 #include <QString>
 #include <QFile>
 #include <QDir>
-#include <QVector2D>
-#include <QVector3D>
-#include <QVector4D>
-#include <QMatrix4x4>
 #include <QElapsedTimer>
 #include <QImage>
 #include <QtDebug>

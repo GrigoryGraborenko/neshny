@@ -61,7 +61,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 		}
 		Vec3 da = (it->p_A - offset) * scale;
 		Vec3 db = (it->p_B - offset) * scale;
-		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
 		glUniform3f(debug_prog->GetUniform("uPosA"), da.x, da.y, da.z);
 		glUniform3f(debug_prog->GetUniform("uPosB"), db.x, db.y, db.z);
 		line_buffer->Draw();
@@ -76,7 +76,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 		}
 		Vec3 dpos = (it->p_Pos - offset) * scale;
 
-		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
 		glUniform3f(debug_prog->GetUniform("uPosA"), dpos.x, dpos.y, dpos.z);
 		for (int i = 0; i < 2; i++) {
 			Vec3 off = (it->p_Pos - offset + Vec3(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
@@ -110,7 +110,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 
 	for (auto it = m_Triangles.begin(); it != m_Triangles.end(); it++) {
 
-		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
 
 		Vec3 da = (it->p_A - offset) * scale;
 		Vec3 db = (it->p_B - offset) * scale;
@@ -132,7 +132,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 	Vec2 offset2d(offset.x, offset.y);
 	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
 
-		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
 		Vec2 dpos = (it->p_Pos - offset2d) * scale;
 		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, 0.0);
 		glUniform1f(debug_prog->GetUniform("uSize"), it->p_Radius * scale);
@@ -148,7 +148,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 
 	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
 
-		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x(), it->p_Col.y(), it->p_Col.z(), it->p_Col.w());
+		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
 		Vec2 dmin_pos = (it->p_MinPos - offset2d) * scale;
 		Vec2 dmax_pos = (it->p_MaxPos - offset2d) * scale;
 		glUniform3f(debug_prog->GetUniform("uPosA"), dmin_pos.x, dmin_pos.y, 0.0);
@@ -734,8 +734,8 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		
 		// todo: make this a checkbox
 		const double size_grid = 1.0;
-		Line(Vec2(0, 0), Vec2(size_grid, 0), QVector4D(1, 0, 0, 1));
-		Line(Vec2(0, 0), Vec2(0, size_grid), QVector4D(0, 1, 0, 1));
+		Line(Vec2(0, 0), Vec2(size_grid, 0), Vec4(1, 0, 0, 1));
+		Line(Vec2(0, 0), Vec2(0, size_grid), Vec4(0, 1, 0, 1));
 
 		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 		IClear();
@@ -820,9 +820,9 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 		// todo: make this a checkbox
 		const double size_grid = 10.0;
-		AddLine(Vec3(0, 0, 0), Vec3(size_grid, 0, 0), QVector4D(1, 0, 0, 1));
-		AddLine(Vec3(0, 0, 0), Vec3(0, size_grid, 0), QVector4D(0, 1, 0, 1));
-		AddLine(Vec3(0, 0, 0), Vec3(0, 0, size_grid), QVector4D(0, 0, 1, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(size_grid, 0, 0), Vec4(1, 0, 0, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(0, size_grid, 0), Vec4(0, 1, 0, 1));
+		AddLine(Vec3(0, 0, 0), Vec3(0, 0, size_grid), Vec4(0, 0, 1, 1));
 
 		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
 		IClear();

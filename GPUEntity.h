@@ -132,12 +132,6 @@ public:
 			type = MemberSpec::T_IVEC3;
 		} else if constexpr (std::is_same<CurrentMemberType, iVec4>::value) {
 			type = MemberSpec::T_IVEC4;
-		} else if constexpr (std::is_same<CurrentMemberType, QVector2D>::value) {
-			type = MemberSpec::T_VEC2;
-		} else if constexpr (std::is_same<CurrentMemberType, QVector3D>::value) {
-			type = MemberSpec::T_VEC3;
-		} else if constexpr (std::is_same<CurrentMemberType, QVector4D>::value) {
-			type = MemberSpec::T_VEC4;
 		}
 		m_Specs.push_back({ name, type, sizeof(CurrentMemberType), is_id });
 	}
@@ -389,15 +383,3 @@ private:
 };
 
 } // namespace Neshny
-
-// TODO: remove me
-namespace meta {
-	template<>
-	inline auto registerMembers<QVector3D>() {
-		return members(
-			member("x", &QVector3D::x),
-			member("y", &QVector3D::y),
-			member("z", &QVector3D::z)
-		);
-	}
-}

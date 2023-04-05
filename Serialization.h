@@ -89,18 +89,6 @@ inline void SerialiseByType(const std::string& val, QJsonValue & json, [[maybe_u
 
 ////////////////////////////////////////////////////////////////////////////////
 template <>
-inline void SerialiseByType(const QVector2D& val, QJsonValue & json, [[maybe_unused]] ParseError &err) {
-    json = QJsonObject({{"x", val.x()}, {"y", val.y()}});
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template <>
-inline void SerialiseByType(const QVector3D& val, QJsonValue & json, [[maybe_unused]] ParseError &err) {
-    json = QJsonObject({{"x", val.x()}, {"y", val.y()}, {"z", val.z()} });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template <>
 inline void SerialiseByType(const fVec3& val, QJsonValue& json, [[maybe_unused]] ParseError& err) {
     json = QJsonObject({ {"x", val.x}, {"y", val.y}, {"z", val.z} });
 }
@@ -302,46 +290,6 @@ inline void DeserialiseByType(QString& val, const QJsonValue& json, ParseError &
     } else {
         err.AddMessage(QString("Expected string, got %1").arg(JsonValueTypeName(json.type())));
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template <>
-inline void DeserialiseByType(QVector2D& val, const QJsonValue& json, ParseError &err) {
-    if (json.isObject()) {
-        QJsonObject jObj = json.toObject();
-        if (!jObj.contains("x") || !jObj.contains("y")) {
-            return err.AddMessage(QString("Expected object to have two fields x and y, got %1").arg(jObj.keys().join(", ")));
-        }
-        int x, y;
-        Json::Deserialise(x, jObj.value("x"), err);
-        Json::Deserialise(y, jObj.value("y"), err);
-        if (err) {
-            return err.AddMessage(QStringLiteral("Deserialising the elements of QVector2D"));
-        }
-        val = QVector2D(x, y);
-    } else {
-        return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template <>
-inline void DeserialiseByType(QVector3D& val, const QJsonValue& json, ParseError &err) {
-    if (!json.isObject()) {
-        return err.AddMessage(QString("Expected object, got %1").arg(JsonValueTypeName(json.type())));
-    }
-    QJsonObject obj = json.toObject();
-    if (!obj.contains("x") || !obj.contains("y") || !obj.contains("z")) {
-        return err.AddMessage(QString("Expected object to have fields x, y and z, got %1").arg(obj.keys().join(", ")));
-    }
-    float x, y,z;
-    Json::Deserialise(x, obj.value("x"), err);
-    Json::Deserialise(y, obj.value("y"), err);
-    Json::Deserialise(z, obj.value("z"), err);
-    if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of QVector3D"));
-    }
-    val = QVector3D(x, y, z);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
