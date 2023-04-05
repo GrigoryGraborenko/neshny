@@ -33,10 +33,9 @@ struct BaseVec3 {
 	inline void			operator*=		( T f ) { x *= f; y *= f; z *= f; }
 	inline BaseVec3<T>	operator/		( T f ) const { return BaseVec3<T>(x / f, y / f, z / f); };
 	inline void			operator/=		( T f ) { x /= f; y /= f; z /= f; }
-	//inline T			operator*		( const Triple& t2 ) const;
 	inline BaseVec3<T>	operator*		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x * t2.x, y * t2.y, z * t2.z); }
 	inline BaseVec3<T>	operator/		( const BaseVec3<T>& t2 ) const { return BaseVec3<T>(x / t2.x, y / t2.y, z / t2.z); }
-	inline bool			operator==		( const  BaseVec3<T>& t2 ) const { return (x == t2.x) && (y == t2.y) && (z == t2.z); }
+	inline bool			operator==		( const BaseVec3<T>& t2 ) const { return (x == t2.x) && (y == t2.y) && (z == t2.z); }
 
 	inline T			Dot				( BaseVec3<T> t2 ) const { return x * t2.x + y * t2.y + z * t2.z; }
 	inline BaseVec3<T>	Cross			( BaseVec3<T> t2 ) const { return BaseVec3<T>(y * t2.z - z * t2.y, z * t2.x - x * t2.z, x * t2.y - y * t2.x); }
@@ -54,7 +53,6 @@ struct BaseVec3 {
 	inline BaseVec3<T>	Step			( T step ) const { return BaseVec3<T>(STEP(x, step), STEP(y, step), STEP(z, step)); }
 	inline BaseVec3<T>	Step			( BaseVec3<T> step ) const { return BaseVec3<T>(STEP(x, step.x), STEP(y, step.y), STEP(z, step.z)); }
 
-	//inline BaseVec3<T>			mult			( const Triple& t2 ) const;
 	inline T			LengthSquared	( void ) const { return x * x + y * y + z * z; }
 	inline T			Length			( void ) const { return sqrt(x * x + y * y + z * z); }
 	inline void			Normalize		( void ) {

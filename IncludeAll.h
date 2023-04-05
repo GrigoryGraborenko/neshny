@@ -25,7 +25,7 @@
 #include "Utils.h"
 
 #include "GLUtils.h"
-#include "Triple.h"
+#include "LinearAlgebra.h"
 #include "Serialization.h"
 #include "Core.h"
 #include "Resources.h"

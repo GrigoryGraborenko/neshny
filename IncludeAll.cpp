@@ -8,7 +8,7 @@
 
 #include "Utils.cpp"
 #include "GLUtils.cpp"
-#include "Triple.cpp"
+#include "LinearAlgebra.cpp"
 #include "GPUEntity.cpp"
 #include "Core.cpp"
 #include "EditorViewers.cpp"
