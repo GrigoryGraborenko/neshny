@@ -122,6 +122,10 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<int, int*>> var_vals;
 
+	if (!is_render) {
+		insertion += QString("layout(local_size_x = %1, local_size_y = %2, local_size_z = %3) in;").arg(m_LocalSizeX).arg(m_LocalSizeY).arg(m_LocalSizeZ);
+	}
+
 	std::shared_ptr<GLSSBO> replace = nullptr;
 	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
 	if (is_render && m_Entity) {
@@ -371,7 +375,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	////////////////////////////////////////////////////
 	if (entity_processing || (m_RunType == RunType::ENTITY_ITERATE)) {
-		Core::DispatchMultiple(prog, num_entities);
+		Core::DispatchMultiple(prog, num_entities, m_LocalSizeX * m_LocalSizeY * m_LocalSizeZ);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if(is_render) {
 		if (!m_Buffer) {

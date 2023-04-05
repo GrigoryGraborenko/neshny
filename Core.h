@@ -373,7 +373,7 @@ public:
 	void								UnloadAllShaders		( void );
 	void								UnloadAllResources		( void );
 
-	static void							DispatchMultiple		( GLShader* prog, int count, bool mem_barrier = true );
+	static void							DispatchMultiple		( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
 	template <class T>
 	static bool							SaveBinary				( const T& item, QString filename ) {
 		QFile file(filename);

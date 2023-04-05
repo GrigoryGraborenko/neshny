@@ -128,7 +128,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	m_SSBO->Bind(2);
 	glUniform1i(death_prog->GetUniform("uLifeCount"), m_MaxIndex);
 
-	Core::DispatchMultiple(death_prog, death_count);
+	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 	m_MaxIndex -= death_count;

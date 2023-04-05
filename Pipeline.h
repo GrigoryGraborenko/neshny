@@ -49,6 +49,11 @@ public:
 		return *this;
 	}
 
+	inline int					GetLocalSizeX(void) const { return m_LocalSizeX; }
+	inline int					GetLocalSizeY(void) const { return m_LocalSizeY; }
+	inline int					GetLocalSizeZ(void) const { return m_LocalSizeZ; }
+	inline void					SetLocalSizes(int x, int y, int z) { m_LocalSizeX = x; m_LocalSizeY = y; m_LocalSizeZ = z; }
+
 	struct AddedSSBO {
 		GLSSBO& p_Buffer;
 		QString					p_Name;
@@ -113,6 +118,9 @@ protected:
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
+	int							m_LocalSizeX = 8;
+	int							m_LocalSizeY = 8;
+	int							m_LocalSizeZ = 8;
 	QString						m_ExtraCode;
 
 	std::vector<AddedEntity>	m_Entities;

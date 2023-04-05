@@ -442,9 +442,9 @@ bool Core::IIsBufferEnabled(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::DispatchMultiple(GLShader* prog, int count, bool mem_barrier) {
+void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, bool mem_barrier) {
 	glUniform1i(prog->GetUniform("uCount"), count);
-	constexpr int max_dispatch = 4 * 4 * 4 * 8 * 8 * 8;
+	const int max_dispatch = 4 * 4 * 4 * total_local_groups;
 	for (int offset = 0; offset < count; offset += max_dispatch) {
 		glUniform1i(prog->GetUniform("uOffset"), offset);
 		glDispatchCompute(4, 4, 4);
