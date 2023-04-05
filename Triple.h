@@ -756,13 +756,13 @@ struct BaseMatrix4 {
 		const T inv_width = 1.0 / (right - left);
 		const T inv_height = 1.0 / (top - bottom);
 		const T inv_clip = 1.0 / (far_plane - near_plane);
-		ma.m[0][0] = 2.0 * inv_width; ma.m[0][1] = 0.0; ma.m[0][2] = 0.0; ma.m[0][3] = 0.0;
-		ma.m[1][0] = 0.0; ma.m[1][1] = 2.0 * inv_height; ma.m[1][2] = 0.0; ma.m[1][3] = 0.0;
-		ma.m[2][0] = 0.0; ma.m[2][1] = 0.0; ma.m[2][2] = -2.0 * inv_clip; ma.m[2][3] = 0.0;
+		ma.m[0][0] = 2.0 * inv_width; ma.m[1][0] = 0.0; ma.m[2][0] = 0.0; ma.m[3][0] = 0.0;
+		ma.m[0][1] = 0.0; ma.m[1][1] = 2.0 * inv_height; ma.m[2][1] = 0.0; ma.m[3][1] = 0.0;
+		ma.m[0][2] = 0.0; ma.m[1][2] = 0.0; ma.m[2][2] = -2.0 * inv_clip; ma.m[3][2] = 0.0;
 
-		ma.m[3][0] = -(left + right) * inv_width;
-		ma.m[3][1] = -(top + bottom) * inv_height;
-		ma.m[3][2] = -(near_plane + far_plane) * inv_clip;
+		ma.m[0][3] = -(left + right) * inv_width;
+		ma.m[1][3] = -(top + bottom) * inv_height;
+		ma.m[2][3] = -(near_plane + far_plane) * inv_clip;
 		ma.m[3][3] = 1.0;
 		return ma;
 	}
