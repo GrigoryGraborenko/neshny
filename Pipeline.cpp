@@ -305,8 +305,17 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			"\tbool should_destroy = %1Main(item_index, item, new_item);\n"
 			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
 			"}\n////////////////";
+	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
+		insertion +=
+			"#ifdef IS_VERTEX_SHADER\n"
+			"void %1Main(int item_index, %1 item); // forward declaration\n"
+			"void main() {\n"
+			"\t%1 item = Get%1(gl_InstanceID);";
+		insertion += QString("\tif (item.%1 < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }").arg(m_Entity->GetIDName());
+		insertion +=
+			"\t%1Main(gl_InstanceID, item);\n"
+			"}\n#endif\n////////////////";
 	} else if (m_Entity && m_ReplaceMain) {
-
 		insertion +=
 			"void %1Main(int item_index, %1 item); // forward declaration\n"
 			"void main() {\n"
@@ -318,7 +327,6 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion +=
 			"\t%1Main(item_index, item);\n"
 			"}\n////////////////";
-
 	}
 
 	// TODO control SSBO should be created if it doesn't exist

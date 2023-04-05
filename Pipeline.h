@@ -23,8 +23,8 @@ public:
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
-	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
-		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, false, shader_defines);
+	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, bool replace_main, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
+		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, shader_defines);
 	}
 	static PipelineStage IterateEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, nullptr, shader_name, replace_main, shader_defines);
