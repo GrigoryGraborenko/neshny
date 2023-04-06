@@ -33,14 +33,17 @@ class SoundFile : public FileResource {
 public:
 	struct Params {};
 
-	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chuck); }
+	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chunk); }
 	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
+
+	virtual qint64		GetMemoryEstimate(void) { return m_Chunk->allocated; };
+	virtual qint64		GetGPUMemoryEstimate(void) { return 0; }
 
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 		SDL_RWops* rw = SDL_RWFromMem(data, length);
-		m_Chuck = Mix_LoadWAV_RW(rw, 0);
+		m_Chunk = Mix_LoadWAV_RW(rw, 0);
 		SDL_RWclose(rw);
-		if (m_Chuck == NULL) {
+		if (m_Chunk == NULL) {
 			err = "Could not load sound";
 			return false;
 		}
@@ -48,10 +51,10 @@ public:
 	};
 
 	void Play(void) {
-		Mix_PlayChannel(-1, m_Chuck, 0);
+		Mix_PlayChannel(-1, m_Chunk, 0);
 	}
 protected:
-	Mix_Chunk*	m_Chuck;
+	Mix_Chunk*	m_Chunk;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +74,9 @@ public:
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
+	virtual qint64		GetMemoryEstimate		( void ) { return 0; };
+	virtual qint64		GetGPUMemoryEstimate	( void ) { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
+
 	bool Save(QString filename) {
 		int size = m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes();
 		unsigned char* data = new unsigned char[size];
@@ -86,7 +92,6 @@ protected:
 
 	GLTexture	m_Texture;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -104,6 +109,9 @@ public:
 	virtual				~TextureTileset(void) {}
 	bool				Init(QString path, Params params, QString& err) { m_Params = params; return Load(path, err); }
 
+	virtual qint64		GetMemoryEstimate		( void ) { return 0; };
+	virtual qint64		GetGPUMemoryEstimate	( void ) { return m_FullWidth * m_FullHeight * m_DepthBytes; }
+
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 
 		QByteArray bytes((const char*)data, length);
@@ -111,13 +119,13 @@ public:
 		if (!im.loadFromData(bytes)) {
 			return false;
 		}
-		int wid = im.width();
-		int hei = im.height();
+		m_FullWidth = im.width();
+		m_FullHeight = im.height();
 		m_DepthBytes = im.depth() / 8;
 		im = im.mirrored();
 
-		int num_wid = wid / m_Params.p_TileWidth;
-		int num_hei = wid / m_Params.p_TileHeight;
+		int num_wid = m_FullWidth / m_Params.p_TileWidth;
+		int num_hei = m_FullHeight / m_Params.p_TileHeight;
 		m_TileCount = num_wid * num_hei;
 
 		const unsigned char* image_data = im.bits();
@@ -158,16 +166,16 @@ public:
 	};
 
 	inline const GLuint&	GetTexture		( void ) const { return m_Texture; }
-	inline const int		GetWidth		( void ) const { return m_TileWidth; }
-	inline const int		GetHeight		( void ) const { return m_TileHeight; }
+	inline const int		GetFullWidth	( void ) const { return m_FullWidth; }
+	inline const int		GetFullHeight	( void ) const { return m_FullHeight; }
 
 protected:
 
 	Params		m_Params;
 	GLuint		m_Texture = 0;
 	int			m_TileCount = 0;
-	int			m_TileWidth = 0;
-	int			m_TileHeight = 0;
+	int			m_FullWidth = 0;
+	int			m_FullHeight = 0;
 	int			m_DepthBytes = 0;
 };
 
@@ -184,6 +192,9 @@ public:
 	};
 
 	inline const GLTexture& Get(void) { return m_Texture; }
+
+	virtual qint64		GetMemoryEstimate		( void ) { return 0; };
+	virtual qint64		GetGPUMemoryEstimate	( void ) { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 	void Render(const fMatrix4& vp, Vec3 cam_pos) {
 		

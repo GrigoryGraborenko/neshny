@@ -662,19 +662,53 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	//ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	const auto& resources = Core::GetResources();
-	for (const auto& resource : resources) {
-		QString state = "Pending";
-		if (resource.second.m_State == Core::ResourceState::DONE) {
-			state = "Done";
-		} else if (resource.second.m_State == Core::ResourceState::IN_ERROR) {
-			state = "Error - " + resource.second.m_Error;
+
+	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+	if (ImGui::BeginTable("##Table", 6, table_flags)) {
+		ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
+
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 90);
+		ImGui::TableSetupColumn("Mem", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("GPU Mem", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Last Used", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Error", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		for (const auto& resource : resources) {
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			QByteArray name = resource.first.toLocal8Bit();
+			ImGui::Text(name.data());
+
+			ImGui::TableSetColumnIndex(1);
+			QString state = "Pending";
+			if (resource.second.m_State == Core::ResourceState::DONE) {
+				state = "Done";
+			}
+			else if (resource.second.m_State == Core::ResourceState::IN_ERROR) {
+				state = "Error - " + resource.second.m_Error;
+			}
+			QByteArray status = state.toLocal8Bit();
+			ImGui::Text(status.data());
+
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%i", resource.second.m_Memory);
+
+			ImGui::TableSetColumnIndex(3);
+			ImGui::Text("%i", resource.second.m_GPUMemory);
+
+			ImGui::TableSetColumnIndex(4);
+			ImGui::Text("%i", resource.second.m_LastTickAccessed);
+
+			ImGui::TableSetColumnIndex(5);
+			QByteArray err_str = resource.second.m_Error.toLocal8Bit();
+			ImGui::Text(err_str.data());
 		}
-		QByteArray info = QString("%1: %2").arg(resource.first).arg(state).toLocal8Bit();
-		ImGui::Text(info.data());
-		
+		ImGui::EndTable();
 	}
 
-	//ImGui::EndChild();
 	ImGui::End();
 }
 

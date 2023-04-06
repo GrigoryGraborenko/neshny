@@ -312,7 +312,9 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 class Resource {
 public:
-	virtual				~Resource		( void ) {}
+	virtual				~Resource				( void ) {}
+	virtual qint64		GetMemoryEstimate		( void ) = 0;
+	virtual qint64		GetGPUMemoryEstimate	( void ) = 0;
 protected:
 };
 
@@ -331,8 +333,11 @@ public:
 
 	struct ResourceContainer {
 		ResourceState	m_State = ResourceState::PENDING;
-		Resource* m_Resource = nullptr;
+		Resource*		m_Resource = nullptr;
 		QString			m_Error;
+		qint64			m_Memory = 0;
+		qint64			m_GPUMemory = 0;
+		int				m_LastTickAccessed = 0;
 	};
 
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -476,11 +481,12 @@ private:
 
 		auto found = m_Resources.find(key);
 		if (found != m_Resources.end()) {
+			found->second.m_LastTickAccessed = m_Ticks;
 			return ResourceResult<T>(found->second);
 		}
 		ResourceContainer& resource = m_Resources.insert_or_assign(key, ResourceContainer{}).first->second;
 
-		m_ResourceThreads.DoTask([path, params]() -> void* {
+		m_ResourceThreads.DoTask([path, params, ticks=m_Ticks]() -> void* {
 			T* result = new T();
 			QString err;
 			bool valid = result->Init(path, params, err);
@@ -488,7 +494,7 @@ private:
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 			}
-			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString() };
+			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks };
 		}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
 			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
 			resource = *tmp_resource;
