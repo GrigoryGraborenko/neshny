@@ -48,14 +48,14 @@ PipelineStage& PipelineStage::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Ty
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetUniformVectorStructCode(AddedUniformVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, std::vector<std::pair<QString, std::vector<float>*>>& vector_vars) {
+QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
 
 	QStringList insertion;
 
 	insertion += QString("struct %1 {").arg(uniform.p_Name);
 
 	QStringList function(QString("%1 Get%1(int index) {\n\t%1 item;").arg(uniform.p_Name));
-	function += QString("\tindex *= %1;").arg(uniform.p_NumFloatsPerItem);
+	function += QString("\tindex = u%1Offset + (index * %2);").arg(uniform.p_Name).arg(uniform.p_NumIntsPerItem);
 
 	int pos_index = 0;
 	for (const auto& member : uniform.p_Members) {
@@ -63,41 +63,34 @@ QString PipelineStage::GetUniformVectorStructCode(AddedUniformVector& uniform, Q
 
 		QString name = member.p_Name;
 		if (member.p_Type == MemberSpec::T_INT) {
-			function += QString("\titem.%1 = floatBitsToInt(u%2[index + %3]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = b_Control.i[index + %2];").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_FLOAT) {
-			function += QString("\titem.%1 = u%2[index + %3];").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = intBitsToFloat(b_Control.i[index + %2]);").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_VEC2) {
-			function += QString("\titem.%1 = vec2(u%2[index + %3], u%2[index + %3 + 1]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = vec2(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]));").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_VEC3) {
-			function += QString("\titem.%1 = vec3(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = vec3(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]), intBitsToFloat(b_Control.i[index + %2 + 2]));").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_VEC4) {
-			function += QString("\titem.%1 = vec4(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2], u%2[index + %3 + 3]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = vec4(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]), intBitsToFloat(b_Control.i[index + %2 + 2]), intBitsToFloat(b_Control.i[index + %2 + 3]));").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_IVEC2) {
-			function += QString("\titem.%1 = ivec2(u%2[index + %3], u%2[index + %3 + 1]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = ivec2(b_Control.i[index + %2], b_Control.i[index + %2 + 1]);").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_IVEC3) {
-			function += QString("\titem.%1 = ivec3(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = ivec3(b_Control.i[index + %2], b_Control.i[index + %2 + 1], b_Control.i[index + %2 + 2]);").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_IVEC4) {
-			function += QString("\titem.%1 = ivec4(u%2[index + %3], u%2[index + %3 + 1], u%2[index + %3 + 2], u%2[index + %3 + 3]);").arg(name).arg(uniform.p_Name).arg(pos_index);
+			function += QString("\titem.%1 = ivec4(b_Control.i[index + %2], b_Control.i[index + %2 + 1], b_Control.i[index + %2 + 2], b_Control.i[index + %2 + 3]);").arg(name).arg(pos_index);
 		}
 		pos_index += member.p_Size / sizeof(float);
-
 	}
 	function += "\treturn item;\n};";
 
 	insertion += "};";
 	insertion += function.join("\n");
 
-	int array_size = MINIMUM_UNIFORM_VECTOR_LENGTH;
-	while (array_size < uniform.p_NumItems) {
-		array_size *= 2;
-	}
-	int float_count = uniform.p_NumFloatsPerItem * array_size;
-
 	insertion_uniforms += QString("uniform int u%1Count;").arg(uniform.p_Name);
-	insertion_uniforms += QString("uniform float u%1[%2];").arg(uniform.p_Name).arg(float_count);
-
 	integer_vars.emplace_back(QString("u%1Count").arg(uniform.p_Name), uniform.p_NumItems);
-	vector_vars.push_back({ QString("u%1").arg(uniform.p_Name), &uniform.p_Data });
+
+	insertion_uniforms += QString("uniform int u%1Offset;").arg(uniform.p_Name);
+	integer_vars.emplace_back(QString("u%1Offset").arg(uniform.p_Name), offset);
 
 	return insertion.join("\n");
 }
@@ -118,7 +111,6 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	QStringList insertion_buffers;
 	QStringList insertion_uniforms;
 	std::vector<std::pair<QString, int>> integer_vars;
-	std::vector<std::pair<QString, std::vector<float>*>> vector_vars;
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<int, int*>> var_vals;
 
@@ -275,17 +267,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		}
 	}
 
-	if (!m_UniformVectors.empty()) {
-		insertion += "//////////////// Uniform vector helpers";
-	}
-	for (auto& uniform : m_UniformVectors) {
-		insertion += GetUniformVectorStructCode(uniform, insertion_uniforms, integer_vars, vector_vars);
-	}
-
 	insertion += "////////////////";
-	insertion.push_front(insertion_uniforms.join("\n"));
-	insertion.push_front(insertion_buffers.join("\n"));
-	insertion.push_front(insertion_images.join("\n"));
 
 	if (entity_processing && m_ReplaceMain) {
 		insertion +=
@@ -329,17 +311,33 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			"}\n////////////////";
 	}
 
+	// WARNING: do NOT add to control buffer beyond this point
+
 	// TODO control SSBO should be created if it doesn't exist
 	GLSSBO* control_ssbo = m_Entity ? m_Entity->GetControlSSBO() : nullptr;
 	if (control_ssbo && !var_vals.empty()) {
 
-		control_ssbo->EnsureSize((int)var_vals.size() * sizeof(int));
-		control_ssbo->Bind(0); // you can assume this is at index zero
-
 		std::vector<int> values;
-		for (auto var: var_vals) {
+		for (auto var : var_vals) {
 			values.push_back(var.first);
 		}
+		int control_size = (int)var_vals.size();
+
+		// allocate some space for vectors on the control buffer and copy data over
+		if (!m_DataVectors.empty()) {
+			insertion += "//////////////// Data vector helpers";
+		}
+		for (const auto& data_vect : m_DataVectors) {
+			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
+			int offset = control_size;
+			control_size += data_size;
+			values.resize(control_size);
+			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
+			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
+		}
+
+		control_ssbo->EnsureSize(control_size * sizeof(int));
+		control_ssbo->Bind(0); // you can assume this is at index zero
 		control_ssbo->SetValues(values);
 	}
 
@@ -347,6 +345,10 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		insertion += "////////////////";
 		insertion += m_ExtraCode;
 	}
+
+	insertion.push_front(insertion_images.join("\n"));
+	insertion.push_front(insertion_buffers.join("\n"));
+	insertion.push_front(insertion_uniforms.join("\n"));
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
@@ -362,9 +364,6 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	for (const auto& var: integer_vars) {
 		glUniform1i(prog->GetUniform(var.first), var.second);
-	}
-	for (const auto& var : vector_vars) {
-		glUniform1fv(prog->GetUniform(var.first), (int)var.second->size(), &((*var.second)[0]));
 	}
 	for (auto& ssbo : ssbo_binds) {
 		ssbo.first->Bind(ssbo.second);

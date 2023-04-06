@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#define MINIMUM_UNIFORM_VECTOR_LENGTH 8
-
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,8 +42,8 @@ public:
 	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
 
 	template <class T>
-	PipelineStage&				AddUniformVector	( QString name, const std::vector<T>& items ) {
-		AddUniformVectorBase(name, items);
+	PipelineStage&				AddDataVector		( QString name, const std::vector<T>& items ) {
+		AddDataVectorBase(name, items);
 		return *this;
 	}
 
@@ -65,12 +63,12 @@ protected:
 
 								PipelineStage		( RunType type, GPUEntity* entity, GLBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
 
-	struct AddedUniformVector {
+	struct AddedDataVector {
 		QString					p_Name;
 		int						p_NumItems;
-		int						p_NumFloatsPerItem;
+		int						p_NumIntsPerItem;
 		std::vector<MemberSpec> p_Members;
-		std::vector<float>		p_Data;
+		std::vector<int>		p_Data;
 	};
 
 	struct AddedEntity {
@@ -89,27 +87,27 @@ protected:
 	};
 
 	template <class T>
-	void						AddUniformVectorBase(QString name, const std::vector<T>& items) {
+	void						AddDataVectorBase(QString name, const std::vector<T>& items) {
 		if (items.empty()) {
 			return;
 		}
-		int floats_per = sizeof(T) / sizeof(float);
-		m_UniformVectors.push_back({ name, (int)items.size(), floats_per });
-		AddedUniformVector& ref = m_UniformVectors.back();
+		int ints_per = sizeof(T) / sizeof(int);
+		m_DataVectors.push_back({ name, (int)items.size(), ints_per });
+		AddedDataVector& ref = m_DataVectors.back();
 
 		Serialiser<T> serializeFunc(ref.p_Members);
 		meta::doForAllMembers<T>(serializeFunc);
 
-		int num_floats = ref.p_NumFloatsPerItem * ref.p_NumItems;
-		ref.p_Data.resize(num_floats);
-		memcpy((unsigned char*)&(ref.p_Data[0]), (unsigned char*)&(items[0]), sizeof(float) * num_floats);
+		int num_ints = ref.p_NumIntsPerItem * ref.p_NumItems;
+		ref.p_Data.resize(num_ints);
+		memcpy((unsigned char*)&(ref.p_Data[0]), (unsigned char*)&(items[0]), sizeof(int) * num_ints);
 	}
 
-	static QString				GetUniformVectorStructCode(
-		AddedUniformVector& uniform
+	static QString				GetDataVectorStructCode(
+		const AddedDataVector& uniform
 		,QStringList& insertion_uniforms
 		,std::vector<std::pair<QString, int>>& integer_vars
-		,std::vector<std::pair<QString, std::vector<float>*>>& vector_vars
+		,int offset
 	);
 
 	RunType						m_RunType;
@@ -128,7 +126,7 @@ protected:
 	std::vector<AddedInOut>		m_Vars;
 	std::vector<AddedTexture>	m_Textures;
 
-	std::vector<AddedUniformVector>		m_UniformVectors;
+	std::vector<AddedDataVector>		m_DataVectors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
