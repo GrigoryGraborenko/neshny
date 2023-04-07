@@ -245,6 +245,9 @@ namespace meta {
 
 namespace Neshny {
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class IEngine {
 public:
 	virtual							~IEngine() {}
@@ -259,6 +262,13 @@ public:
 	virtual bool					ShouldExit	( void ) = 0;
 	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
 	virtual void					Render		( int width, int height ) = 0;
+
+	// replace with your own custom resource/memory management system if required
+	virtual void					ManageResources	( void );
+
+protected:
+	qint64							m_MaxMemory = 1024ll * 1024ll * 1024ll * 2ll; // 2 gigs
+	qint64							m_MaxGPUMemory = 1024ll * 1024ll * 1024ll * 1ll; // 1 gig
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,9 +323,33 @@ private:
 class Resource {
 public:
 	virtual				~Resource				( void ) {}
-	virtual qint64		GetMemoryEstimate		( void ) = 0;
-	virtual qint64		GetGPUMemoryEstimate	( void ) = 0;
+	virtual qint64		GetMemoryEstimate		( void ) const = 0;
+	virtual qint64		GetGPUMemoryEstimate	( void ) const = 0;
 protected:
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+struct ResourceManagementToken {
+	struct ResourceEntry {
+		ResourceEntry(Resource const* resource, QString id, qint64 memory, qint64 gpu_memory, int last_tick_accessed) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_LastTickAccessed(last_tick_accessed), p_Score(0.0f), p_FlagForDeletion(false) {}
+		void FlagForDeletion(void) { p_FlagForDeletion = true; }
+		Resource const*		p_Resource;
+		QString				p_Id;
+		qint64				p_Memory;
+		qint64				p_GPUMemory;
+		int					p_LastTickAccessed;
+		float				p_Score;
+		bool				p_FlagForDeletion;
+	};
+	~ResourceManagementToken(void) { p_DestructFunc(std::move(p_Entries)); }
+
+	ResourceManagementToken(std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&&)> destruction, std::vector<ResourceEntry>&& entries) : p_DestructFunc(destruction), p_Entries(entries) {}
+
+	std::vector<ResourceEntry>	p_Entries;
+private:
+	std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&&)>	p_DestructFunc;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +482,6 @@ public:
 		return file.write(data) == data.size();
 	}
 
-
 	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }
 
@@ -459,6 +492,11 @@ public:
 	bool 								ActivateGLContext		( int index );
 	void 								DeleteGLContext			( int index );
 	static void							OpenGLSync				( void );
+
+	inline qint64						GetMemoryAllocated		( void ) { return m_MemoryAllocated; }
+	inline qint64						GetGPUMemoryAllocated	( void ) { return m_GPUMemoryAllocated; }
+
+	ResourceManagementToken				GetResourceManagementToken ( void );
 
 private:
 
@@ -495,9 +533,11 @@ private:
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 			}
 			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks };
-		}, [&resource](void* ptr) { // uses temporary resource to transfer across thread divide
+		}, [this, &resource](void* ptr) { // uses temporary resource to transfer across thread divide
 			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
 			resource = *tmp_resource;
+			m_MemoryAllocated += resource.m_Memory;
+			m_GPUMemoryAllocated += resource.m_GPUMemory;
 			delete tmp_resource;
 		});
 		return ResourceResult<T>(resource);
@@ -508,7 +548,9 @@ private:
 	std::map<QString, GLShader*>		m_Shaders;
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
-	std::map<QString, ResourceContainer> m_Resources;
+	std::map<QString, ResourceContainer>	m_Resources;
+	qint64									m_MemoryAllocated = 0;
+	qint64									m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
 

@@ -655,11 +655,14 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	}
 
 	ImGui::Begin("Resource Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
-	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 
-	//const int size_banner = 50;
-	//ImGui::SetCursorPos(ImVec2(8, size_banner));
-	//ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
+	ImGui::Text("CPU Memory Allocated: %i", Core::Singleton().GetMemoryAllocated());
+	ImGui::Text("Graphics Memory Allocated: %i", Core::Singleton().GetGPUMemoryAllocated());
+
+	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
+	const int size_banner = 80;
+	ImGui::SetCursorPos(ImVec2(8, size_banner));
+	ImGui::BeginChild("List", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	const auto& resources = Core::GetResources();
 
@@ -709,6 +712,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 		ImGui::EndTable();
 	}
 
+	ImGui::EndChild();
 	ImGui::End();
 }
 
