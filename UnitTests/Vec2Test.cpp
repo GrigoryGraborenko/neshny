@@ -2,7 +2,7 @@
 
 namespace Test {
 
-void Test_LineIntersect2D(void) {
+void UnitTest_LineIntersect2D(void) {
 
     double f1;
     auto v1 = Neshny::Vec2(10, 10).NearestToLine(Neshny::Vec2(11, 11), Neshny::Vec2(12, 9), true, &f1);

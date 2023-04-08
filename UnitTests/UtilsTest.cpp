@@ -2,20 +2,7 @@
 
 namespace Test {
 
-    void Test_RoundPowerTwo(void) {
-
-        /*
-        std::vector<std::pair<int, int>> pairs = {
-            { 0, 0 }
-            ,{ 1, 1 }
-        };
-
-        for (auto pair : pairs) {
-            QByteArray str = QString("RoundUpPowerTwo of %1 should be %2").arg(pair.first).arg(pair.second).toLocal8Bit();
-            Expect(str.constData(), RoundUpPowerTwo(pair.first) == pair.second);
-        }
-        */
-
+    void UnitTest_RoundPowerTwo(void) {
         Expect("RoundUpPowerTwo of 0 should be 0", RoundUpPowerTwo(0) == 0);
         Expect("RoundUpPowerTwo of 1 should be 1", RoundUpPowerTwo(1) == 1);
         Expect("RoundUpPowerTwo of 2 should be 2", RoundUpPowerTwo(2) == 2);

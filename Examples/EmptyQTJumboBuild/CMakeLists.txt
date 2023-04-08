@@ -49,25 +49,38 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 ###############################################################################
-message(STATUS "Including shaders")
+message(STATUS "Embedding shaders and unit tests")
 
 # adds shaders to directory structure and embeds them
 # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
 file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
 
-# for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
 # this creates a near-empty project whose entire purpose is to rerun the embed script "CMakeEmbedded.txt" when the shaders change ONLY IN RELEASE BUILD
-# for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
+# it also runs "CMakeUnitTests.txt" when unit tests change
 # a token file is required for this process - ".embedded_token" does nothing other than exist to signal that the embed step has run
-add_custom_target(EMBEDDED_BUILD ALL DEPENDS .embedded_token)
+add_custom_target(EMBEDDED_BUILD ALL DEPENDS .embedded_token src/UnitTests.cpp)
+
+# for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
+# for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
 add_custom_command(
     OUTPUT .embedded_token
-    COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -P CMakeEmbedded.txt)
+    COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
     DEPENDS ${SHADER_PATH}/*.vert DEPENDS ${SHADER_PATH}/*.frag DEPENDS ${SHADER_PATH}/*.comp DEPENDS ${SHADER_PATH}/*.glsl
     DEPENDS ${NESHNY_DIR}/shaders/*.vert DEPENDS ${NESHNY_DIR}/shaders/*.frag DEPENDS ${NESHNY_DIR}/shaders/*.comp DEPENDS ${NESHNY_DIR}/shaders/*.glsl
 )
+
+# command that embeds list of unit tests and their names into a cpp file
+add_custom_command(
+    OUTPUT src/UnitTests.cpp
+    COMMAND "${CMAKE_COMMAND}" -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
+    DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
+    DEPENDS src/UnitTests/*.cpp
+)
+
+# ensure this all happens before the main build
 add_dependencies(${PROJECT_NAME} EMBEDDED_BUILD)
 
+# adds list of shader directories to allow dynamic runtime loading in debug
 file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 ###############################################################################

@@ -2,7 +2,7 @@
 
 namespace Test {
 
-    void Test_SSBOEnsureSize(void) {
+    void UnitTest_SSBOEnsureSize(void) {
 
         Neshny::GLSSBO buffer;
         buffer.EnsureSize(5 * sizeof(int));

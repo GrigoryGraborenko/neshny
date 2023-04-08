@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <UnitTests/Vec2Test.cpp>
-#include <UnitTests/SSBOTest.cpp>
-#include <UnitTests/UtilsTest.cpp>
+// this file needs to include the test .cpp files as well as define a list of tests in g_UnitTests
+#include "UnitTests.cpp"
 
 void UnitTester::IRender(void) {
     if (!m_Display) {
@@ -30,18 +29,10 @@ void UnitTester::IExecute(void) {
 
     m_Results.clear();
 
-    std::vector<std::pair<std::function<void()>, QString>> tests;
-    tests.push_back({ &Test::Test_LineIntersect2D, "LineIntersect2D" });
-    tests.push_back({ &Test::Test_SSBOEnsureSize, "SSBOEnsureSize" });
-    tests.push_back({ &Test::Test_RoundPowerTwo, "RoundPowerTwo" });
-    
-
-    for (auto& test : tests) {
-        QString label = test.second;
-        //QString label = "TODO: insert function name";
-        //QString label = test.target_type().name();
+    for (const auto& test : g_UnitTests) {
+        QString label = test.p_Label.c_str();
         try {
-            test.first();
+            test.p_Func();
         } catch(const char* info) {
             m_Results.push_back({ false, label, info });
             continue;

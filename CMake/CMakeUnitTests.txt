@@ -1,0 +1,38 @@
+include(${CMAKE_SOURCE_DIR}/UserSettings.cmake)
+
+function(create_unit_tests output_fname)
+    # create empty output file
+    file(WRITE ${output_fname} "")
+
+    set(test_vector "struct UnitTest{ std::string p_FileName\\; std::string p_Label\\; std::function<void()> p_Func\\; }\\;\nstd::vector<UnitTest> g_UnitTests = {\n")
+
+    # iterate through input files
+    math(EXPR last "${ARGC} - 1")
+    foreach(i RANGE 1 ${last})
+        string(REGEX MATCH "([^/]+)$" filename ${ARGV${i}})
+        file(APPEND ${output_fname} "#include \"${ARGV${i}}\"\n")
+
+        file(READ ${ARGV${i}} filedata)
+        if(NOT filedata)
+			continue()
+        endif()
+
+        string(REGEX MATCHALL "UnitTest_[(A-z)|(a-z)|(0-9)]* ?\\(" data_listing "${filedata}")
+        foreach(item ${data_listing})
+            string(LENGTH "${item}" len)
+            math(EXPR new_truncated "${len}-1")
+            math(EXPR new_label_len "${len}-10")
+            string(SUBSTRING "${item}" 9 ${new_label_len} label)
+            string(SUBSTRING "${item}" 0 ${new_truncated} truncated)
+            string(APPEND test_vector "\t{ \"${filename}\", \"${label}\", &Test::${truncated}},\n")
+        endforeach()
+    endforeach()
+    string(APPEND test_vector "}\\;\n")
+    file(APPEND ${output_fname} ${test_vector})
+endfunction()
+
+# get the list of unit test files
+file(GLOB_RECURSE NeshnyUnitTestFiles ${NESHNY_DIR}/UnitTests/*.cpp)
+file(GLOB_RECURSE UnitTestFiles src/UnitTests/*.cpp)
+
+create_unit_tests("src/UnitTests.cpp" ${NeshnyUnitTestFiles} ${UnitTestFiles})

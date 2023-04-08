@@ -18,6 +18,7 @@ UserSettings.cmake
 .embedded_token
 EmbeddedFiles.cpp
 EmbeddedDirectories.cpp
+UnitTests.cpp
 CMakeFiles/
 
 # Compiled Object files
