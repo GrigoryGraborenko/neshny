@@ -5,7 +5,7 @@
 #include "QtImGuiRenderer.h"
 #include <QWindow>
 
-namespace QtImGui {
+namespace Neshny {
 
 class QWindowWindowWrapper : public WindowWrapper {
 public:
@@ -32,16 +32,16 @@ private:
     QWindow *window;
 };
 
-void initialize(QWindow *window, IEngine* engine) {
+void QTInitialize(QWindow *window, IEngine* engine) {
     ImGuiRenderer::instance()->initialize(new QWindowWindowWrapper(window), engine);
 }
 
-void newFrame() {
+void QTNewFrame() {
     ImGuiRenderer::instance()->newFrame();
 }
 
-void render() {
+void QTRender() {
     ImGuiRenderer::instance()->render();
 }
 
-}
+} // namespace Neshny

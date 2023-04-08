@@ -1,6 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#ifdef QT_LOOP
+	class QOpenGLWindow;
+#endif
+
 namespace Neshny {
 
 struct Camera2D {
@@ -396,7 +400,7 @@ public:
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
 #ifdef QT_LOOP
-	bool								QTLoop					( class QOpenGLWindow* window, IEngine* engine );
+	bool								QTLoop					( QOpenGLWindow* window, IEngine* engine );
 #endif
 	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }

@@ -38,6 +38,7 @@ set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     external
+    src
     ${NESHNY_DIR}
     ${SDL2_DIR}/include
     ${SDL2_MIXER_DIR}/include

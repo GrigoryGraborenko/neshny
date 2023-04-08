@@ -10,7 +10,7 @@
 #include <imgui\imgui_widgets.cpp>
 #include "imgui\imgui_stdlib.cpp"
 
+#include <IncludeAll.cpp>
+
 #include <Utils\ImGuiQTAdapter\QtImGui.cpp>
 #include <Utils\ImGuiQTAdapter\QtImGuiRenderer.cpp>
-
-#include <IncludeAll.cpp>

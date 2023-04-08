@@ -38,6 +38,7 @@ set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib")
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     external
+    src
     ${NESHNY_DIR}
     ${SDL2_DIR}/include
     ${SDL2_MIXER_DIR}/include
@@ -108,8 +109,8 @@ file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTes
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
-file(GLOB_RECURSE UnitTests CONFIGURE_DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp)
-set_source_files_properties(${NESHNY_DIR}/IncludeAll.cpp ${UnitTests} PROPERTIES
+file(GLOB_RECURSE UnitTests CONFIGURE_DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp src/UnitTests/*.cpp)
+set_source_files_properties(${NESHNY_DIR}/IncludeAll.cpp src/UnitTests.cpp ${UnitTests} PROPERTIES
     HEADER_FILE_ONLY TRUE
 )
 

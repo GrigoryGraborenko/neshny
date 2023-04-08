@@ -5,10 +5,10 @@
 class QWidget;
 class QWindow;
 
-namespace QtImGui {
+namespace Neshny {
 
-void initialize(QWindow *window, IEngine* engine);
-void newFrame();
-void render();
+void QTInitialize(QWindow *window, IEngine* engine);
+void QTNewFrame();
+void QTRender();
 
-}
+} // namespace Neshny

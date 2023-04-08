@@ -2,6 +2,8 @@
 
 #include "PreCompiledHeader.h"
 
+using namespace Neshny;
+
 #include "Engine.h"
 
 #ifndef _DEBUG
@@ -32,7 +34,7 @@ int main(int argc, char* argv[]) {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	QtImGui::initialize(&window, &engine);
+	QTInitialize(&window, &engine);
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 
 	// Setup Dear ImGui style
@@ -41,7 +43,7 @@ int main(int argc, char* argv[]) {
 	window.doneCurrent();
 	
 
-	Neshny::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
+	Core::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
 
 #ifdef _DEBUG
 		QFile file;
@@ -67,7 +69,7 @@ int main(int argc, char* argv[]) {
 #endif
 	});
 
-	bool result = Neshny::Singleton().QTLoop(&window, &engine);
+	bool result = Core::Singleton().QTLoop(&window, &engine);
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();

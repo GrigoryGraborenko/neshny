@@ -13,7 +13,7 @@ void Engine::MouseButton(int button, bool is_down) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Engine::MouseMove(QVector2D delta, bool occluded) {
+void Engine::MouseMove(Vec2 delta, bool occluded) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,8 @@ void Engine::Key(int key, bool is_down) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Engine::Init(void) {
+bool Engine::Init(void) {
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,11 +51,11 @@ bool Engine::Tick(qint64 delta_nanoseconds, int tick) {
 void Engine::Render(int width, int height) {
 
 	// dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
-	GLShader* prog = Neshny::GetShader("Fullscreen");
+	GLShader* prog = Core::GetShader("Fullscreen");
 	prog->UseProgram();
 	//glUniform1i(prog->GetUniform("uniform_name"), 123);
 
-	GLBuffer* buff = Neshny::GetBuffer("Square"); // get a built-in model
+	GLBuffer* buff = Core::GetBuffer("Square"); // get a built-in model
 	buff->UseBuffer(prog); // attach the program to the buffer
 	buff->Draw(); // executes the draw call
 
@@ -62,5 +63,5 @@ void Engine::Render(int width, int height) {
 	//DebugRender::Render3DDebug(vp, width, height, Triple(0, 0, 0), 1.0);
 
 	DebugRender::Clear();
-	Neshny::RenderEditor();
+	Core::RenderEditor();
 }

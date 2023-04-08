@@ -15,7 +15,7 @@ class QMouseEvent;
 class QWheelEvent;
 class QKeyEvent;
 
-namespace QtImGui {
+namespace Neshny {
 
 struct KeyEvent {
     QEvent::Type            type;
@@ -81,4 +81,4 @@ private:
     bool         g_FontsDirty = true;
 };
 
-}
+} // namespace Neshny

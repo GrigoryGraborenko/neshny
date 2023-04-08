@@ -356,11 +356,11 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 
 		window->makeCurrent();
 
-		QtImGui::newFrame();
+		QTNewFrame();
 		LoopInner(engine, width, height, fullscreen_hover);
 		// Finish imgui rendering
 		ImGui::End();
-		QtImGui::render();
+		QTRender();
 
 		window->context()->swapBuffers(window->context()->surface());
 		window->doneCurrent();

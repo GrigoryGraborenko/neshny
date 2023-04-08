@@ -9,7 +9,7 @@
 #include <QCursor>
 #include <QDebug>
 
-namespace QtImGui {
+namespace Neshny {
 
 QHash<int, ImGuiKey> keyMap = {
     { Qt::Key_Tab, ImGuiKey_Tab },
@@ -415,4 +415,4 @@ ImGuiRenderer* ImGuiRenderer::instance(ImGuiRenderer* replace_instance, bool cre
     return instance;
 }
 
-}
+} // namespace Neshny

@@ -29,6 +29,7 @@ find_package(Qt5 COMPONENTS Core Gui Widgets REQUIRED)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     external
+    src
     ${NESHNY_DIR}
 )
 
@@ -98,7 +99,7 @@ file(GLOB_RECURSE SourceList CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
 # all files from neshny
-file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.*)
+file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/Utils/ImGuiQTAdapter/*.h ${NESHNY_DIR}/Utils/ImGuiQTAdapter/*.cpp ${NESHNY_DIR}/shaders/*.*)
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
