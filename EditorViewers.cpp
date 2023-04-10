@@ -214,9 +214,9 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 
 		for (const auto& segment : m_LoopHistogram) {
 			QByteArray label = QString("<%1s").arg(segment.first, 0, 'f', 2).toLocal8Bit();
-			ImGui::TableSetupColumn(label.data(), ImGuiTableColumnFlags_WidthFixed, 65);
+			ImGui::TableSetupColumn(label.data(), ImGuiTableColumnFlags_WidthFixed, 50);
 		}
-		ImGui::TableSetupColumn("Overflow", ImGuiTableColumnFlags_WidthFixed, 65);
+		ImGui::TableSetupColumn("Overflow", ImGuiTableColumnFlags_WidthFixed, 60);
 		ImGui::TableSetupColumn("Clear", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
 
