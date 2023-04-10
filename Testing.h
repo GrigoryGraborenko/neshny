@@ -3,12 +3,20 @@
 
 namespace Test {
 
-//#define EXPECT(x, y) (_Expect(__func__, (x), (y)))
-
-	//inline void _Expect(const char* func_name, const char* info, bool condition) {
+	struct InfoException : public std::exception {
+		QByteArray p_Info;
+		InfoException(QString info) : p_Info(info.toLocal8Bit()) {}
+		~InfoException() throw () {}
+		const char* what() const throw() { return p_Info.data(); }
+	};
 	inline void Expect(const char* info, bool condition) {
 		if (!condition) {
 			throw info;
+		}
+	}
+	inline void Expect(QString info, bool condition) {
+		if (!condition) {
+			throw InfoException(info);
 		}
 	}
 }

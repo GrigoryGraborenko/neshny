@@ -252,32 +252,6 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class IEngine {
-public:
-	virtual							~IEngine() {}
-
-	virtual void					MouseButton	( int button, bool is_down ) = 0;
-	virtual void					MouseMove	( Vec2 delta, bool occluded ) = 0;
-	virtual void					MouseWheel	( bool up ) = 0;
-	virtual void					Key			( int key, bool is_down ) = 0;
-
-	virtual bool					Init		( void ) = 0;
-	virtual void					ExitSignal	( void ) = 0;
-	virtual bool					ShouldExit	( void ) = 0;
-	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
-	virtual void					Render		( int width, int height ) = 0;
-
-	// replace with your own custom resource/memory management system if required
-	virtual void					ManageResources	( void );
-
-protected:
-	qint64							m_MaxMemory = 1024ll * 1024ll * 1024ll * 2ll; // 2 gigs
-	qint64							m_MaxGPUMemory = 1024ll * 1024ll * 1024ll * 1ll; // 1 gig
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
 struct Token {
 	Token(std::function<void()> destruction, bool valid = true) : p_DestructFunc(destruction), p_Valid(valid) {}
 	Token() : p_DestructFunc(), p_Valid(false) {}
@@ -337,23 +311,52 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 struct ResourceManagementToken {
 	struct ResourceEntry {
-		ResourceEntry(Resource const* resource, QString id, qint64 memory, qint64 gpu_memory, int last_tick_accessed) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_LastTickAccessed(last_tick_accessed), p_Score(0.0f), p_FlagForDeletion(false) {}
+		ResourceEntry(Resource const* resource, QString id, qint64 memory, qint64 gpu_memory, int ticks_since_access) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_TicksSinceAccess(ticks_since_access), p_FlagForDeletion(false), p_Score(0.0) {}
 		void FlagForDeletion(void) { p_FlagForDeletion = true; }
 		Resource const*		p_Resource;
 		QString				p_Id;
 		qint64				p_Memory;
 		qint64				p_GPUMemory;
-		int					p_LastTickAccessed;
-		float				p_Score;
+		int					p_TicksSinceAccess;
 		bool				p_FlagForDeletion;
+		double				p_Score;
 	};
-	~ResourceManagementToken(void) { p_DestructFunc(std::move(p_Entries)); }
 
-	ResourceManagementToken(std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&&)> destruction, std::vector<ResourceEntry>&& entries) : p_DestructFunc(destruction), p_Entries(entries) {}
+	ResourceManagementToken(std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&)> population, std::function<void(const std::vector<ResourceManagementToken::ResourceEntry>&)> destruction) : p_PopulateFunc(population), p_DestructFunc(destruction) {}
+	~ResourceManagementToken(void) { p_DestructFunc(p_Entries); p_Entries = {}; }
+
+	inline void				Populate	( void ) { p_PopulateFunc(p_Entries); }
 
 	std::vector<ResourceEntry>	p_Entries;
 private:
-	std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&&)>	p_DestructFunc;
+	std::function<void(std::vector<ResourceManagementToken::ResourceEntry>&)>		p_PopulateFunc;
+	std::function<void(const std::vector<ResourceManagementToken::ResourceEntry>&)>	p_DestructFunc;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class IEngine {
+public:
+	virtual							~IEngine() {}
+
+	virtual void					MouseButton	( int button, bool is_down ) = 0;
+	virtual void					MouseMove	( Vec2 delta, bool occluded ) = 0;
+	virtual void					MouseWheel	( bool up ) = 0;
+	virtual void					Key			( int key, bool is_down ) = 0;
+
+	virtual bool					Init		( void ) = 0;
+	virtual void					ExitSignal	( void ) = 0;
+	virtual bool					ShouldExit	( void ) = 0;
+	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
+	virtual void					Render		( int width, int height ) = 0;
+
+	// replace with your own custom resource/memory management system if required
+	virtual void					ManageResources	( ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram );
+
+protected:
+	qint64							m_MaxMemory = 1024ll * 1024ll * 1024ll * 2ll; // 2 gigs
+	qint64							m_MaxGPUMemory = 1024ll * 1024ll * 1024ll * 1ll; // 1 gig
 };
 
 ////////////////////////////////////////////////////////////////////////////////

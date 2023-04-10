@@ -653,11 +653,13 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	if (!data.p_Visible) {
 		return;
 	}
+	auto& core = Core::Singleton();
+	int ticks = core.GetTicks();
 
 	ImGui::Begin("Resource Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 
-	ImGui::Text("CPU Memory Allocated: %i", Core::Singleton().GetMemoryAllocated());
-	ImGui::Text("Graphics Memory Allocated: %i", Core::Singleton().GetGPUMemoryAllocated());
+	ImGui::Text("CPU Memory Allocated: %i", core.GetMemoryAllocated());
+	ImGui::Text("Graphics Memory Allocated: %i", core.GetGPUMemoryAllocated());
 
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 	const int size_banner = 80;
@@ -674,7 +676,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 		ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 90);
 		ImGui::TableSetupColumn("Mem", ImGuiTableColumnFlags_WidthFixed, 80);
 		ImGui::TableSetupColumn("GPU Mem", ImGuiTableColumnFlags_WidthFixed, 80);
-		ImGui::TableSetupColumn("Last Used", ImGuiTableColumnFlags_WidthFixed, 80);
+		ImGui::TableSetupColumn("Ticks Since Use", ImGuiTableColumnFlags_WidthFixed, 110);
 		ImGui::TableSetupColumn("Error", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
 
@@ -703,7 +705,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 			ImGui::Text("%i", resource.second.m_GPUMemory);
 
 			ImGui::TableSetColumnIndex(4);
-			ImGui::Text("%i", resource.second.m_LastTickAccessed);
+			ImGui::Text("%i", ticks - resource.second.m_LastTickAccessed);
 
 			ImGui::TableSetColumnIndex(5);
 			QByteArray err_str = resource.second.m_Error.toLocal8Bit();

@@ -291,7 +291,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 		if (engine->Tick(nanos, m_Ticks)) {
 			m_Ticks++;
 		}
-		engine->ManageResources();
+		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
 
 		///////////////////////////////////////////// render engine
 
@@ -349,6 +349,7 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 		if (engine->Tick(nanos, m_Ticks)) {
 			m_Ticks++;
 		}
+		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
 
 		if (io.DeltaTime <= 0.0f) {
 			io.DeltaTime = 0.00001f;
@@ -727,52 +728,53 @@ void Core::OpenGLSync(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 ResourceManagementToken Core::GetResourceManagementToken(void) {
-	std::vector<ResourceManagementToken::ResourceEntry> entries;
-	entries.reserve(m_Resources.size());
-	for (const auto& resource : m_Resources) {
-		if (resource.second.m_State == ResourceState::DONE) {
-			entries.emplace_back(resource.second.m_Resource, resource.first, resource.second.m_Memory, resource.second.m_GPUMemory, resource.second.m_LastTickAccessed);
-		}
-	}
-
-	return ResourceManagementToken([this] (std::vector<ResourceManagementToken::ResourceEntry>&& entries) {
-		for (const auto& entry : entries) {
-			if (entry.p_FlagForDeletion) {
-				auto found = m_Resources.find(entry.p_Id);
-				if (found != m_Resources.end()) {
-					// better to be consistent and out of date even if internal mem usage for a resource changes
-					m_MemoryAllocated -= found->second.m_Memory;
-					m_GPUMemoryAllocated -= found->second.m_GPUMemory;
-					delete found->second.m_Resource;
-					m_Resources.erase(found);
+	return ResourceManagementToken(
+		[this](std::vector<ResourceManagementToken::ResourceEntry>& entries) {
+			entries.clear();
+			entries.reserve(m_Resources.size());
+			for (const auto& resource : m_Resources) {
+				if (resource.second.m_State == ResourceState::DONE) {
+					entries.emplace_back(resource.second.m_Resource, resource.first, resource.second.m_Memory, resource.second.m_GPUMemory, m_Ticks - resource.second.m_LastTickAccessed);
 				}
 			}
 		}
-	}, std::move(entries));
+		,[this] (const std::vector<ResourceManagementToken::ResourceEntry>& entries) {
+			for (const auto& entry : entries) {
+				if (entry.p_FlagForDeletion) {
+					auto found = m_Resources.find(entry.p_Id);
+					if (found != m_Resources.end()) {
+						// better to be consistent and out of date even if internal mem usage for a resource changes
+						m_MemoryAllocated -= found->second.m_Memory;
+						m_GPUMemoryAllocated -= found->second.m_GPUMemory;
+						delete found->second.m_Resource;
+						m_Resources.erase(found);
+					}
+				}
+			}
+		}
+	);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void IEngine::ManageResources(void) {
+void IEngine::ManageResources(ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram) {
 
-	auto& core = Core::Singleton();
-	qint64 excess_ram = core.GetMemoryAllocated() - m_MaxMemory;
-	qint64 excess_gpu_ram = core.GetGPUMemoryAllocated() - m_MaxGPUMemory;
-	if ((excess_ram > 0) && (excess_gpu_ram > 0)) {
+	qint64 excess_ram = allocated_ram - m_MaxMemory;
+	qint64 excess_gpu_ram = allocated_gpu_ram - m_MaxGPUMemory;
+	if ((excess_ram <= 0) && (excess_gpu_ram <= 0)) {
 		return;
 	}
 
-	const float ram_tick_conversion = 0.001;
-	const float ram_mult = (excess_ram > 0) ? ram_tick_conversion : 0.0;
-	const float gpu_ram_mult = (excess_gpu_ram > 0) ? ram_tick_conversion : 0.0;
+	// this does a copy of resource info, so avoid calling it every frame - only populate this token when needing to purge memory
+	token.Populate();
 
-	// this does a copy of resource info, so avoid calling it every frame - only create this token when needing to purge memory
-	auto token = core.GetResourceManagementToken();
+	const double ram_tick_conversion = 1.0;
+	const double ram_mult = (excess_ram > 0) ? ram_tick_conversion : 0.0;
+	const double gpu_ram_mult = (excess_gpu_ram > 0) ? ram_tick_conversion : 0.0;
 
 	// assign a score to all resources, higher = better candidate for deletion
 	// take into account amount and type of mem as well as age (older is better)
-	int ticks = Core::Singleton().GetTicks();
 	for (auto& entry : token.p_Entries) {
-		int elapsed = std::max(1, ticks - entry.p_LastTickAccessed);
+		double elapsed = log10((double)std::max(10, entry.p_TicksSinceAccess));
 		entry.p_Score = (ram_mult * entry.p_Memory + gpu_ram_mult * entry.p_GPUMemory) * elapsed;
 	}
 	std::sort(token.p_Entries.begin(), token.p_Entries.end(), [](const ResourceManagementToken::ResourceEntry& a, const ResourceManagementToken::ResourceEntry& b) -> bool {
@@ -780,7 +782,7 @@ void IEngine::ManageResources(void) {
 	});
 
 	for (auto& entry : token.p_Entries) {
-		if ((excess_ram <= 0) || (excess_gpu_ram <= 0)) {
+		if ((excess_ram <= 0) && (excess_gpu_ram <= 0)) {
 			break;
 		}
 		excess_ram -= entry.p_Memory;

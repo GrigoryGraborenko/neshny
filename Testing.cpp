@@ -36,6 +36,12 @@ void UnitTester::IExecute(void) {
         } catch(const char* info) {
             m_Results.push_back({ false, label, info });
             continue;
+        } catch(Test::InfoException info) {
+            m_Results.push_back({ false, label, info.p_Info });
+            continue;
+        } catch(std::exception excp) {
+            m_Results.push_back({ false, label, excp.what() });
+            continue;
         } catch(...) {
             m_Results.push_back({ false, label, "Unknown exception" });
             continue;
