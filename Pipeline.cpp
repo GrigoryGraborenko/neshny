@@ -4,13 +4,15 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, int iterations, GLSSBO* control_ssbo) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
 	,m_ShaderName		( shader_name )
 	,m_ReplaceMain		( replace_main )
 	,m_ShaderDefines	( shader_defines )
+	,m_Iterations		( iterations )
+	,m_ControlSSBO		( control_ssbo )
 {
 	if (cache) {
 		m_ExtraCode += cache->Bind(m_SSBOs);
@@ -128,7 +130,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		if (time_slider > 0) {
 			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
 		}
-	} else if(m_Entity) {
+	} else if(m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
 		insertion_uniforms += "uniform int uCount;";
 		insertion_uniforms += "uniform int uOffset;";
 	}
@@ -313,8 +315,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	// WARNING: do NOT add to control buffer beyond this point
 
-	// TODO control SSBO should be created if it doesn't exist
-	GLSSBO* control_ssbo = m_Entity ? m_Entity->GetControlSSBO() : nullptr;
+	GLSSBO* control_ssbo = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
 	if (control_ssbo && !var_vals.empty()) {
 
 		std::vector<int> values;
@@ -381,7 +382,10 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	}
 
 	////////////////////////////////////////////////////
-	if (entity_processing || (m_RunType == RunType::ENTITY_ITERATE)) {
+	if (m_RunType == RunType::BASIC_COMPUTE) {
+		Core::DispatchMultiple(prog, m_Iterations, m_LocalSizeX* m_LocalSizeY* m_LocalSizeZ);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	} else if (entity_processing || (m_RunType == RunType::ENTITY_ITERATE)) {
 		Core::DispatchMultiple(prog, num_entities, m_LocalSizeX * m_LocalSizeY * m_LocalSizeZ);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if(is_render) {

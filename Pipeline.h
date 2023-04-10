@@ -15,7 +15,7 @@ public:
 		ENTITY_RENDER,
 		ENTITY_ITERATE,
 		BASIC_RENDER,
-		BASIC_COMPUTE // TODO
+		BASIC_COMPUTE
 	};
 
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
@@ -25,10 +25,13 @@ public:
 		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, shader_defines);
 	}
 	static PipelineStage IterateEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, nullptr, shader_name, replace_main, shader_defines);
+		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
 	static PipelineStage RenderBuffer(QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines) {
 		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, shader_defines);
+	}
+	static PipelineStage Compute(QString shader_name, int iterations, GLSSBO* control_ssbo, const std::vector<QString>& shader_defines) {
+		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, shader_defines, iterations, control_ssbo);
 	}
 
 								~PipelineStage		( void ) {}
@@ -61,7 +64,7 @@ public:
 
 protected:
 
-								PipelineStage		( RunType type, GPUEntity* entity, GLBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines );
+								PipelineStage		( RunType type, GPUEntity* entity, GLBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, int iterations = 0, GLSSBO* control_ssbo = nullptr);
 
 	struct AddedDataVector {
 		QString					p_Name;
@@ -119,6 +122,8 @@ protected:
 	int							m_LocalSizeX = 8;
 	int							m_LocalSizeY = 8;
 	int							m_LocalSizeZ = 8;
+	int							m_Iterations = 0;
+	GLSSBO*						m_ControlSSBO = nullptr;
 	QString						m_ExtraCode;
 
 	std::vector<AddedEntity>	m_Entities;
