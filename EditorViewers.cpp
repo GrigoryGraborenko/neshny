@@ -176,15 +176,13 @@ void InfoViewer::ILoopTime(qint64 nanos) {
 void InfoViewer::IClearLoopTime(void) {
 	m_LoopHistogram.clear();
 	m_LoopHistogramOverflow = 0;
-	for (double s = 0; s < 0.1; s += 0.01) {
+	for (double s = 0.01; s <= 0.05; s += 0.01) {
 		m_LoopHistogram.push_back({ s, 0 });
 	}
-	for (double s = 0.1; s < 1.0; s += 0.1) {
+	for (double s = 0.1; s <= 0.5; s += 0.1) {
 		m_LoopHistogram.push_back({ s, 0 });
 	}
-	for (double s = 1.0; s < 10.0; s += 1.0) {
-		m_LoopHistogram.push_back({ s, 0 });
-	}
+	m_LoopHistogram.push_back({ 1.0, 0 });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,21 +201,42 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	if (ImGui::Button("Run Unit Tests")) {
 		UnitTester::Execute();
 	}
-
+	ImGui::SameLine();
 	auto& timings = DebugTiming::GetTimings();
-	if (ImGui::Button("Reset")) {
+	if (ImGui::Button("Reset Timings")) {
 		timings.clear();
 	}
 
-	if (ImGui::Button("Reset Loop")) {
-		IClearLoopTime();
-	}
+	ImGui::Text("End-to-end frame loop histogram");
 
-	for (const auto& segment : m_LoopHistogram) {
-		if (!segment.second) {
-			continue;
+	if (ImGui::BeginTable("##SegmentTable", (int)m_LoopHistogram.size() + 2, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV)) {
+		ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+
+		for (const auto& segment : m_LoopHistogram) {
+			QByteArray label = QString("<%1s").arg(segment.first, 0, 'f', 2).toLocal8Bit();
+			ImGui::TableSetupColumn(label.data(), ImGuiTableColumnFlags_WidthFixed, 65);
 		}
-		ImGui::Text("< %.4f s: %i", segment.first, segment.second);
+		ImGui::TableSetupColumn("Overflow", ImGuiTableColumnFlags_WidthFixed, 65);
+		ImGui::TableSetupColumn("Clear", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		ImGui::TableNextRow();
+		int col = 0;
+		for (const auto& segment : m_LoopHistogram) {
+			ImGui::TableSetColumnIndex(col++);
+			if (segment.second) {
+				ImGui::TextColored(segment.first >= 0.04 ? (segment.first >= 0.2 ? ImVec4(1.0f, 0.3f, 0.3f, 1.0f) : ImVec4(1.0f, 0.6f, 0.3f, 1.0f)) : ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "%i", segment.second);
+			}
+		}
+		ImGui::TableSetColumnIndex(col++);
+		if (m_LoopHistogramOverflow) {
+			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%i", m_LoopHistogramOverflow);
+		}
+		ImGui::TableSetColumnIndex(col++);
+		if (ImGui::Button("Clear")) {
+			IClearLoopTime();
+		}
+		ImGui::EndTable();
 	}
 
 	qint64 total_nanos = 0;
@@ -225,11 +244,10 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 		total_nanos += iter->p_Nanos;
 	}
 	
-	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
-	if (ImGui::BeginTable("##Table", 7, table_flags)) {
+	if (ImGui::BeginTable("##PerfTable", 7, ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV)) {
 		ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
 
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Timing label", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("Roll Avg (ms)", ImGuiTableColumnFlags_WidthFixed, 90);
 		ImGui::TableSetupColumn("Avg (ms)", ImGuiTableColumnFlags_WidthFixed, 80);
 		ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, 80);
