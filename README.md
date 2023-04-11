@@ -3,12 +3,12 @@ Neshny is an OpenGL/C++ library for games and simulations. It is designed to be 
 
 Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features, and CMake >= 3.18 is strongly recommended.
 
-## Installation
+## <b>Installation</b>
 Clone this repo to a location of your choice:
 ```
 git clone https://github.com/GrigoryGraborenko/neshny.git
 ```
-### Using CMake
+### <u>Using CMake</u>
 Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLJumboBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
 
 Make a copy of the entire directory and place it wherever you like. Ensure you have cmake 3.18 or greater installed.
@@ -33,7 +33,7 @@ Replace `"Visual Studio 16 2019"` with whatever compiler you prefer. This will g
 ![Screenshot of Empty QT SDL Project](/Documentation/empty_qt_sdl_jumbo.png)
 
 
-### Manually
+### <u>Manually</u>
 Clone this repo and point to the base dir in your include directories list. Then add
 ``` C++
 // put this in your headers
@@ -44,8 +44,8 @@ using namespace Neshny;
 ```
 This assumes you already have QT, ImGui and Metastuff installed.
 
-## Features
-### Viewing the editor overlay
+## <b>Features</b>
+### <u>Viewing the editor overlay</u>
 Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
 ``` C++
 if (show_editor) {
@@ -57,7 +57,7 @@ if (show_editor) {
     Core::RenderEditor();
 }
 ```
-### Shader and buffer convenience classes
+### <u>Shader and buffer convenience classes</u>
 ``` C++
 GLShader shader;
 QString err_msg;
@@ -76,7 +76,7 @@ shader.UseProgram();
 glUniform1i(shader.GetUniform("extra_uniform"), 123);
 
 ```
-### Shader loading and viewing
+### <u>Shader loading and viewing</u>
 Here's an example of using a rendering shader:
 ``` C++
 // dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
@@ -104,7 +104,7 @@ Neshny::DispatchMultiple(compute_prog, 64, 512);
 // or you could manage it yourself:
 // glDispatchCompute(4, 4, 4);
 ```
-### GPU entities and pipelines
+### <u>GPU entities and pipelines</u>
 A `GPUEntity` manages the concept of an entity that lives and dies entirely in GPU memory. It is best used with a `Pipeline`, which is a wrapper around a call to a compute or render shader that modifies or renders the entity, and handles all the setup and initialization.
 You start by defining a plain old data data type with packing alignment of 1. Then you add each member to a metastuff definition. Then each tick you call `PipelineStage::ModifyEntity` with a compute shader that runs for each entity, modifies it, and can delete it as well.
 ``` C++
@@ -207,7 +207,7 @@ bool ProjectileMain(int item_index, Projectile proj, inout Projectile new_proj) 
 }
 
 ```
-### Entity data viewer with time-travel
+### <u>Entity data viewer with time-travel</u>
 Debugging GPU entities can be difficult, since you can't just inspect CPU memory at a breakpoint like a regular C++ object. Thus Neshny provides a buffer viewer which can capture the internal structure of a GPU entity each frame and display it in a human readable format. Furthermore, you can store these captures for a customizable number of frames and rewind, or step frame by frame until you figure out what's going on. *Be mindful that this is for debug purposes only and will slow down your framerate and consume a lot of memory*.
 
 The way this works is that at every checkpoint where you care about the internals of an entity or SSBO, you add this:
@@ -221,10 +221,10 @@ If you open up the buffer viewer, you should see something like this once you ti
 There is also a scrollbar up the top where you can rewind to a point in time some frames ago. The newest are on the left, and get older as you go right. Time travelling will also render that old data within your game, *but only if you use the PipelineStage::RenderEntity system*. It works by substituting the chunk of memory saved previously instead of the data that is currently stored for that entity when rendering. 
 ![Screenshot of Buffer Viewer](/Documentation/buffer_viewer.png)
 
-### Cameras
-There are currently three convenience camera classes provided: `Camera2D`, `Camera3DOrbit` and `Camera3DFPS`. They only exist to provide a useful `Matrix4` view perspective matrix. 
+### <u>Cameras</u>
+There are currently three convenience camera classes provided: `Camera2D`, `Camera3DOrbit` and `Camera3DFPS`. They only exist to provide a useful `Matrix4` view perspective matrix. There are some convenience functions to move them around, but currently the recommended usage is to modify their internals directly, such as `p_Pos` for position or `p_Zoom` in `Camera2D`.
 
-### Resource system
+### <u>Resource system</u>
 The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++
 	auto tex = Core::GetResource<Texture2D>("../images/example.png");
@@ -265,9 +265,57 @@ private:
 
 ```
 If you want to create a resource based off data in a file, you have the convenience base class `FileResource` which requires you to implement the `virtual bool FileInit(QString path, unsigned char* data, int length, QString& err)` function that is called after the file in the path is loaded. `data` and `length` contain the contents of the file if it has been successfully loaded.
-### 3D debug visualizer
-TODO
-### Scrapbook
-TODO
-### Serialization
-TODO
+
+The default resource management is for older, larger resources to be deallocated once the memory limit is reached. You can change the memory limit for both regular memory and GPU memory in your `IEngine` subclass by setting `m_MaxMemory` and `m_MaxGPUMemory` as bytes. They are set to 2 gig and 1 gig respectively. If you would like to take over memory management yourself, override the function `virtual void ManageResources(ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram)`. Have a look inside the default implementation for a guide on how to do that. 
+### <u>3D Debug Visualizer</u>
+An easy way to get started on a 3D project is to chuck in some debug lines so you can get some basic context. Here's an example of origin axis lines:
+``` C++
+// 10 units. What's a unit? How long's a piece of string?
+const double size_grid = 10.0; 
+// red X
+DebugRender::Line(Vec3(0, 0, 0), Vec3(size_grid, 0, 0), Vec4(1, 0, 0, 1));
+// green Y
+DebugRender::Line(Vec3(0, 0, 0), Vec3(0, size_grid, 0), Vec4(0, 1, 0, 1));
+// blue Z
+DebugRender::Line(Vec3(0, 0, 0), Vec3(0, 0, size_grid), Vec4(0, 0, 1, 1));
+```
+There is also `DebugRender::Point`, `DebugRender::Triangle`, `DebugRender::Circle` and `DebugRender::Square`. The last two are 2D. Colors are set via a Vec4 that specifies red, green, blue and alpha where 0 is none and 1 is max.
+
+Then make sure you at some point in your render cycle call 
+``` C++
+// use the same view_perspective_matrix from your camera as your other objects
+// width and height are the pixel size of your viewport
+DebugRender::Render3DDebug(view_perspective_matrix, width, height);
+DebugRender::Clear();
+```
+### <u>Scrapbook</u>
+It may be useful from time to time to test out or visualize simple concepts without messing with your core render loop. Neshny provides a 2D and a 3D scrapbook which you can add debug render visuals to, provide simple ImGui controls, or do custom rendering inside the context of the scrapbook window.
+
+You can add visuals much like with the `DebugRender` (it uses the same underlying code) with functions such as `Scrapbook3D::Point` and `Scrapbook3D::Line`.
+
+Here is an example of adding custom controls:
+``` C++
+// width and height are passed in by Scrapbook3D to your lambda
+Scrapbook3D::Controls([this, &stage](int width, int height) {
+    if (ImGui::Button("Do something")) {
+        RunFunction();
+    }
+    ImGui::SetNextItemWidth(width * 0.75);
+    ImGui::SliderInt("Variable", &stage, 0, 100);
+    ImGui::Text("Test info %i", 123);
+});
+```
+Here is an example of running custom render code:
+``` C++
+{ // create a local scope
+    // get a render-to-texture token
+    auto token = Scrapbook3D::ActivateRTT();
+
+    // do graphics stuff here
+    // Scrapbook3D's render to texture is active
+    // any rendering will end up in the scrapbook window not your window
+
+} // on exit, token is deconstructed and RTT is switched off
+// important - make sure to only use tokens within a temporary/function scope!
+// do not let them leak into the rest of your regular rendering code
+```
