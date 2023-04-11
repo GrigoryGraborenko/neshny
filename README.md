@@ -112,27 +112,27 @@ You start by defining a plain old data data type with packing alignment of 1. Th
 #pragma pack (1) // padding will break the GPU transfer if you don't have this
 
 struct GPUProjectile {
-	int				p_Id; // all entities should have an integer ID
-	fVec3		    p_Pos;
-	fVec3	    	p_Vel;
-	int				p_Type;
-	int				p_State;
+    int     p_Id; // all entities should have an integer ID
+    fVec3   p_Pos;
+    fVec3   p_Vel;
+    int     p_Type;
+    int     p_State;
 };
 
 #pragma pack(pop)
 
 // gotta define all struct members to ensure correct storage
 namespace meta {
-	template<>
-	inline auto registerMembers<GPUProjectile>() {
-		return members(
-			member("Id", &GPUBoid::p_Id),
-			member("Pos", &GPUBoid::p_Pos),
-			member("Vel", &GPUBoid::p_Vel),
-			member("Type", &GPUBoid::p_Type),
-			member("State", &GPUBoid::p_State)
-		);
-	}
+    template<>
+    inline auto registerMembers<GPUProjectile>() {
+        return members(
+            member("Id", &GPUBoid::p_Id),
+            member("Pos", &GPUBoid::p_Pos),
+            member("Vel", &GPUBoid::p_Vel),
+            member("Type", &GPUBoid::p_Type),
+            member("State", &GPUBoid::p_State)
+        );
+    }
 }
 
 // store this somewhere permanent so it persists across frames
@@ -150,7 +150,6 @@ GPUEntity projectiles(
 projectiles.Init(100000);
 
 for (int i = 0; i < 10; i++) {
-
     GPUProjectile proj{
         0, // id doesn't matter, gets assigned by system
         fVec3(100.0, 110.0, 120.0),
@@ -196,7 +195,7 @@ bool ProjectileMain(int item_index, Projectile proj, inout Projectile new_proj) 
     // proj is the input entity
     // new_proj is a copy of the entity - changes you make to it will be saved
 
-	new_proj.State = proj.State - 1;
+    new_proj.State = proj.State - 1;
     new_proj.Pos = proj.Pos + proj.Vel * uDeltaSeconds;
     new_proj.Vel.y -= 0.98; // add gravity
 
@@ -227,24 +226,24 @@ There are currently three convenience camera classes provided: `Camera2D`, `Came
 ### <u>Resource system</u>
 The resource system uses threads to load and initialize resources in the background. Calling a resource via `Core::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++
-	auto tex = Core::GetResource<Texture2D>("../images/example.png");
-    if(tex.IsValid()) {
-        glBindTexture(GL_TEXTURE_2D, tex->Get().GetTexture());
-    } else if(tex.m_State == ResourceState::PENDING) {
-        // show some loading info
-    } else if(tex.m_State == ResourceState::IN_ERROR) {
-        // show info about error using tex.m_Error
-    }
+auto tex = Core::GetResource<Texture2D>("../images/example.png");
+if(tex.IsValid()) {
+    glBindTexture(GL_TEXTURE_2D, tex->Get().GetTexture());
+} else if(tex.m_State == ResourceState::PENDING) {
+    // show some loading info
+} else if(tex.m_State == ResourceState::IN_ERROR) {
+    // show info about error using tex.m_Error
+}
 ```
 Currently there are resources for `SoundFile` (using SDL), `Texture2D`, `TextureTileset` and `TextureSkybox`. Creating your own resource type is easy - simply subclass from `Resource` and implement the abstract function `virtual bool Init(QString path, QString& err)` and the two memory estimate functions like so:
 ``` C++
 class CustomResource : public Resource {
 public:
     // no need for constructor, all the work is done in Init
-	virtual				~CustomResource(void) {}
+    virtual ~CustomResource(void) {}
 
-	virtual bool		Init(QString path, QString& err) {
-		// anything here will be run in an offline thread
+    virtual bool Init(QString path, QString& err) {
+        // anything here will be run in an offline thread
         // opengl resource creation here will be shared
         for(int i = 0; i < 1000000; i++) {
             // some slow process
@@ -255,9 +254,9 @@ public:
             return false; // resource will be "IN_ERROR"
         }
         return true; // resource will be "DONE"
-	};
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return 0; }
+    };
+    virtual qint64 GetMemoryEstimate    ( void ) const { return 0; }
+    virtual qint64 GetGPUMemoryEstimate ( void ) const { return 0; }
 
 private:
     int cached_value = 0; // whatever payloads/objects you like
