@@ -81,11 +81,11 @@ Here's an example of using a rendering shader:
 ``` C++
 // dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
 // loads from "../src/Shaders/", set by cmake var SHADER_PATH in UserSettings.cmake
-GLShader* prog = Neshny::GetShader("Fullscreen");
+GLShader* prog = Core::GetShader("Fullscreen");
 prog->UseProgram();
 glUniform1i(prog->GetUniform("uniform_name"), 123);
 
-GLBuffer* buff = Neshny::GetBuffer("Square"); // get a built-in model
+GLBuffer* buff = Core::GetBuffer("Square"); // get a built-in model
 buff->UseBuffer(prog); // attach the program to the buffer
 buff->Draw(); // executes the draw call
 ```
@@ -93,14 +93,14 @@ Here's how you would run a compute shader:
 ``` C++
 // dynamically load the shader that corresponds to Compute.comp
 // loads from "../src/Shaders/", set by cmake var SHADER_PATH in UserSettings.cmake
-GLShader* compute_prog = Neshny::GetComputeShader("Compute");
+GLShader* compute_prog = Core::GetComputeShader("Compute");
 compute_prog->UseProgram();
 // runs 64 instances
 // second var is result of multiplying local sizes together
 // usually set by layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 // will call glDispatchCompute multiple times if it exceeds 64x512 instances
 // automatically populates uCount and uOffset integer uniform
-Neshny::DispatchMultiple(compute_prog, 64, 512);
+Core::DispatchMultiple(compute_prog, 64, 512);
 // or you could manage it yourself:
 // glDispatchCompute(4, 4, 4);
 ```
@@ -179,7 +179,7 @@ PipelineStage::RenderEntity(
     projectiles // GPU entity
     ,"ProjectileRender" // name of .frag, .vert and optionally .geom shader
     ,false, // do you want the main vertex function to be written for you?
-    ,Neshny::GetBuffer("Square") // buffer to render with
+    ,Core::GetBuffer("Square") // buffer to render with
     { "DEFINITION 1234" }
 )
 .Run([&vp](GLShader* prog) {
@@ -225,7 +225,7 @@ There is also a scrollbar up the top where you can rewind to a point in time som
 There are currently three convenience camera classes provided: `Camera2D`, `Camera3DOrbit` and `Camera3DFPS`. They only exist to provide a useful `Matrix4` view perspective matrix. There are some convenience functions to move them around, but currently the recommended usage is to modify their internals directly, such as `p_Pos` for position or `p_Zoom` in `Camera2D`.
 
 ### <u>Resource system</u>
-The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
+The resource system uses threads to load and initialize resources in the background. Calling a resource via `Core::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++
 	auto tex = Core::GetResource<Texture2D>("../images/example.png");
     if(tex.IsValid()) {
