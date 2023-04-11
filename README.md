@@ -65,12 +65,12 @@ QString err_msg;
 // and three paths for vertex, fragment and geometry shaders
 // geometry shader is optional and can be left empty
 shader.Init(err_msg, [] (QString path, QString& err_msg) -> QByteArray {
-		QFile file(QString("shader_prefix\\%1").arg(path));
-		if (!file.isOpen()) {
-			err_msg = "File error - " + file.errorString();
-			return QByteArray();
-		}
-		return file.readAll();
+    QFile file(QString("shader_prefix\\%1").arg(path));
+    if (!file.isOpen()) {
+        err_msg = "File error - " + file.errorString();
+        return QByteArray();
+    }
+    return file.readAll();
 }, "shader.vert", "shader.frag", "shader.geom", "uniform int extra_uniform;");
 shader.UseProgram();
 glUniform1i(shader.GetUniform("extra_uniform"), 123);
@@ -95,12 +95,14 @@ Here's how you would run a compute shader:
 // loads from "../src/Shaders/", set by cmake var SHADER_PATH in UserSettings.cmake
 GLShader* compute_prog = Core::GetComputeShader("Compute");
 compute_prog->UseProgram();
+
 // runs 64 instances
 // second var is result of multiplying local sizes together
 // usually set by layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 // will call glDispatchCompute multiple times if it exceeds 64x512 instances
 // automatically populates uCount and uOffset integer uniform
 Core::DispatchMultiple(compute_prog, 64, 512);
+
 // or you could manage it yourself:
 // glDispatchCompute(4, 4, 4);
 ```
