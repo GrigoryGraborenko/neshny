@@ -1,14 +1,14 @@
 # Neshny
 Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card. There is an optional UI that can overlay your window and display valuable debugging information.
 
-Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features.
+Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features, and CMake >= 3.18 is strongly recommended.
 
 ## Installation
 Clone this repo to a location of your choice:
 ```
 git clone https://github.com/GrigoryGraborenko/neshny.git
 ```
-### Using cmake
+### Using CMake
 Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLJumboBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
 
 Make a copy of the entire directory and place it wherever you like. Ensure you have cmake 3.18 or greater installed.
@@ -61,7 +61,7 @@ if (show_editor) {
 ``` C++
 GLShader shader;
 QString err_msg;
-// takes error string ref, function that loads the actual file given a path,
+// takes error string ref, lambda that loads the actual file given a path,
 // and three paths for vertex, fragment and geometry shaders
 // geometry shader is optional and can be left empty
 shader.Init(err_msg, [] (QString path, QString& err_msg) -> QByteArray {
@@ -105,7 +105,8 @@ Neshny::DispatchMultiple(compute_prog, 64, 512);
 // glDispatchCompute(4, 4, 4);
 ```
 ### GPU entities and pipelines
-
+A `GPUEntity` manages the concept of an entity that lives and dies entirely in GPU memory. It is best used with a `Pipeline`, which is a wrapper around a call to a compute or render shader that modifies or renders the entity, and handles all the setup and initialization.
+You start by defining a plain old data data type with packing alignment of 1. Then you add each member to a metastuff definition. Then each tick you call `PipelineStage::ModifyEntity` with a compute shader that runs for each entity, modifies it, and can delete it as well.
 ``` C++
 #pragma pack(push)
 #pragma pack (1) // padding will break the GPU transfer if you don't have this
@@ -134,7 +135,7 @@ namespace meta {
 	}
 }
 
-// store this somewhere permanent
+// store this somewhere permanent so it persists across frames
 GPUEntity projectiles(
     "Projectile", // name used for debugging
     GPUEntity::DeleteMode::MOVING_COMPACT, // no gaps but cannot trust an index to it, may be moved
@@ -155,7 +156,7 @@ for (int i = 0; i < 10; i++) {
         fVec3(100.0, 110.0, 120.0),
         fVec3(1.0, 0.0, 0.0),
         1,
-        123
+        123 // p_State
     };
     m_Projectiles.AddInstance((float*)&proj);
 }
@@ -206,12 +207,23 @@ bool ProjectileMain(int item_index, Projectile proj, inout Projectile new_proj) 
 }
 
 ```
-
-TODO
 ### Entity data viewer with time-travel
-TODO
+Debugging GPU entities can be difficult, since you can't just inspect CPU memory at a breakpoint like a regular C++ object. Thus Neshny provides a buffer viewer which can capture the internal structure of a GPU entity each frame and display it in a human readable format. Furthermore, you can store these captures for a customizable number of frames and rewind, or step frame by frame until you figure out what's going on. *Be mindful that this is for debug purposes only and will slow down your framerate and consume a lot of memory*.
+
+The way this works is that at every checkpoint where you care about the internals of an entity or SSBO, you add this:
+``` C++
+// this checkpoint is called tick because it's called once per tick
+// call it what you like, as often as you like - each call creates a temp copy
+BufferViewer::Checkpoint("Tick", entity);
+```
+If you open up the buffer viewer, you should see something like this once you tick the "All" checkbox, or the checkbox next to the specific buffer you are interested in. All the entities will be displayed in rows, and each column shows one of the previous frame's data for that entity. 
+
+There is also a scrollbar up the top where you can rewind to a point in time some frames ago. The newest are on the left, and get older as you go right. Time travelling will also render that old data within your game, *but only if you use the PipelineStage::RenderEntity system*. It works by substituting the chunk of memory saved previously instead of the data that is currently stored for that entity when rendering. 
+![Screenshot of Buffer Viewer](/Documentation/buffer_viewer.png)
+
 ### Cameras
-TODO
+There are currently three convenience camera classes provided: `Camera2D`, `Camera3DOrbit` and `Camera3DFPS`. They only exist to provide a useful `Matrix4` view perspective matrix. 
+
 ### Resource system
 The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++

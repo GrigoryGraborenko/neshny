@@ -9,7 +9,6 @@ namespace Neshny {
 
 struct Camera2D {
 
-	// TODO: replace with double-based matrix
 	inline Matrix4 Get4x4Matrix(int width, int height) const {
 		float aspect = (float)height / width;
 		float view_rad_x = p_Zoom;
