@@ -36,7 +36,7 @@ public:
 	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chunk); }
 	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return m_Chunk->alen; };
+	virtual qint64		GetMemoryEstimate		( void ) const { return m_Chunk->alen; }
 	virtual qint64		GetGPUMemoryEstimate	( void ) const { return 0; }
 
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
@@ -74,7 +74,7 @@ public:
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; };
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
 	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
 
 	bool Save(QString filename) {
@@ -109,7 +109,7 @@ public:
 	virtual				~TextureTileset(void) {}
 	bool				Init(QString path, Params params, QString& err) { m_Params = params; return Load(path, err); }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; };
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
 	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_DepthBytes; }
 
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
@@ -193,7 +193,7 @@ public:
 
 	inline const GLTexture& Get(void) { return m_Texture; }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; };
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
 	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 	void Render(const fMatrix4& vp, Vec3 cam_pos) {

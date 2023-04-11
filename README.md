@@ -9,7 +9,7 @@ Clone this repo to a location of your choice:
 git clone https://github.com/GrigoryGraborenko/neshny.git
 ```
 ### Using cmake
-Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLUnityBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
+Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLJumboBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
 
 Make a copy of the entire directory and place it wherever you like. Ensure you have cmake 3.18 or greater installed.
 
@@ -40,6 +40,7 @@ Clone this repo and point to the base dir in your include directories list. Then
 #include <IncludeAll.h> // Neshny
 // put this in your main.cpp or similar
 #include <IncludeAll.cpp> // Neshny
+using namespace Neshny;
 ```
 This assumes you already have QT, ImGui and Metastuff installed.
 
@@ -48,17 +49,29 @@ This assumes you already have QT, ImGui and Metastuff installed.
 Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
 ``` C++
 if (show_editor) {
-    // this will do all UI/UX for the editor
-    Neshny::RenderEditor();
+    // optional rendering of debug visuals
+    DebugRender::Render3DDebug(view_perspective_matrix, width, height);
     // reset for per-cycle debugging visuals
     DebugRender::Clear();
+    // this will do all UI/UX for the editor
+    Core::RenderEditor();
 }
 ```
 ### Shader and buffer convenience classes
 ``` C++
 GLShader shader;
 QString err_msg;
-shader.Init(err_msg, {"ENABLE_THING"}, "shader.vert", "shader.frag", "shader.geom", "uniform int extra_uniform;");
+// takes error string ref, function that loads the actual file given a path,
+// and three paths for vertex, fragment and geometry shaders
+// geometry shader is optional and can be left empty
+shader.Init(err_msg, [] (QString path, QString& err_msg) -> QByteArray {
+		QFile file(QString("shader_prefix\\%1").arg(path));
+		if (!file.isOpen()) {
+			err_msg = "File error - " + file.errorString();
+			return QByteArray();
+		}
+		return file.readAll();
+}, "shader.vert", "shader.frag", "shader.geom", "uniform int extra_uniform;");
 shader.UseProgram();
 glUniform1i(shader.GetUniform("extra_uniform"), 123);
 
@@ -67,7 +80,7 @@ glUniform1i(shader.GetUniform("extra_uniform"), 123);
 Here's an example of using a rendering shader:
 ``` C++
 // dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
-// loads from "../src/Shaders/" (TODO: hardcoded for now)
+// loads from "../src/Shaders/", set by cmake var SHADER_PATH in UserSettings.cmake
 GLShader* prog = Neshny::GetShader("Fullscreen");
 prog->UseProgram();
 glUniform1i(prog->GetUniform("uniform_name"), 123);
@@ -78,14 +91,16 @@ buff->Draw(); // executes the draw call
 ```
 Here's how you would run a compute shader:
 ``` C++
-// dynamically load the shader that corresponds to Compute.glsl
-// loads from "../src/Shaders/" (TODO: hardcoded for now)
+// dynamically load the shader that corresponds to Compute.comp
+// loads from "../src/Shaders/", set by cmake var SHADER_PATH in UserSettings.cmake
 GLShader* compute_prog = Neshny::GetComputeShader("Compute");
 compute_prog->UseProgram();
 // runs 64 instances
-// will call multiple times if it exceeds 32768 instances
+// second var is result of multiplying local sizes together
+// usually set by layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
+// will call glDispatchCompute multiple times if it exceeds 64x512 instances
 // automatically populates uCount and uOffset integer uniform
-Neshny::DispatchMultiple(compute_prog, 64);
+Neshny::DispatchMultiple(compute_prog, 64, 512);
 // or you could manage it yourself:
 // glDispatchCompute(4, 4, 4);
 ```
@@ -97,8 +112,8 @@ Neshny::DispatchMultiple(compute_prog, 64);
 
 struct GPUProjectile {
 	int				p_Id; // all entities should have an integer ID
-	QVector3D		p_Pos;
-	QVector3D		p_Vel;
+	fVec3		    p_Pos;
+	fVec3	    	p_Vel;
 	int				p_Type;
 	int				p_State;
 };
@@ -122,7 +137,6 @@ namespace meta {
 // store this somewhere permanent
 GPUEntity projectiles(
     "Projectile", // name used for debugging
-    GPUEntity::StoreMode::SSBO, // or TEXTURE - how the data is stored
     GPUEntity::DeleteMode::MOVING_COMPACT, // no gaps but cannot trust an index to it, may be moved
     // DeleteMode::STABLE_WITH_GAPS will stay put so you can reference it
     // will have holes in the data structure though
@@ -130,22 +144,24 @@ GPUEntity projectiles(
     "Id" // name of ID member
 );
 // should be done when you have an active OpenGL context
-projectiles.Init();
+// add in the max number of these entities you will EVER have
+// for performance reasons this GPU memory will be pre-allocated
+projectiles.Init(100000);
 
 for (int i = 0; i < 10; i++) {
 
     GPUProjectile proj{
         0, // id doesn't matter, gets assigned by system
-        QVector3D(100.0, 110.0, 120.0),
-        QVector3D(1.0, 0.0, 0.0),
+        fVec3(100.0, 110.0, 120.0),
+        fVec3(1.0, 0.0, 0.0),
         1,
         123
     };
     m_Projectiles.AddInstance((float*)&proj);
 }
 
-PipelineStage(
-    projectiles
+PipelineStage::ModifyEntity(
+    projectiles // GPU entity
     ,"ProjectileMove" // name of compute shader
     ,true // do you want the main function to be written for you?
     ,{ "MACRO_VALUE 123" } // will set up a #define of these items
@@ -153,19 +169,24 @@ PipelineStage(
 .AddCreatableEntity(some_other_entity)
 .AddEntity(read_only_entity)
 .AddSSBO("buffer_name", data_buffer, MemberSpec::T_INT)
-.Run([this, delta_seconds](GLShader* prog) { // optional lambda that gets called right before dispatch
+.Run([delta_seconds](GLShader* prog) { // optional lambda that gets called right before dispatch
     glUniform1f(prog->GetUniform("uDeltaSeconds"), delta_seconds);
 });
 
 // when you wanna render the item
-EntityRender(projectiles, "ProjectileRender", {})
-.Render(Neshny::GetBuffer("Square"), [&vp](GLShader* prog) {
+PipelineStage::RenderEntity(
+    projectiles // GPU entity
+    ,"ProjectileRender" // name of .frag, .vert and optionally .geom shader
+    ,false, // do you want the main vertex function to be written for you?
+    ,Neshny::GetBuffer("Square") // buffer to render with
+    { "DEFINITION 1234" }
+)
+.Run([&vp](GLShader* prog) {
     glUniformMatrix4fv(prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, vp.data());
 });
 ```
 This is what the ProjectileMove compute shader might look like:
 ``` GLSL
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 8) in;
 
 uniform float uDeltaSeconds;
 
@@ -194,7 +215,7 @@ TODO
 ### Resource system
 The resource system uses threads to load and initialize resources in the background. Calling a resource via `Neshny::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++
-	auto tex = Neshny::GetResource<Texture2D>("../images/example.png");
+	auto tex = Core::GetResource<Texture2D>("../images/example.png");
     if(tex.IsValid()) {
         glBindTexture(GL_TEXTURE_2D, tex->Get().GetTexture());
     } else if(tex.m_State == ResourceState::PENDING) {
@@ -203,11 +224,13 @@ The resource system uses threads to load and initialize resources in the backgro
         // show info about error using tex.m_Error
     }
 ```
-Currently [TODO expand this list] there are resources for `SoundFile` (using SDL), `Texture2D` and `TextureSkybox`. Creating your own resource type is easy - simply subclass from `Resource` and implement the abstract function `virtual bool Init(QString path, QString& err)` like so:
+Currently there are resources for `SoundFile` (using SDL), `Texture2D`, `TextureTileset` and `TextureSkybox`. Creating your own resource type is easy - simply subclass from `Resource` and implement the abstract function `virtual bool Init(QString path, QString& err)` and the two memory estimate functions like so:
 ``` C++
 class CustomResource : public Resource {
 public:
+    // no need for constructor, all the work is done in Init
 	virtual				~CustomResource(void) {}
+
 	virtual bool		Init(QString path, QString& err) {
 		// anything here will be run in an offline thread
         // opengl resource creation here will be shared
@@ -221,8 +244,11 @@ public:
         }
         return true; // resource will be "DONE"
 	};
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
+	virtual qint64		GetGPUMemoryEstimate	( void ) const { return 0; }
+
 private:
-    int cached_value = 0; // whatever payload you like
+    int cached_value = 0; // whatever payloads/objects you like
 };
 
 ```
