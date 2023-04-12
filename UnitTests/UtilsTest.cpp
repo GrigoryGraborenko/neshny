@@ -127,4 +127,148 @@ namespace Test {
 		delete engine;
     }
 
+	void UnitTest_Random(void) {
+
+		struct u64_32x2 { uint32_t high; uint32_t low; };
+
+		auto ToComposite = [](uint64_t input) -> u64_32x2 {
+			return { uint32_t(input >> 32u), uint32_t(input & 0xFFFFFFFFU) };
+		};
+
+		auto FromComposite = [](u64_32x2 composite)->uint64_t{
+			return (uint64_t)composite.low + (((uint64_t)composite.high) << 32u);
+		};
+
+		auto Add64 = [&](u64_32x2 a, u64_32x2 b) -> u64_32x2 {
+			uint32_t rl = a.low + b.low;
+			uint32_t rh = rl < a.low;
+			u64_32x2 low_sum{ rh, rl };
+			uint32_t high_sum = a.high + b.high;
+			return { high_sum + low_sum.high, low_sum.low };
+		};
+
+		auto Mul64_32 = [&](uint32_t a, uint32_t b) -> u64_32x2{
+			uint32_t ah = a >> 16, al = a & 0xFFFFU;
+			uint32_t bh = b >> 16, bl = b & 0xFFFFU;
+			uint32_t rl = al * bl;
+			uint32_t rm1 = ah * bl;
+			uint32_t rm2 = al * bh;
+			uint32_t rh = ah * bh;
+
+			uint32_t rm1h = rm1 >> 16, rm1l = (rm1 & 0xFFFFU) << 16;
+			uint32_t rm2h = rm2 >> 16, rm2l = (rm2 & 0xFFFFU) << 16;
+			uint32_t high = rh + rm1h + rm2h;
+			uint32_t low = rl + rm1l;
+			high += low < rl ? 1 : 0;
+			low += rm2l;
+			high += low < rm2l ? 1 : 0;
+			return { high, low };
+		};
+
+		auto Mul64 = [&](u64_32x2 a, u64_32x2 b) -> u64_32x2{
+			u64_32x2 a0b0 = Mul64_32(a.low, b.low);
+			uint32_t a0b1 = a.low * b.high;
+			uint32_t a1b0 = a.high * b.low;
+			return { a0b1 + a1b0 + a0b0.high, a0b0.low };
+		};
+
+		auto Xor64 = [](u64_32x2 a, u64_32x2 b)->u64_32x2{
+			return { a.high ^ b.high, a.low ^ b.low };
+		};
+
+		auto LeftShift64 = [&](u64_32x2 a, int num)->u64_32x2{
+			if (num >= 32) {
+				uint32_t new_low = a.high >> (num - 32);
+				return { 0, new_low };
+			}
+			uint32_t new_low = (a.low >> num) | (a.high << (32 - num));
+			uint32_t new_high = (a.high >> num);
+			return { new_high, new_low };
+		};
+
+		auto TestSum = [&](uint64_t a, uint64_t b) -> bool{
+			u64_32x2 comp_a = ToComposite(a);
+			u64_32x2 comp_b = ToComposite(b);
+
+			u64_32x2 comp_sum = Add64(comp_a, comp_b);
+			uint64_t native_sum = a + b;
+			uint64_t result_sum = FromComposite(comp_sum);
+			return native_sum == result_sum;
+		};
+
+		auto TestMult = [&](uint64_t a, uint64_t b) -> bool {
+			u64_32x2 comp_a = ToComposite(a);
+			u64_32x2 comp_b = ToComposite(b);
+			u64_32x2 comp_mul = Mul64(comp_a, comp_b);
+			uint64_t native_mul = a * b;
+			uint64_t result_mul = FromComposite(comp_mul);
+			return native_mul == result_mul;
+		};
+
+		u64_32x2 g_32State = ToComposite(0x4d595df4d0f33173);
+		const u64_32x2 g_32Inc = ToComposite(1442695040888963407u | 1u);
+		const u64_32x2 g_32Mult = ToComposite(6364136223846793005ULL);
+
+		auto pcg32_random_r_32 = [&](u64_32x2* rng) ->uint32_t {
+			u64_32x2 oldstate = *rng;
+			// Advance internal state
+			*rng = Add64(Mul64(oldstate, g_32Mult), g_32Inc);
+
+			uint32_t xorshifted = LeftShift64(Xor64(LeftShift64(oldstate, 18), oldstate), 27).low;
+			uint32_t rot = LeftShift64(oldstate, 59).low;
+
+			return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+		};
+
+		auto TestRand32 = [&]() -> uint32_t {
+			return pcg32_random_r_32(&g_32State);
+		};
+
+		uint64_t g_State = 0x4d595df4d0f33173;
+		const uint64_t g_Inc = 1442695040888963407u | 1u;
+
+		auto pcg32_random_r = [&](uint64_t* rng) -> uint32_t {
+			uint64_t oldstate = *rng;
+			// Advance internal state
+			*rng = oldstate * 6364136223846793005ULL + g_Inc;
+			// Calculate output function (XSH RR), uses old state for max ILP
+			uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+			uint32_t rot = oldstate >> 59u;
+			return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+		};
+
+		auto TestRand = [&]() ->uint32_t {
+			return pcg32_random_r(&g_State);
+		};
+
+		std::vector<std::pair<uint64_t, uint64_t>> test_pairs = {
+			{ 458840393324832221LL, 6364136223846793005ULL }
+			,{ 0x4d595df4d0f33173, 0x4d595df4345173 }
+			,{ 0x33454465465, 0x4433333345173 }
+			,{ 0x235, 0x173 }
+			,{ 0x2355465464534, 0x435453454353473 }
+		};
+		for (auto pair : test_pairs) {
+			Expect("32 bit simulation of 64 bit addition", TestSum(pair.first, pair.second));
+			Expect("32 bit simulation of 64 bit multiplication", TestMult(pair.first, pair.second));
+		}
+
+		std::set<unsigned int> set_vals;
+		std::vector<unsigned int> vals;
+		int duplicates = 0;
+
+		for (int i = 0; i < 100000; i++) {
+			unsigned int val = TestRand();
+			unsigned int val32 = TestRand32();
+			Expect("32 bit simulation of 64 bit random num generation", val == val32);
+			vals.push_back(val);
+			bool dup = !set_vals.insert(val).second;
+			if (dup) {
+				duplicates++;
+			}
+		}
+
+		Expect("Small number of duplicates", duplicates < 5);
+	}
+
 } // namespace Test
