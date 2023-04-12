@@ -12,13 +12,14 @@ constexpr double DEGREES_TO_RADIANS = 1.0 / RADIANS_TO_DEGREES;
 #define GETCLAMP(x, min_val, max_val) (((x) < (min_val)) ? (min_val) : (((x) > (max_val)) ? (max_val) : (x)))
 #define MIX(a, b, frac) ((a) * (1 - (frac)) + (b) * (frac))
 
-#define PI 3.14159265359
+constexpr double PI = 3.14159265359;
 constexpr double TWOPI = 2.0 * PI;
 #define SIGN(x) ((x > 0) ? 1 : ((x < 0) ? -1 : 0))
 #define STEP(v, step) ((v >= step) ? 1 : 0)
 #define ALMOST_ZERO 0.0000001
 constexpr double ONE_THIRD = 1.0 / 3.0;
 constexpr double INV_255 = 1.0 / 255.0;
+constexpr double INV_UINT = 1.0 / std::numeric_limits<unsigned int>::max();
 
 #define GIGA_CONVERT 1000000000
 #define MEGA_CONVERT 1000000
@@ -30,6 +31,21 @@ constexpr float FLOAT_NAN = std::numeric_limits<float>::quiet_NaN();
 constexpr double DOUBLE_NAN = std::numeric_limits<double>::quiet_NaN();
 
 ////////////////////////////////////////////////////////////////////////////////
+// Permuted congruential generator
+class RandomGenerator {
+public:
+					RandomGenerator	( bool auto_seed = true ) : m_State(0x4d595df4d0f33173) { if(auto_seed) AutoSeed(); }
+					RandomGenerator	( uint64_t seed ) : m_State(seed) {}
+	void			Seed			( uint64_t seed ) { m_State = seed;}
+	void			AutoSeed		( void );
+	unsigned int	Next			( void );
+private:
+	uint64_t	m_State;
+};
+
+static RandomGenerator g_GlobalRandom;
+
+void RandomSeed(uint64_t seed);
 double Random(void);
 double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);

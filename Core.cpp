@@ -239,6 +239,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	int unfocus_timeout = 0;
 
 	// Main loop
+	DebugTiming::MainLoopTimer(); // init to zero
 	bool fullscreen_hover = true;
 	while (!engine->ShouldExit()) {
 
@@ -335,6 +336,7 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 	bool fullscreen_hover = true;
 
 	ImGuiIO& io = ImGui::GetIO();
+	DebugTiming::MainLoopTimer(); // init to zero
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();

@@ -129,6 +129,8 @@ namespace Test {
 
 	void UnitTest_Random(void) {
 
+		// checks the random number generator to ensure it's fair
+		// this also tests the validity of implementing this rng generator in the GPU
 		struct u64_32x2 { uint32_t high; uint32_t low; };
 
 		auto ToComposite = [](uint64_t input) -> u64_32x2 {
@@ -217,28 +219,11 @@ namespace Test {
 			uint32_t xorshifted = LeftShift64(Xor64(LeftShift64(oldstate, 18), oldstate), 27).low;
 			uint32_t rot = LeftShift64(oldstate, 59).low;
 
-			return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+			return (xorshifted >> rot) | (xorshifted << (((rot ^ 0xFFFFFFFF) + 1) & 31));
 		};
 
 		auto TestRand32 = [&]() -> uint32_t {
 			return pcg32_random_r_32(&g_32State);
-		};
-
-		uint64_t g_State = 0x4d595df4d0f33173;
-		const uint64_t g_Inc = 1442695040888963407u | 1u;
-
-		auto pcg32_random_r = [&](uint64_t* rng) -> uint32_t {
-			uint64_t oldstate = *rng;
-			// Advance internal state
-			*rng = oldstate * 6364136223846793005ULL + g_Inc;
-			// Calculate output function (XSH RR), uses old state for max ILP
-			uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-			uint32_t rot = oldstate >> 59u;
-			return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
-		};
-
-		auto TestRand = [&]() ->uint32_t {
-			return pcg32_random_r(&g_State);
 		};
 
 		std::vector<std::pair<uint64_t, uint64_t>> test_pairs = {
@@ -253,12 +238,14 @@ namespace Test {
 			Expect("32 bit simulation of 64 bit multiplication", TestMult(pair.first, pair.second));
 		}
 
+		RandomGenerator gen(false);
+
 		std::set<unsigned int> set_vals;
 		std::vector<unsigned int> vals;
 		int duplicates = 0;
 
-		for (int i = 0; i < 100000; i++) {
-			unsigned int val = TestRand();
+		for (int i = 0; i < 10000; i++) {
+			unsigned int val = gen.Next();
 			unsigned int val32 = TestRand32();
 			Expect("32 bit simulation of 64 bit random num generation", val == val32);
 			vals.push_back(val);
@@ -269,6 +256,39 @@ namespace Test {
 		}
 
 		Expect("Small number of duplicates", duplicates < 5);
+
+		const int num_buckets = 100;
+		std::vector<int> buckets;
+		for (int i = 0; i < num_buckets; i++) {
+			buckets.push_back(0);
+		}
+
+		const int num_iters = 100000;
+		double sum = 0;
+		for (int i = 0; i < num_iters; i++) {
+			double ran = Random();
+			buckets[ran * num_buckets]++;
+			sum += ran;
+		}
+		sum /= num_iters;
+
+		const double avg_spread = 0.01;
+		Expect("Average random num to be close to 0.5", fabs(sum - 0.5) < avg_spread);
+
+		int min_bucket = buckets[0];
+		int max_bucket = min_bucket;
+		for (int bucket_num : buckets) {
+			min_bucket = std::min(min_bucket, bucket_num);
+			max_bucket = std::max(max_bucket, bucket_num);
+		}
+		double expected_bucket_num = (double)num_iters / num_buckets;
+		const double bucket_max_spread = 0.2;
+
+		int bucket_min_bound = floor(expected_bucket_num * (1.0 - bucket_max_spread));
+		int bucket_max_bound = ceil(expected_bucket_num * (1.0 + bucket_max_spread));
+
+		Expect("Minimum bucket count to be greater", min_bucket > bucket_min_bound);
+		Expect("Maximum bucket count to be less than", max_bucket < bucket_max_bound);
 	}
 
 } // namespace Test
