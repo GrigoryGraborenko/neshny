@@ -127,6 +127,42 @@ namespace Test {
 		delete engine;
     }
 
+	void CheckRandomNumbers(std::function<double()> rand_func) {
+		const int num_buckets = 100;
+		std::vector<int> buckets;
+		for (int i = 0; i < num_buckets; i++) {
+			buckets.push_back(0);
+		}
+
+		const int num_iters = 100000;
+		double sum = 0;
+		for (int i = 0; i < num_iters; i++) {
+			double ran = rand_func();
+			buckets[ran * num_buckets]++;
+			sum += ran;
+		}
+		sum /= num_iters;
+
+		const double avg_spread = 0.01;
+		Expect("Average random num to be close to 0.5", fabs(sum - 0.5) < avg_spread);
+
+		int min_bucket = buckets[0];
+		int max_bucket = min_bucket;
+		for (int bucket_num : buckets) {
+			min_bucket = std::min(min_bucket, bucket_num);
+			max_bucket = std::max(max_bucket, bucket_num);
+		}
+		double expected_bucket_num = (double)num_iters / num_buckets;
+		const double bucket_max_spread = 0.2;
+
+		int bucket_min_bound = floor(expected_bucket_num * (1.0 - bucket_max_spread));
+		int bucket_max_bound = ceil(expected_bucket_num * (1.0 + bucket_max_spread));
+
+		Expect("Minimum bucket count to be greater", min_bucket > bucket_min_bound);
+		Expect("Maximum bucket count to be less than", max_bucket < bucket_max_bound);
+	};
+
+
 	void UnitTest_Random(void) {
 
 		// checks the random number generator to ensure it's fair
@@ -144,9 +180,7 @@ namespace Test {
 		auto Add64 = [&](u64_32x2 a, u64_32x2 b) -> u64_32x2 {
 			uint32_t rl = a.low + b.low;
 			uint32_t rh = rl < a.low;
-			u64_32x2 low_sum{ rh, rl };
-			uint32_t high_sum = a.high + b.high;
-			return { high_sum + low_sum.high, low_sum.low };
+			return { a.high + b.high + rh, rl };
 		};
 
 		auto Mul64_32 = [&](uint32_t a, uint32_t b) -> u64_32x2{
@@ -212,13 +246,11 @@ namespace Test {
 		const u64_32x2 g_32Mult = ToComposite(6364136223846793005ULL);
 
 		auto pcg32_random_r_32 = [&](u64_32x2* rng) ->uint32_t {
-			u64_32x2 oldstate = *rng;
+			uint32_t xorshifted = LeftShift64(Xor64(LeftShift64(*rng, 18), *rng), 27).low;
+			uint32_t rot = LeftShift64(*rng, 59).low;
+
 			// Advance internal state
-			*rng = Add64(Mul64(oldstate, g_32Mult), g_32Inc);
-
-			uint32_t xorshifted = LeftShift64(Xor64(LeftShift64(oldstate, 18), oldstate), 27).low;
-			uint32_t rot = LeftShift64(oldstate, 59).low;
-
+			*rng = Add64(Mul64(*rng, g_32Mult), g_32Inc);
 			return (xorshifted >> rot) | (xorshifted << (((rot ^ 0xFFFFFFFF) + 1) & 31));
 		};
 
@@ -257,38 +289,47 @@ namespace Test {
 
 		Expect("Small number of duplicates", duplicates < 5);
 
-		const int num_buckets = 100;
-		std::vector<int> buckets;
-		for (int i = 0; i < num_buckets; i++) {
-			buckets.push_back(0);
-		}
+		CheckRandomNumbers([]() -> double {
+			return Random();
+		});
+		RandomGenerator gpu_sim_gen;
+		unsigned int rand_seed = 0;
+		CheckRandomNumbers([&gpu_sim_gen, &rand_seed]() -> double {
+			gpu_sim_gen.Seed(0x4d595df400000000 | uint64_t(rand_seed++));
+			gpu_sim_gen.Next();
+			unsigned int raw = gpu_sim_gen.Next();
+			return raw * INV_UINT;
+		});
+	}
 
-		const int num_iters = 100000;
-		double sum = 0;
-		for (int i = 0; i < num_iters; i++) {
-			double ran = Random();
-			buckets[ran * num_buckets]++;
-			sum += ran;
-		}
-		sum /= num_iters;
+	void UnitTest_GPU_Random(void) {
 
-		const double avg_spread = 0.01;
-		Expect("Average random num to be close to 0.5", fabs(sum - 0.5) < avg_spread);
+		const int num_randoms = 100000;
 
-		int min_bucket = buckets[0];
-		int max_bucket = min_bucket;
-		for (int bucket_num : buckets) {
-			min_bucket = std::min(min_bucket, bucket_num);
-			max_bucket = std::max(max_bucket, bucket_num);
-		}
-		double expected_bucket_num = (double)num_iters / num_buckets;
-		const double bucket_max_spread = 0.2;
+		Neshny::GLSSBO control_ssbo;
+		Neshny::GLSSBO rando_ssbo;
 
-		int bucket_min_bound = floor(expected_bucket_num * (1.0 - bucket_max_spread));
-		int bucket_max_bound = ceil(expected_bucket_num * (1.0 + bucket_max_spread));
+		rando_ssbo.EnsureSizeBytes(num_randoms * 4);
 
-		Expect("Minimum bucket count to be greater", min_bucket > bucket_min_bound);
-		Expect("Maximum bucket count to be less than", max_bucket < bucket_max_bound);
+		////////////////////////////////
+		Neshny::PipelineStage::Compute(
+			"UnitTest"
+			,num_randoms
+			,&control_ssbo
+			,{ "TEST_RANDOM" }
+		)
+		.AddSSBO("RandomBuffer", rando_ssbo, Neshny::MemberSpec::T_FLOAT, false)
+		.Run();
+
+		std::vector<float> numbers;
+		rando_ssbo.GetValues(numbers, num_randoms);
+
+		int ind = 0;
+		CheckRandomNumbers([&numbers, &ind]() -> double {
+			double res = numbers[ind];
+			ind = (ind + 1) % numbers.size();
+			return res;
+		});
 	}
 
 } // namespace Test

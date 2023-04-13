@@ -449,7 +449,7 @@ bool GLTexture::InitSkybox(QString filename, QString& err) {
 ////////////////////////////////////////////////////////////////////////////////
 GLSSBO::GLSSBO(int size) {
 	if (size > 0) {
-		EnsureSize(size);
+		EnsureSizeBytes(size);
 	}
 }
 
@@ -468,12 +468,12 @@ GLSSBO::~GLSSBO(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GLSSBO::EnsureSize(int size, bool clear_after) {
+void GLSSBO::EnsureSizeBytes(int size_bytes, bool clear_after) {
 
 	// ensure size doubles each time
-	size = RoundUpPowerTwo(size);
+	size_bytes = RoundUpPowerTwo(size_bytes);
 
-	if (m_Size >= size) {
+	if (m_Size >= size_bytes) {
 		if (clear_after) {
 			ClearBuffer();
 		}
@@ -483,7 +483,7 @@ void GLSSBO::EnsureSize(int size, bool clear_after) {
 	GLuint old_buffer = m_Buffer;
 	glGenBuffers(1, &m_Buffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_Buffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, size, nullptr, GL_DYNAMIC_DRAW);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, size_bytes, nullptr, GL_DYNAMIC_DRAW);
 	
 	ClearBuffer();
 	if (!clear_after) {
@@ -495,7 +495,7 @@ void GLSSBO::EnsureSize(int size, bool clear_after) {
 		glDeleteBuffers(1, &old_buffer);
 	}
 
-	m_Size = size;
+	m_Size = size_bytes;
 #ifdef SSBO_DEBUG
 	m_NumberResizes++;
 #endif

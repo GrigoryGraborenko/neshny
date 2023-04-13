@@ -103,7 +103,7 @@ public:
 													GLSSBO			( int size, unsigned char* data );
 	virtual 										~GLSSBO			( void );
 
-	void											EnsureSize		( int size, bool clear_after = true );
+	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
 	void											Bind			( int index );
 	void											ClearBuffer		( void );
 	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );

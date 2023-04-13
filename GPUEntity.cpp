@@ -96,7 +96,7 @@ void GPUEntity::DeleteInstance(int index) {
 
 		int id_value = -1;
 		glNamedBufferSubData(m_SSBO->Get(), index * size_item + pos_index, sizeof(float), (unsigned char*)&id_value);
-		m_FreeList->EnsureSize((m_FreeCount + 1) * sizeof(int), false);
+		m_FreeList->EnsureSizeBytes((m_FreeCount + 1) * sizeof(int), false);
 		glNamedBufferSubData(m_FreeList->Get(), m_FreeCount * sizeof(int), sizeof(int), (unsigned char*)&index);
 		m_FreeCount++;
 	} else {
@@ -114,7 +114,7 @@ void GPUEntity::DeleteInstance(int index) {
 void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	// todo: for each death, take index d from alive and copy it
-	m_ControlSSBO->EnsureSize(sizeof(int));
+	m_ControlSSBO->EnsureSizeBytes(sizeof(int));
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
 	defines += "\n#define USE_SSBO\n";
@@ -191,7 +191,7 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 	if (!m_CopyBuffer) {
 		m_CopyBuffer = new GLSSBO();
 	}
-	m_CopyBuffer->EnsureSize(size, false);
+	m_CopyBuffer->EnsureSizeBytes(size, false);
 	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
 	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 }

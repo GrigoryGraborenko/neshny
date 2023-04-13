@@ -158,7 +158,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		var_vals.push_back({ seed, nullptr });
 
 		insertion += "#include \"Random.glsl\"\n";
-		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, float(atomicAdd(b_Control.i[%1], 1))); }").arg(control_ind);
+		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, atomicAdd(b_Control.i[%1], 1)); }").arg(control_ind);
 	}
 
 	if(m_Entity) {
@@ -184,12 +184,12 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 			int buffer_index = insertion_buffers.size();
-			m_Entity->GetFreeListSSBO()->EnsureSize(num_entities * sizeof(int));
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int));
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
 			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
 		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			int buffer_index = insertion_buffers.size();
-			m_Entity->GetFreeListSSBO()->EnsureSize(num_entities * sizeof(int), false);
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int), false);
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
 			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
 		}
@@ -337,7 +337,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
 		}
 
-		control_ssbo->EnsureSize(control_size * sizeof(int));
+		control_ssbo->EnsureSizeBytes(control_size * sizeof(int));
 		control_ssbo->Bind(0); // you can assume this is at index zero
 		control_ssbo->SetValues(values);
 	}
@@ -545,8 +545,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	Vec2 range = grid_max - grid_min;
 	Vec2 cell_size(range.x / grid_size.x, range.y / grid_size.y);
-	m_GridIndices.EnsureSize(grid_size.x * grid_size.y * 3 * sizeof(int));
-	m_GridItems.EnsureSize(m_Entity.GetCount() * sizeof(int));
+	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int));
+	m_GridItems.EnsureSizeBytes(m_Entity.GetCount() * sizeof(int));
 
 	QString main_func =
 		QString("void ItemMain(int item_index, vec2 pos);\nvoid %1Main(int item_index, %1 item) { ItemMain(item_index, item.%2); }")
