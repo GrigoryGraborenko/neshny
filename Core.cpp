@@ -429,7 +429,9 @@ void Core::IRenderEditor(void) {
 	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
 	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);
 
+#ifdef NESHNY_TESTING
 	UnitTester::RenderImGui();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

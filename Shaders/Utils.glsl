@@ -177,6 +177,46 @@ void NextGridStep2D(inout GridStep2DCursor cursor) {
 	cursor.p_CurrentGrid += ivec2(hit_res) * cursor.p_GridDirs;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+struct GridStep3DCursor {
+	ivec3 p_CurrentGrid; // current integer location on grid
+	float p_CurrentFrac; // current fraction of two endpoints traversed
+
+	vec3 p_Start;
+    vec3 p_Delta;
+	ivec3 p_GridDirs;
+	vec3 p_Left;
+	vec3 p_Amounts;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+void StartGridStep3D(inout GridStep3DCursor cursor, vec3 start, vec3 end) {
+    ivec3 grid_pos = ivec3(floor(start));
+	cursor.p_Start = start;
+	cursor.p_Delta = end - start;
+	vec3 inv_delta = vec3(SafeDivide(1.0, cursor.p_Delta.x), SafeDivide(1.0, cursor.p_Delta.y), SafeDivide(1.0, cursor.p_Delta.z));
+	cursor.p_GridDirs = ivec3(sign(cursor.p_Delta));
+	cursor.p_Amounts = abs(inv_delta);
+	cursor.p_Left = max((vec3(grid_pos) - start) * inv_delta, (vec3(grid_pos + ivec3(1)) - start) * inv_delta);
+	cursor.p_CurrentFrac = 0;
+	cursor.p_CurrentGrid = grid_pos;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool HasNextGridStep3D(in GridStep3DCursor cursor) {
+	return cursor.p_CurrentFrac < 1.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void NextGridStep3D(inout GridStep3DCursor cursor) {
+	float move_dist = min(cursor.p_Left.x, min(cursor.p_Left.y, cursor.p_Left.z));
+	cursor.p_CurrentFrac += move_dist;
+	cursor.p_Left -= move_dist;
+	vec3 hit_res = step(0, -cursor.p_Left);
+	cursor.p_Left += hit_res * cursor.p_Amounts;
+	cursor.p_CurrentGrid += ivec3(hit_res) * cursor.p_GridDirs;
+}
+
 #define LOOKUP(tex, base, index) (texelFetch((tex), (base) + ivec2(0, (index)), 0).r)
 #define IM_LOOKUP(im, base, index) (imageLoad((im), (base) + ivec2(0, (index))).r)
 #define IM_SET(im, base, index, value) (imageStore((im), (base) + ivec2(0, (index)), vec4(value)).r)
