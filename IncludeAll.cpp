@@ -6,7 +6,7 @@
 #undef min
 #undef max
 
-#include "Utils.cpp"
+#include "NeshnyUtils.cpp"
 #include "GLUtils.cpp"
 #include "LinearAlgebra.cpp"
 #include "GPUEntity.cpp"

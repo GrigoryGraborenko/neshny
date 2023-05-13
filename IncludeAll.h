@@ -22,7 +22,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_stdlib.h"
 
-#include "Utils.h"
+#include "NeshnyUtils.h"
 
 #include "GLUtils.h"
 #include "LinearAlgebra.h"

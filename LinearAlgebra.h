@@ -20,7 +20,8 @@ struct BaseVec3 {
 						BaseVec3		( const BaseVec3<int>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
 						BaseVec3		( Axis ax, T v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
 
-	inline BaseVec3<float> ToFloat3(void) const { return BaseVec3<float>(float(x), float(y), float(z)); }
+	inline BaseVec3<float>	ToFloat3( void ) const { return BaseVec3<float>(float(x), float(y), float(z)); }
+	inline BaseVec3<int>	ToInt3	( void ) const { return BaseVec3<int>(int(floor(x)), int(floor(y)), int(floor(z))); }
 
 	inline void			Set				( T e0, T e1, T e2 ) { x = e0; y = e1; z = e2; }
 
@@ -493,16 +494,16 @@ struct BaseQuat {
 
 	BaseQuat(void) { m[0] = 0; m[1] = 0; m[2] = 0; m[3] = 0; }
 	BaseQuat(const BaseVec3<T>& dir) {
-		const T a1 = atan2(-dir.z, dir.x) * RADIANS_TO_DEGREES;
+		T a1 = atan2(-dir.z, dir.x) * RADIANS_TO_DEGREES;
 		const T xzd = sqrt(dir.x * dir.x + dir.z * dir.z);
-		const T a2 = atan2(dir.y, xzd) * RADIANS_TO_DEGREES;
+		T a2 = atan2(dir.y, xzd) * RADIANS_TO_DEGREES;
 		if (!dir.x) {
 			a1 = 0;
 		}
 		if (!xzd) {
 			a2 = 0;
 		}
-		operator=(Quat(a1, Axis::Y) * Quat(a2, Axis::Z));
+		operator=(BaseQuat<T>(a1, Axis::Y) * BaseQuat<T>(a2, Axis::Z));
 	}
 	BaseQuat(BaseVec3<T> axis, T degrees) {
 		const T rads = degrees * DEGREES_TO_RADIANS * 0.5;
@@ -600,6 +601,8 @@ struct BaseQuat {
 		qa.m[3] = (q2.m[0] * m[3] - q2.m[1] * m[2] + q2.m[2] * m[1] - q2.m[3] * m[0]) * inv_denom;
 		return qa;
 	}
+	inline T Dot(const BaseQuat q2) const { return m[0] * q2.m[0] + m[1] * q2.m[1] + m[2] * q2.m[2] + m[3] * q2.m[3]; }
+	inline T operator|(const BaseQuat& q2) const { return Dot(q2); }
 
 	BaseQuat Inverse(void) const {
 		BaseQuat qa;
@@ -631,6 +634,15 @@ struct BaseQuat {
 			2 * m[1] * m[2] + 2 * m[0] * m[3], 1 - 2 * m[1] * m[1] - 2 * m[3] * m[3], 2 * m[2] * m[3] - 2 * m[0] * m[1],
 			2 * m[1] * m[3] - 2 * m[0] * m[2], 2 * m[2] * m[3] + 2 * m[0] * m[1], 1 - 2 * m[1] * m[1] - 2 * m[2] * m[2]
 		);
+	}
+
+	static BaseQuat Slerp(BaseQuat q1, BaseQuat q2, T frac) {
+		T angle = acos(q1 | q2);
+		T denom = sin(angle);
+		if (denom == 0) {
+			denom = ALMOST_ZERO;
+		}
+		return (q1 * sin((1.0 - frac) * angle) + q2 * sin(frac * angle)) * (1.0 / denom);
 	}
 };
 

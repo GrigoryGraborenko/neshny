@@ -113,6 +113,63 @@ struct Camera3DFPS {
 	float		p_FarPlane = 1000.0f;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class DebugTiming {
+public:
+
+	struct TimingInfo {
+		TimingInfo(const char* label) : p_Label(label) {}
+		TimingInfo(const char* label, qint64 nanos) : p_Label(label) { Add(nanos); }
+		void Add(qint64 nanos) {
+			p_Nanos += nanos;
+			p_RecentNanos += nanos;
+			p_MinNanos = (p_MinNanos < 0) ? nanos : std::min(p_MinNanos, nanos);
+			p_MaxNanos = std::max(p_MaxNanos, nanos);
+			p_NumCalls++;
+			p_RecentNumCalls++;
+			if (p_RecentNumCalls >= 16) {
+				double av_secs = ((double)p_RecentNanos * NANO_CONVERT) / (double)p_RecentNumCalls;
+				p_RecentNanos = 0;
+				p_RecentNumCalls = 0;
+				const double roll_frac = 0.95;
+				p_RollingAvSeconds = p_RollingAvSeconds ? p_RollingAvSeconds * roll_frac + av_secs * (1.0 - roll_frac) : av_secs;
+			}
+		}
+		QString Report(qint64 total_global_nanos) {
+			double total_av_secs = ((double)p_Nanos * NANO_CONVERT) / (double)p_NumCalls;
+			double percent = 100.0 * (double)p_Nanos / (double)total_global_nanos;
+			double max_secs = (double)p_MaxNanos * NANO_CONVERT;
+			return QString("%1: %2 sec [%3 sec av %4 calls, %5 %%] max %6").arg(p_Label).arg(p_RollingAvSeconds, 0, 'f', 9).arg(total_av_secs, 0, 'f', 9).arg(p_NumCalls).arg(percent, 0, 'f', 6).arg(max_secs, 0, 'f', 9);
+		}
+		const char* p_Label;
+		qint64 p_Nanos = 0;
+		qint64 p_NumCalls = 0;
+		qint64 p_MinNanos = -1;
+		qint64 p_MaxNanos = 0;
+
+		qint64 p_RecentNanos = 0;
+		qint64 p_RecentNumCalls = 0;
+
+		double p_RollingAvSeconds = 0;
+	};
+
+	DebugTiming(const char* label);
+	~DebugTiming(void);
+
+	static QStringList					Report(void);
+
+	static std::vector<TimingInfo>& GetTimings(void) { static std::vector<TimingInfo> timings = {}; return timings; }
+
+	static qint64						MainLoopTimer(void) { static QElapsedTimer timer; qint64 time = timer.nsecsElapsed(); timer.restart(); return time; }
+
+private:
+
+	QElapsedTimer		m_Timer;
+	const char* m_Label;
+};
+
 #define INTERFACE_SAVE_VERSION 1 // todo: start incrementing this on release
 struct InterfaceCollapsible {
 	QString		p_Name;
@@ -398,7 +455,7 @@ public:
 	bool								LoopInit				( IEngine* engine );
 	void								LoopInner				( IEngine* engine, int width, int height, bool& fullscreen_hover );
 
-#ifdef SDL_h_
+#ifdef SDL_OPENGL_LOOP
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
 #ifdef QT_LOOP
@@ -503,6 +560,10 @@ public:
 	inline qint64						GetGPUMemoryAllocated	( void ) { return m_GPUMemoryAllocated; }
 
 	ResourceManagementToken				GetResourceManagementToken ( void );
+
+#ifdef SDL_h_
+	SDL_Window*							GetSDLWindow			( void ) { return m_Window; }
+#endif
 
 private:
 

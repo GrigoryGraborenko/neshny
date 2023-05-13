@@ -9,6 +9,43 @@ Core* g_StaticInstance = nullptr;
 //#define EDITOR_INTERFACE_FILENAME "interface.bin"
 
 ////////////////////////////////////////////////////////////////////////////////
+DebugTiming::DebugTiming(const char* label) :
+	m_Label(label)
+{
+	m_Timer.start();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+DebugTiming::~DebugTiming(void) {
+
+	qint64 nanos = m_Timer.nsecsElapsed();
+
+	auto& timings = GetTimings();
+	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
+		if ((iter->p_Label == m_Label) || (strcmp(iter->p_Label, m_Label) == 0)) {
+			iter->Add(nanos);
+			return;
+		}
+	}
+	timings.emplace_back(m_Label, nanos);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+QStringList DebugTiming::Report(void) {
+
+	auto& timings = GetTimings();
+	qint64 total_nanos = 0;
+	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
+		total_nanos += iter->p_Nanos;
+	}
+	QStringList result;
+	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
+		result += iter->Report(total_nanos);
+	}
+	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void WorkerThreadPool::Start(int thread_count) {
 	if (thread_count <= 0) {
 		return;
@@ -202,7 +239,7 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 	ImGui::SetCursorPos(ImVec2(0, 0));
 	ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
 
-	if (fullscreen_hover = ImGui::IsItemHovered()) {
+	if ((fullscreen_hover = ImGui::IsItemHovered())) {
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.MouseWheel != 0.0f) {
 			engine->MouseWheel(io.MouseWheel > 0.0f);
@@ -217,7 +254,7 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 	}
 }
 
-#ifdef SDL_h_
+#ifdef SDL_OPENGL_LOOP
 ////////////////////////////////////////////////////////////////////////////////
 bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
@@ -244,7 +281,9 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();
+#ifdef NESHNY_EDITOR_VIEWERS
 		InfoViewer::LoopTime(loop_nanos);
+#endif
 
 		int mouse_dx = 0;
 		int mouse_dy = 0;
@@ -422,12 +461,14 @@ void Core::IRenderEditor(void) {
 	}
 	*/
 
+#ifdef NESHNY_EDITOR_VIEWERS
 	InfoViewer::RenderImGui(m_Interface.p_InfoView);
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
 	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
 	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);
+#endif
 
 #ifdef NESHNY_TESTING
 	UnitTester::RenderImGui();

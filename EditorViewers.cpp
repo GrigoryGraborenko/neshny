@@ -4,43 +4,6 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-DebugTiming::DebugTiming(const char* label) :
-	m_Label(label)
-{
-	m_Timer.start();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-DebugTiming::~DebugTiming(void) {
-
-	qint64 nanos = m_Timer.nsecsElapsed();
-
-	auto& timings = GetTimings();
-	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
-		if ((iter->p_Label == m_Label) || (strcmp(iter->p_Label, m_Label) == 0)) {
-			iter->Add(nanos);
-			return;
-		}
-	}
-	timings.emplace_back(m_Label, nanos);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-QStringList DebugTiming::Report(void) {
-
-	auto& timings = GetTimings();
-	qint64 total_nanos = 0;
-	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
-		total_nanos += iter->p_Nanos;
-	}
-	QStringList result;
-	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
-		result += iter->Report(total_nanos);
-	}
-	return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	glDepthMask(GL_FALSE);
