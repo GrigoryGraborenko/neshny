@@ -637,12 +637,20 @@ struct BaseQuat {
 	}
 
 	static BaseQuat Slerp(BaseQuat q1, BaseQuat q2, T frac) {
-		T angle = acos(q1 | q2);
-		T denom = sin(angle);
-		if (denom == 0) {
-			denom = ALMOST_ZERO;
+
+		T dot_prod = std::max(-1.0, std::min(1.0, q1 | q2));
+		T ang = acos(dot_prod);
+		// make sure the shortest path is taken
+		if (dot_prod < 0.0f) {
+			ang = -ang;
 		}
-		return (q1 * sin((1.0 - frac) * angle) + q2 * sin(frac * angle)) * (1.0 / denom);
+		T sin_ang = sin(ang);
+		if (sin_ang == 0) {
+			return q1;
+		}
+		T weight_a = sin((1.0 - frac) * ang) / sin_ang;
+		T weight_b = sin(frac * ang) / sin_ang;
+		return (q1 * weight_a) + (q2 * weight_b);
 	}
 };
 
