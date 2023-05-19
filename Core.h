@@ -103,8 +103,8 @@ struct Camera3DFPS {
 	void GetDirections(Vec3* forward = nullptr, Vec3* up = nullptr, Vec3* side = nullptr) {
 		auto inv = p_Direction.Inverse();
 		if (forward) { *forward = inv * Vec3(0, 0, -1); forward->Normalize(); }
-		if (up) { *up = inv * Vec3(0, 1, 0); up->Normalize(); }
-		if (side) { *side = inv * Vec3(1, 0, 0); side->Normalize(); }
+		if (up) { *up = inv * Vec3(0, -1, 0); up->Normalize(); }
+		if (side) { *side = inv * Vec3(-1, 0, 0); side->Normalize(); }
 	}
 	Vec3		p_Pos;
 	Quat		p_Direction = Quat(0.0, 0.0, 0.0, 1.0);

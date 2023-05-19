@@ -395,7 +395,7 @@ struct BaseMatrix3 {
 
 					BaseMatrix3		( void ) { m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; }
 					BaseMatrix3		( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
-					BaseMatrix3		( BaseVec3<T> t1, BaseVec3<T> t2, BaseVec3<T> t3 ) { set(t1.x, t1.y, t1.z, t2.x, t2.y, t2.z, t3.x, t3.y, t3.z); }
+					BaseMatrix3		( BaseVec3<T> side, BaseVec3<T> up, BaseVec3<T> forward ) { Set(side.x, side.y, side.z, up.x, up.y, up.z, forward.x, forward.y, forward.z); }
 
 	void			Set				( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
 
@@ -533,28 +533,28 @@ struct BaseQuat {
 		const T tr = rm.m[0][0] + rm.m[1][1] + rm.m[2][2];
 		if (tr > 0) {
 			T S = sqrt(tr + 1.0) * 2; // S=4*qw 
-			m[3] = 0.25 * S;
-			m[0] = (rm.m[2][1] - rm.m[1][2]) / S;
-			m[1] = (rm.m[0][2] - rm.m[2][0]) / S;
-			m[2] = (rm.m[1][0] - rm.m[0][1]) / S;
+			m[0] = 0.25 * S;
+			m[1] = (rm.m[2][1] - rm.m[1][2]) / S;
+			m[2] = (rm.m[0][2] - rm.m[2][0]) / S;
+			m[3] = (rm.m[1][0] - rm.m[0][1]) / S;
 		} else if ((rm.m[0][0] > rm.m[1][1]) & (rm.m[0][0] > rm.m[2][2])) {
 			T S = sqrt(1.0 + rm.m[0][0] - rm.m[1][1] - rm.m[2][2]) * 2; // S=4*qx 
-			m[3] = (rm.m[2][1] - rm.m[1][2]) / S;
-			m[0] = 0.25 * S;
-			m[1] = (rm.m[0][1] + rm.m[1][0]) / S;
-			m[2] = (rm.m[0][2] + rm.m[2][0]) / S;
+			m[0] = (rm.m[2][1] - rm.m[1][2]) / S;
+			m[1] = 0.25 * S;
+			m[2] = (rm.m[0][1] + rm.m[1][0]) / S;
+			m[3] = (rm.m[0][2] + rm.m[2][0]) / S;
 		} else if (rm.m[1][1] > rm.m[2][2]) {
 			T S = sqrt(1.0 + rm.m[1][1] - rm.m[0][0] - rm.m[2][2]) * 2; // S=4*qy
-			m[3] = (rm.m[0][2] - rm.m[2][0]) / S;
-			m[0] = (rm.m[0][1] + rm.m[1][0]) / S;
-			m[1] = 0.25 * S;
-			m[2] = (rm.m[1][2] + rm.m[2][1]) / S;
+			m[0] = (rm.m[0][2] - rm.m[2][0]) / S;
+			m[1] = (rm.m[0][1] + rm.m[1][0]) / S;
+			m[2] = 0.25 * S;
+			m[3] = (rm.m[1][2] + rm.m[2][1]) / S;
 		} else {
 			T S = sqrt(1.0 + rm.m[2][2] - rm.m[0][0] - rm.m[1][1]) * 2; // S=4*qz
-			m[3] = (rm.m[1][0] - rm.m[0][1]) / S;
-			m[0] = (rm.m[0][2] + rm.m[2][0]) / S;
-			m[1] = (rm.m[1][2] + rm.m[2][1]) / S;
-			m[2] = 0.25 * S;
+			m[0] = (rm.m[1][0] - rm.m[0][1]) / S;
+			m[1] = (rm.m[0][2] + rm.m[2][0]) / S;
+			m[2] = (rm.m[1][2] + rm.m[2][1]) / S;
+			m[3] = 0.25 * S;
 		}
 	}
 
