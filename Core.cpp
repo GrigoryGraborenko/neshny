@@ -56,11 +56,14 @@ void WorkerThreadPool::Start(int thread_count) {
 		m_Threads.push_back({});
 		ThreadInfo& info = m_Threads.back();
 
+#ifdef NESHNY_GL
 		info.m_GLContext = Core::Singleton().CreateGLContext();
-
+#endif
 		info.m_Thread = new std::thread([&info, &lock = m_Lock, &tasks = m_Tasks, &finished = m_FinishedTasks]() {
 
+#ifdef NESHNY_GL
 			bool valid = Core::Singleton().ActivateGLContext(info.m_GLContext);
+#endif
 			//auto err = SDL_GetError();
 
 			while (true) {
@@ -74,7 +77,9 @@ void WorkerThreadPool::Start(int thread_count) {
 					tasks.pop_front();
 					lock.unlock();
 					task->p_Result = task->p_Task();
+#ifdef NESHNY_GL
 					Core::OpenGLSync();
+#endif
 					lock.lock();
 					finished.push_back(task);
 					lock.unlock();
@@ -98,7 +103,9 @@ void WorkerThreadPool::Stop(void) {
 	for (auto& thread : m_Threads) {
 		thread.m_Thread->join();
 		delete thread.m_Thread;
+#ifdef NESHNY_GL
 		Core::Singleton().DeleteGLContext(thread.m_GLContext);
+#endif
 	}
 	m_Threads.clear();
 }
@@ -218,6 +225,7 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 		ImGuiWindowFlags_NoBringToFrontOnFocus
 	);
 
+#ifdef NESHNY_GL
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, width, height);
 
@@ -233,6 +241,7 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 	glCullFace(GL_FRONT);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+#endif
 
 	engine->Render(width, height);
 
@@ -354,6 +363,115 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	//delete engine;
 	//engine = nullptr;
 
+	qDebug() << "Finished";
+
+	return true;
+}
+#endif
+
+#ifdef SDL_WEBGPU_LOOP
+////////////////////////////////////////////////////////////////////////////////
+bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
+/*
+	m_Window = window;
+	if (!LoopInit(engine)) {
+		return false;
+	}
+
+	//bool is_mouse_relative = true;
+	//SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
+	SDL_SetRelativeMouseMode(SDL_FALSE);
+	int width, height;
+	SDL_GetWindowSize(window, &width, &height);
+
+	QElapsedTimer frame_timer;
+	frame_timer.restart();
+	const double inv_nano = 1.0 / 1000000000;
+
+	int unfocus_timeout = 0;
+
+	// Main loop
+	DebugTiming::MainLoopTimer(); // init to zero
+	bool fullscreen_hover = true;
+	while (!engine->ShouldExit()) {
+
+		qint64 loop_nanos = DebugTiming::MainLoopTimer();
+#ifdef NESHNY_EDITOR_VIEWERS
+		InfoViewer::LoopTime(loop_nanos);
+#endif
+
+		int mouse_dx = 0;
+		int mouse_dy = 0;
+
+		//if (is_mouse_relative ^ thing->IsMouseRelative()) {
+		//	is_mouse_relative = !is_mouse_relative;
+		//	SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
+		//}
+
+		if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
+			unfocus_timeout = 2;
+		}
+
+		// Poll and handle events (inputs, window resize, etc.)
+		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+		// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
+
+			if (unfocus_timeout > 0) {
+				unfocus_timeout--;
+				continue;
+}
+
+			ImGui_ImplSDL2_ProcessEvent(&event);
+			if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))) {
+				engine->ExitSignal();
+			}
+			else if (event.type == SDL_MOUSEMOTION) {
+				mouse_dx = event.motion.xrel;
+				mouse_dy = event.motion.yrel;
+				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !fullscreen_hover);
+			}
+			else if (event.type == SDL_KEYDOWN) {
+				engine->Key(event.key.keysym.sym, true);
+			}
+			else if (event.type == SDL_KEYUP) {
+				engine->Key(event.key.keysym.sym, false);
+			}
+		}
+
+		SDL_GetWindowSize(window, &width, &height);
+
+		qint64 nanos = frame_timer.nsecsElapsed();
+		frame_timer.restart();
+		if (engine->Tick(nanos, m_Ticks)) {
+			m_Ticks++;
+		}
+		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
+
+		///////////////////////////////////////////// render engine
+
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplSDL2_NewFrame(window);
+
+		ImGui::NewFrame();
+		LoopInner(engine, width, height, fullscreen_hover);
+		// Finish imgui rendering
+		ImGui::End();
+		ImGui::Render();
+
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		SDL_GL_SwapWindow(window);
+
+		m_ResourceThreads.Sync();
+	}
+
+	//delete engine;
+	//engine = nullptr;
+*/
 	qDebug() << "Finished";
 
 	return true;
@@ -488,6 +606,7 @@ bool Core::IIsBufferEnabled(QString name) {
 	return false;
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, bool mem_barrier) {
 	glUniform1i(prog->GetUniform("uCount"), count);
@@ -510,7 +629,7 @@ GLShader* Core::IGetShader(QString name, QString insertion) {
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
-		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0);; // security is no concern, only speed and lack of collisions
+		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
 		lookup_name += "_" + hash_val;
 	}
 
@@ -707,6 +826,41 @@ GLBuffer* Core::IGetBuffer(QString name) {
 	m_Buffers.insert_or_assign(name, new_buffer);
 	return new_buffer;
 }
+#elif defined(NESHNY_WEBGPU)
+////////////////////////////////////////////////////////////////////////////////
+WGPUShader* Core::IGetShader(QString name, QString insertion) {
+
+	if (!m_EmbeddableLoader.has_value()) {
+		return nullptr;
+	}
+
+	QString lookup_name = name;
+	if (!insertion.isNull()) {
+		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0);; // security is no concern, only speed and lack of collisions
+		lookup_name += "_" + hash_val;
+	}
+
+	auto found = m_Shaders.find(lookup_name);
+	if (found != m_Shaders.end()) {
+		return found->second;
+	}
+	m_Shaders.insert_or_assign(lookup_name, nullptr);
+
+	QString wgsl_name = name + ".wgsl";
+
+	WGPUShader* new_shader = new WGPUShader();
+	m_Shaders.insert_or_assign(lookup_name, new_shader);
+	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, insertion)) {
+		for (auto err : new_shader->GetErrors()) {
+			qDebug() << err.m_Message;
+			printf("COMPILE ERROR: %s\n", (char*)err.m_Message.data());
+
+		}
+		m_Interface.p_ShaderView.p_Visible = true;
+	}
+	return new_shader;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void Core::UnloadAllShaders(void) {
@@ -716,10 +870,12 @@ void Core::UnloadAllShaders(void) {
 	}
 	m_Shaders.clear();
 
+#ifdef NESHNY_GL
 	for (auto it = m_ComputeShaders.begin(); it != m_ComputeShaders.end(); it++) {
 		delete it->second;
 	}
 	m_ComputeShaders.clear();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -730,6 +886,7 @@ void Core::UnloadAllResources(void) {
 	m_Resources.clear();
 }
 
+#ifdef NESHNY_GL
 ////////////////////////////////////////////////////////////////////////////////
 int Core::CreateGLContext(void) {
 #ifdef SDL_h_
@@ -770,6 +927,7 @@ void Core::OpenGLSync(void) {
 	GLsync fenceId = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	glClientWaitSync(fenceId, GL_SYNC_FLUSH_COMMANDS_BIT, GLuint64(1000000000)); // 1 second timeout
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 ResourceManagementToken Core::GetResourceManagementToken(void) {

@@ -335,7 +335,9 @@ private:
 
 	struct ThreadInfo {
 		std::thread*	m_Thread;
+#ifdef NESHNY_GL
 		int				m_GLContext = -1;
+#endif
 		bool			m_StopRequested = false;
 	};
 
@@ -461,9 +463,20 @@ public:
 #ifdef QT_LOOP
 	bool								QTLoop					( QOpenGLWindow* window, IEngine* engine );
 #endif
+#ifdef SDL_WEBGPU_LOOP
+	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
+#endif
+
+#if defined(NESHNY_GL)
 	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }
+#elif defined(NESHNY_WEBGPU)
+	inline void							SetupWebGPU				( WGPUDevice device, WGPUQueue queue ) { m_Device = device; m_Queue = queue; }
+	inline WGPUDevice					GetDevice				( void ) { return m_Device; }
+	inline WGPUQueue					GetQueue				( void ) { return m_Queue; }
+	static WGPUShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+#endif
 
 	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource(QString path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(path, params); }
@@ -475,7 +488,9 @@ public:
 	void								UnloadAllShaders		( void );
 	void								UnloadAllResources		( void );
 
+#ifdef NESHNY_GL
 	static void							DispatchMultiple		( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
+#endif
 	template <class T>
 	static bool							SaveBinary				( const T& item, QString filename ) {
 		QFile file(filename);
@@ -548,6 +563,7 @@ public:
 	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }
 
+#if defined(NESHNY_GL)
 	inline const std::map<QString, GLShader*>&	GetShaders				( void ) { return m_Shaders; }
 	inline const std::map<QString, GLShader*>&	GetComputeShaders		( void ) { return m_ComputeShaders; }
 
@@ -555,6 +571,9 @@ public:
 	bool 								ActivateGLContext		( int index );
 	void 								DeleteGLContext			( int index );
 	static void							OpenGLSync				( void );
+#elif defined(NESHNY_WEBGPU)
+	inline const std::map<QString, WGPUShader*>& GetShaders(void) { return m_Shaders; }
+#endif
 
 	inline qint64						GetMemoryAllocated		( void ) { return m_MemoryAllocated; }
 	inline qint64						GetGPUMemoryAllocated	( void ) { return m_GPUMemoryAllocated; }
@@ -570,9 +589,13 @@ private:
 										Core					( void );
 										~Core					( void );
 
+#if defined(NESHNY_GL)
 	GLShader*							IGetShader				( QString name, QString insertion );
 	GLBuffer*							IGetBuffer				( QString name );
 	GLShader*							IGetComputeShader		( QString name, QString insertion );
+#elif defined(NESHNY_WEBGPU)
+	WGPUShader*							IGetShader				( QString name, QString insertion );
+#endif
 
 	template<class T, typename P = T::Params>
 	inline const ResourceResult<T>		IGetResource			( QString path, const P& params ) {
@@ -612,9 +635,13 @@ private:
 	void								IRenderEditor			( void );
 	bool								IIsBufferEnabled		( QString name );
 
+#if defined(NESHNY_GL)
 	std::map<QString, GLShader*>		m_Shaders;
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
+#elif defined(NESHNY_WEBGPU)
+	std::map<QString, WGPUShader*>		m_Shaders;
+#endif
 	std::map<QString, ResourceContainer>	m_Resources;
 	qint64									m_MemoryAllocated = 0;
 	qint64									m_GPUMemoryAllocated = 0;
@@ -629,8 +656,17 @@ private:
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;
+#ifdef NESHNY_GL
 	std::vector<SDL_GLContext>			m_Contexts;
 #endif
+#endif
+
+#ifdef NESHNY_WEBGPU
+	WGPUDevice							m_Device;
+	WGPUQueue							m_Queue;
+	//WGPUSwapChain						m_SwapChain;
+#endif
+
 };
 
 } // namespace Neshny
