@@ -828,7 +828,7 @@ GLBuffer* Core::IGetBuffer(QString name) {
 }
 #elif defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
-WGPUShader* Core::IGetShader(QString name, QString insertion) {
+WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 
 	if (!m_EmbeddableLoader.has_value()) {
 		return nullptr;
@@ -848,7 +848,7 @@ WGPUShader* Core::IGetShader(QString name, QString insertion) {
 
 	QString wgsl_name = name + ".wgsl";
 
-	WGPUShader* new_shader = new WGPUShader();
+	WebGPUShader* new_shader = new WebGPUShader();
 	m_Shaders.insert_or_assign(lookup_name, new_shader);
 	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, insertion)) {
 		for (auto err : new_shader->GetErrors()) {

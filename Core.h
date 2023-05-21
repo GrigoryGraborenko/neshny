@@ -475,7 +475,7 @@ public:
 	inline void							SetupWebGPU				( WGPUDevice device, WGPUQueue queue ) { m_Device = device; m_Queue = queue; }
 	inline WGPUDevice					GetDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetQueue				( void ) { return m_Queue; }
-	static WGPUShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static WebGPUShader*				GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 #endif
 
 	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -572,7 +572,7 @@ public:
 	void 								DeleteGLContext			( int index );
 	static void							OpenGLSync				( void );
 #elif defined(NESHNY_WEBGPU)
-	inline const std::map<QString, WGPUShader*>& GetShaders(void) { return m_Shaders; }
+	inline const std::map<QString, WebGPUShader*>& GetShaders(void) { return m_Shaders; }
 #endif
 
 	inline qint64						GetMemoryAllocated		( void ) { return m_MemoryAllocated; }
@@ -594,7 +594,7 @@ private:
 	GLBuffer*							IGetBuffer				( QString name );
 	GLShader*							IGetComputeShader		( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
-	WGPUShader*							IGetShader				( QString name, QString insertion );
+	WebGPUShader*						IGetShader				( QString name, QString insertion );
 #endif
 
 	template<class T, typename P = T::Params>
@@ -640,7 +640,7 @@ private:
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
 #elif defined(NESHNY_WEBGPU)
-	std::map<QString, WGPUShader*>		m_Shaders;
+	std::map<QString, WebGPUShader*>	m_Shaders;
 #endif
 	std::map<QString, ResourceContainer>	m_Resources;
 	qint64									m_MemoryAllocated = 0;
