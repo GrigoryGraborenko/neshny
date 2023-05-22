@@ -88,6 +88,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_Width = width;
 	m_Height = height;
 	m_Layers = depth;
+	m_MipMaps = mip_maps;
 	m_Format = format;
 	//m_DepthBytes = 0;
 
@@ -126,6 +127,44 @@ void WebGPUTexture::CopyDataLayer(int layer, unsigned char* data, int bytes_per_
 
 	CopyDataLayerMipMap(layer, 0, data, bytes_per_pixel, bytes_per_row);
 	if (auto_mipmap) {
+		for (int m = 1; m < m_MipMaps; m++) {
+			const int mip_mult = 1 << m;
+			const int wid = m_Width / mip_mult;
+			const int hei = m_Height / mip_mult;
+			const int size_row = wid * bytes_per_pixel;
+			const int size_full = size_row * hei;
+
+			unsigned char* temp_data = new unsigned char[size_full];
+			
+			const int input_row_mult = bytes_per_row * mip_mult;
+			const int input_pix_mult = bytes_per_pixel * mip_mult;
+			unsigned char* row_input = data;
+			float inv_sum = 1.0f / (mip_mult * mip_mult);
+			for (int y = 0; y < hei; y++) {
+				unsigned char* col_input = row_input;
+				for (int x = 0; x < wid; x++) {
+					for (int d = 0; d < bytes_per_pixel; d++) {
+						int sum = 0;
+
+						unsigned char* pix_input = col_input + d;
+						for (int yy = 0; yy < mip_mult; yy++) {
+							unsigned char* inner_pix_input = pix_input;
+							for (int xx = 0; xx < mip_mult; xx++) {
+								sum += *inner_pix_input;
+								inner_pix_input += bytes_per_pixel;
+							}
+							pix_input += bytes_per_row;
+						}
+						int result = floor(inv_sum * float(sum));
+						temp_data[(y * wid + x) * bytes_per_pixel + d] = unsigned char(result);
+					}
+					col_input += input_pix_mult;
+				}
+				row_input += input_row_mult;
+			}
+			CopyDataLayerMipMap(layer, m, temp_data, bytes_per_pixel, size_row);
+			delete[] temp_data;
+		}
 	}
 }
 

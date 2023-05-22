@@ -88,7 +88,7 @@ public:
 																			WGPUTextureAspect aspect,
 																			int mip_maps );
 
-	inline void										CopyData			( unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true ) { CopyDataLayer(0, data, bytes_per_pixel, bytes_per_row, auto_mipmap); }
+	inline void										CopyData2D			( unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true ) { CopyDataLayer(0, data, bytes_per_pixel, bytes_per_row, auto_mipmap); }
 	void											CopyDataLayer		( int layer, unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true );
 	void											CopyDataLayerMipMap	( int layer, int mip_map, unsigned char* data, int bytes_per_pixel, int bytes_per_row );
 
@@ -97,6 +97,7 @@ public:
 	inline int										GetWidth			( void ) const { return m_Width; }
 	inline int										GetHeight			( void ) const { return m_Height; }
 	inline int										GetLayers			( void ) const { return m_Layers; }
+	inline int										GetMipMaps			( void ) const { return m_MipMaps; }
 	inline WGPUTextureFormat						GetFormat			( void ) const { return m_Format; }
 	//inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
 
@@ -109,7 +110,8 @@ protected:
 	WGPUTextureFormat								m_Format;
 	int												m_Width = 0;
 	int												m_Height = 0;
-	int												m_Layers = 0;
+	int												m_Layers = 1;
+	int												m_MipMaps = 1;
 	//int												m_DepthBytes = 0;
 };
 
