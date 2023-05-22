@@ -156,7 +156,7 @@ void WebGPUTexture::CopyDataLayer(int layer, unsigned char* data, int bytes_per_
 							pix_input += bytes_per_row;
 						}
 						int result = floor(inv_sum * float(sum));
-						temp_data[(y * wid + x) * bytes_per_pixel + d] = unsigned char(result);
+						temp_data[(y * wid + x) * bytes_per_pixel + d] = (unsigned char)result;
 					}
 					col_input += input_pix_mult;
 				}
