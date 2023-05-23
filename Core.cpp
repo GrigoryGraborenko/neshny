@@ -64,8 +64,6 @@ void WorkerThreadPool::Start(int thread_count) {
 #ifdef NESHNY_GL
 			bool valid = Core::Singleton().ActivateGLContext(info.m_GLContext);
 #endif
-			//auto err = SDL_GetError();
-
 			while (true) {
 				lock.lock();
 				if (info.m_StopRequested) {
@@ -210,7 +208,7 @@ bool Core::LoopInit(IEngine* engine) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_hover) {
+void Core::LoopInner(IEngine* engine, int width, int height) {
 
 	ImGui::SetNextWindowPos(ImVec2(-2, -2), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(width + 4, height + 4), ImGuiCond_Always);
@@ -244,16 +242,20 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 #endif
 
 	engine->Render(width, height);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::LoopFinishImGui(IEngine* engine, int width, int height) {
 
 	ImGui::SetCursorPos(ImVec2(0, 0));
 	ImGui::InvisibleButton("##FullScreen", ImVec2(width - 4, height - 4));
 
-	if ((fullscreen_hover = ImGui::IsItemHovered())) {
+	if ((m_FullScreenHover = ImGui::IsItemHovered())) {
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.MouseWheel != 0.0f) {
 			engine->MouseWheel(io.MouseWheel > 0.0f);
 		}
-		for(int i = 0; i < 3; i++) {
+		for (int i = 0; i < 3; i++) {
 			if (ImGui::IsMouseReleased(i)) {
 				engine->MouseButton(i, false);
 			} else if (ImGui::IsMouseClicked(i)) {
@@ -261,6 +263,13 @@ void Core::LoopInner(IEngine* engine, int width, int height, bool& fullscreen_ho
 			}
 		}
 	}
+
+	ImGui::End();
+#ifdef QT_LOOP
+	QTRender();
+#else
+	ImGui::Render();
+#endif
 }
 
 #ifdef SDL_OPENGL_LOOP
@@ -286,7 +295,6 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
-	bool fullscreen_hover = true;
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();
@@ -325,7 +333,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 			} else if (event.type == SDL_MOUSEMOTION) {
 				mouse_dx = event.motion.xrel;
 				mouse_dy = event.motion.yrel;
-				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !fullscreen_hover);
+				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !m_FullScreenHover);
 			} else if (event.type == SDL_KEYDOWN) {
 				engine->Key(event.key.keysym.sym, true);
 			} else if (event.type == SDL_KEYUP) {
@@ -349,10 +357,9 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 		ImGui_ImplSDL2_NewFrame(window);
 
 		ImGui::NewFrame();
-		LoopInner(engine, width, height, fullscreen_hover);
+		LoopInner(engine, width, height);
 		// Finish imgui rendering
-		ImGui::End();
-		ImGui::Render();
+		LoopFinishImGui(engine, width, height);
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
@@ -372,11 +379,16 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #ifdef SDL_WEBGPU_LOOP
 ////////////////////////////////////////////////////////////////////////////////
 bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
-/*
 	m_Window = window;
 	if (!LoopInit(engine)) {
 		return false;
 	}
+
+	IMGUI_CHECKVERSION();
+	auto context = ImGui::CreateContext();
+	ImGui::SetCurrentContext(context);
+	ImGui_ImplSDL2_InitForD3D(window);
+	ImGui_ImplWGPU_Init(m_Device, 3, WGPUTextureFormat_BGRA8Unorm, WGPUTextureFormat_Depth24Plus);
 
 	//bool is_mouse_relative = true;
 	//SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
@@ -392,7 +404,6 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
-	bool fullscreen_hover = true;
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();
@@ -423,7 +434,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 			if (unfocus_timeout > 0) {
 				unfocus_timeout--;
 				continue;
-}
+			}
 
 			ImGui_ImplSDL2_ProcessEvent(&event);
 			if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))) {
@@ -432,7 +443,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 			else if (event.type == SDL_MOUSEMOTION) {
 				mouse_dx = event.motion.xrel;
 				mouse_dy = event.motion.yrel;
-				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !fullscreen_hover);
+				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !m_FullScreenHover);
 			}
 			else if (event.type == SDL_KEYDOWN) {
 				engine->Key(event.key.keysym.sym, true);
@@ -454,24 +465,16 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 		///////////////////////////////////////////// render engine
 
 		// Start the Dear ImGui frame
-		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplWGPU_NewFrame();
 		ImGui_ImplSDL2_NewFrame(window);
 
 		ImGui::NewFrame();
-		LoopInner(engine, width, height, fullscreen_hover);
-		// Finish imgui rendering
-		ImGui::End();
-		ImGui::Render();
-
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		SDL_GL_SwapWindow(window);
+		LoopInner(engine, width, height);
+		// you need to call LoopFinishImGui from within engine render
 
 		m_ResourceThreads.Sync();
 	}
 
-	//delete engine;
-	//engine = nullptr;
-*/
 	qDebug() << "Finished";
 
 	return true;
@@ -489,8 +492,6 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 	QElapsedTimer frame_timer;
 	frame_timer.restart();
 	const double inv_nano = 1.0 / 1000000000;
-
-	bool fullscreen_hover = true;
 
 	ImGuiIO& io = ImGui::GetIO();
 	DebugTiming::MainLoopTimer(); // init to zero
@@ -517,10 +518,9 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 		window->makeCurrent();
 
 		QTNewFrame();
-		LoopInner(engine, width, height, fullscreen_hover);
+		LoopInner(engine, width, height);
 		// Finish imgui rendering
-		ImGui::End();
-		QTRender();
+		LoopFinishImGui(engine, width, height);
 
 		window->context()->swapBuffers(window->context()->surface());
 		window->doneCurrent();

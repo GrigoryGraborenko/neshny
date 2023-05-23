@@ -67,15 +67,15 @@ public:
 
 	void											Init2D				(	int width,
 																			int height,
-																			WGPUTextureFormat format = WGPUTextureFormat_RGBA8Unorm,
+																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
 																			WGPUTextureUsageFlags usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	void											InitCubeMap			(	int width,
 																			int height,
-																			WGPUTextureFormat format = WGPUTextureFormat_RGBA8Unorm,
+																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
 																			WGPUTextureUsageFlags usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
-																			int mip_maps = AUTO_MIPMAPS
+																			int mip_maps = 1
 																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	inline void										InitDepth			( int width, int height ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, WGPUTextureUsage_RenderAttachment, WGPUTextureAspect_DepthOnly, 1); }
 	inline void										InitDepthStencil	( int width, int height ) { Init(width, height, 1, WGPUTextureFormat_Depth24PlusStencil8, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, WGPUTextureUsage_RenderAttachment, WGPUTextureAspect_All, 1); }

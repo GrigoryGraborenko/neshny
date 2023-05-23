@@ -455,7 +455,8 @@ public:
 	inline void							SetTicksOverride		( int ticks ) { m_Ticks = ticks; }
 
 	bool								LoopInit				( IEngine* engine );
-	void								LoopInner				( IEngine* engine, int width, int height, bool& fullscreen_hover );
+	void								LoopInner				( IEngine* engine, int width, int height );
+	void								LoopFinishImGui			( IEngine* engine, int width, int height );
 
 #ifdef SDL_OPENGL_LOOP
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
@@ -647,6 +648,7 @@ private:
 	qint64									m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
+	bool								m_FullScreenHover = true;
 
 	QFile								m_LogFile;
 
