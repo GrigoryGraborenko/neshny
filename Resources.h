@@ -121,11 +121,47 @@ public:
 		return true;
 	}
 
-	const WebGPUTexture&	GetTexture				( void ) const { m_Texture; }
+	const WebGPUTexture&	Get						( void ) const { m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
 
 	virtual qint64			GetMemoryEstimate		( void ) const { return 0; }
 	virtual qint64			GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
+
+protected:
+	WebGPUTexture	m_Texture;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class TextureSkybox : public Resource {
+public:
+	struct Params {};
+
+	virtual				~TextureSkybox(void) {}
+	virtual bool		Init(QString path, Params params, QString& err) {
+		std::vector<QString> names = { "right", "left", "top", "bottom", "front", "back" };
+		for (int i = 0; i < 6; i++) {
+			QString fullname = path;
+			fullname.replace('*', names[i]);
+			QImage im(fullname);
+			if (im.isNull()) {
+				err = "Could not load " + fullname;
+				return false;
+			}
+			if (i == 0) {
+				m_Texture.InitCubeMap(im.width(), im.height());
+			}
+			m_Texture.CopyDataLayer(i, (unsigned char*)im.bits(), 4, im.bytesPerLine(), false);
+		}
+		return true;
+	};
+
+	const WebGPUTexture&	Get						( void ) const { m_Texture; }
+	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
+
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
+	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 protected:
 	WebGPUTexture	m_Texture;
