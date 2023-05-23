@@ -167,6 +167,67 @@ protected:
 	WebGPUTexture	m_Texture;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class TextureTileset : public Resource {
+public:
+	struct Params {
+		int		p_TileHeight;
+		int		p_TileWidth;
+		bool	p_Mipmaps;
+	};
+
+	virtual				~TextureTileset(void) {}
+
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
+	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
+
+	bool				Init(QString path, Params params, QString& err) {
+		m_Params = params;
+
+		QImage im(path);
+		if (im.isNull()) {
+			err = "Could not load image " + path;
+			return false;
+		}
+		int depth = im.depth() / 8;
+		if (depth != 4) {
+			err = "Can only load RGBA images";
+			return false;
+		}
+
+		m_FullWidth = im.width();
+		m_FullHeight = im.height();
+		int num_wid = m_FullWidth / m_Params.p_TileWidth;
+		int num_hei = m_FullHeight / m_Params.p_TileHeight;
+		m_TileCount = num_wid * num_hei;
+
+		m_Texture.Init2DArray(m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
+
+		for (int i = 0; i < m_TileCount; i++) {
+			int x = (i % num_wid) * m_Params.p_TileWidth;
+			int y = (i / num_hei) * m_Params.p_TileHeight;
+			unsigned char* data = (unsigned char*)im.bits();
+			m_Texture.CopyDataLayer(i, data + ((y * m_FullWidth + x) * depth), depth, im.bytesPerLine(), params.p_Mipmaps);
+		}
+		return true;
+	};
+
+	const WebGPUTexture&		Get				( void ) const { m_Texture; }
+	WGPUTextureView				GetTextureView	( void ) const { return m_Texture.GetTextureView(); }
+	inline const int			GetFullWidth	( void ) const { return m_FullWidth; }
+	inline const int			GetFullHeight	( void ) const { return m_FullHeight; }
+
+protected:
+
+	Params			m_Params;
+	WebGPUTexture	m_Texture;
+	int				m_TileCount = 0;
+	int				m_FullWidth = 0;
+	int				m_FullHeight = 0;
+};
+
 #endif
 
 #if defined(NESHNY_GL)
