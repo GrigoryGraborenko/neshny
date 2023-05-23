@@ -465,6 +465,7 @@ public:
 	bool								QTLoop					( QOpenGLWindow* window, IEngine* engine );
 #endif
 #ifdef SDL_WEBGPU_LOOP
+	void								SDLLoopInner			( void );
 	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
 #endif
 
@@ -648,6 +649,7 @@ private:
 	qint64									m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
+	QElapsedTimer						m_FrameTimer;
 	bool								m_FullScreenHover = true;
 
 	QFile								m_LogFile;
@@ -664,6 +666,7 @@ private:
 #endif
 
 #ifdef NESHNY_WEBGPU
+	IEngine*							m_Engine = nullptr;
 	WGPUDevice							m_Device;
 	WGPUQueue							m_Queue;
 	//WGPUSwapChain						m_SwapChain;

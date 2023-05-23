@@ -377,9 +377,79 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #endif
 
 #ifdef SDL_WEBGPU_LOOP
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::SDLLoopInner() {
+	qint64 loop_nanos = DebugTiming::MainLoopTimer();
+#ifdef NESHNY_EDITOR_VIEWERS
+	InfoViewer::LoopTime(loop_nanos);
+#endif
+
+	//if (is_mouse_relative ^ thing->IsMouseRelative()) {
+	//	is_mouse_relative = !is_mouse_relative;
+	//	SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
+	//}
+
+/*
+	if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
+		unfocus_timeout = 2;
+	}
+*/
+
+	int width, height;
+	SDL_GetWindowSize(m_Window, &width, &height);
+
+	// Poll and handle events (inputs, window resize, etc.)
+	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+	// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
+	// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
+	// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+
+/*
+		if (unfocus_timeout > 0) {
+			unfocus_timeout--;
+			continue;
+		}
+*/
+
+		ImGui_ImplSDL2_ProcessEvent(&event);
+		if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_Window))) {
+			m_Engine->ExitSignal();
+		} else if (event.type == SDL_MOUSEMOTION) {
+			m_Engine->MouseMove(Vec2(event.motion.xrel, event.motion.yrel), !m_FullScreenHover);
+		} else if (event.type == SDL_KEYDOWN) {
+			m_Engine->Key(event.key.keysym.sym, true);
+		} else if (event.type == SDL_KEYUP) {
+			m_Engine->Key(event.key.keysym.sym, false);
+		}
+	}
+
+	qint64 nanos = m_FrameTimer.nsecsElapsed();
+	m_FrameTimer.restart();
+	if (m_Engine->Tick(nanos, m_Ticks)) {
+		m_Ticks++;
+	}
+	m_Engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
+
+	///////////////////////////////////////////// render engine
+
+	// Start the Dear ImGui frame
+	ImGui_ImplWGPU_NewFrame();
+	ImGui_ImplSDL2_NewFrame(m_Window);
+
+	ImGui::NewFrame();
+	LoopInner(m_Engine, width, height);
+	// you need to call LoopFinishImGui from within engine render
+
+	m_ResourceThreads.Sync();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	m_Window = window;
+	m_Engine = engine;
 	if (!LoopInit(engine)) {
 		return false;
 	}
@@ -393,89 +463,25 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	//bool is_mouse_relative = true;
 	//SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
-	int width, height;
-	SDL_GetWindowSize(window, &width, &height);
 
-	QElapsedTimer frame_timer;
-	frame_timer.restart();
+	m_FrameTimer.restart();
 	const double inv_nano = 1.0 / 1000000000;
 
 	int unfocus_timeout = 0;
 
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
+
+#ifdef __EMSCRIPTEN__
+	emscripten_set_main_loop([]() {
+		Core::Singleton().SDLLoopInner();
+	}, 0, 1);
+#else
 	while (!engine->ShouldExit()) {
-
-		qint64 loop_nanos = DebugTiming::MainLoopTimer();
-#ifdef NESHNY_EDITOR_VIEWERS
-		InfoViewer::LoopTime(loop_nanos);
-#endif
-
-		int mouse_dx = 0;
-		int mouse_dy = 0;
-
-		//if (is_mouse_relative ^ thing->IsMouseRelative()) {
-		//	is_mouse_relative = !is_mouse_relative;
-		//	SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
-		//}
-
-		if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
-			unfocus_timeout = 2;
-		}
-
-		// Poll and handle events (inputs, window resize, etc.)
-		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-		// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-		// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-		// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-
-			if (unfocus_timeout > 0) {
-				unfocus_timeout--;
-				continue;
-			}
-
-			ImGui_ImplSDL2_ProcessEvent(&event);
-			if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))) {
-				engine->ExitSignal();
-			}
-			else if (event.type == SDL_MOUSEMOTION) {
-				mouse_dx = event.motion.xrel;
-				mouse_dy = event.motion.yrel;
-				engine->MouseMove(Vec2(mouse_dx, mouse_dy), !m_FullScreenHover);
-			}
-			else if (event.type == SDL_KEYDOWN) {
-				engine->Key(event.key.keysym.sym, true);
-			}
-			else if (event.type == SDL_KEYUP) {
-				engine->Key(event.key.keysym.sym, false);
-			}
-		}
-
-		SDL_GetWindowSize(window, &width, &height);
-
-		qint64 nanos = frame_timer.nsecsElapsed();
-		frame_timer.restart();
-		if (engine->Tick(nanos, m_Ticks)) {
-			m_Ticks++;
-		}
-		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
-
-		///////////////////////////////////////////// render engine
-
-		// Start the Dear ImGui frame
-		ImGui_ImplWGPU_NewFrame();
-		ImGui_ImplSDL2_NewFrame(window);
-
-		ImGui::NewFrame();
-		LoopInner(engine, width, height);
-		// you need to call LoopFinishImGui from within engine render
-
-		m_ResourceThreads.Sync();
+		SDLLoopInner();
 	}
-
 	qDebug() << "Finished";
+#endif
 
 	return true;
 }
