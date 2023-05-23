@@ -3,8 +3,6 @@
 
 namespace Neshny {
 
-#ifdef SDL_h_
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +24,7 @@ public:
 	};
 };
 
+#ifdef SDL_h_
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +55,10 @@ public:
 protected:
 	Mix_Chunk*	m_Chunk;
 };
+#endif
 
+
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,9 +76,6 @@ public:
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
-
 	bool Save(QString filename) {
 		int size = m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes();
 		unsigned char* data = new unsigned char[size];
@@ -88,10 +87,53 @@ public:
 		return result;
 	}
 
-protected:
+	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
+	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
 
+protected:
 	GLTexture	m_Texture;
 };
+
+#elif defined(NESHNY_WEBGPU)
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class Texture2D : public Resource {
+public:
+	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
+
+	virtual				~Texture2D(void) {}
+	bool				Init(QString path, Params params, QString& err) { 
+
+		QImage im(path);
+		if (im.isNull()) {
+			err = "Could not load image " + path;
+			return false;
+		}
+		int depth = im.depth() / 8;
+		if (depth != 4) {
+			err = "Can only load RGBA images";
+			return false;
+		}
+		m_Texture.Init2D(im.width(), im.height());
+		m_Texture.CopyData2D((unsigned char*)im.bits(), depth, im.bytesPerLine());
+		return true;
+	}
+
+	const WebGPUTexture&	GetTexture				( void ) const { m_Texture; }
+	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
+
+	virtual qint64			GetMemoryEstimate		( void ) const { return 0; }
+	virtual qint64			GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
+
+protected:
+	WebGPUTexture	m_Texture;
+};
+
+#endif
+
+#if defined(NESHNY_GL)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -222,7 +264,6 @@ protected:
 
 	GLTexture	m_Texture;
 };
-
 #endif
 
 } // namespace Neshny

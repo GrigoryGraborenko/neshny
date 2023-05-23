@@ -66,8 +66,12 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUTexture::~WebGPUTexture(void) {
-	wgpuTextureViewRelease(m_View);
-	wgpuTextureDestroy(m_Texture);
+	if (m_View) {
+		wgpuTextureViewRelease(m_View);
+	}
+	if (m_Texture) {
+		wgpuTextureDestroy(m_Texture);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +94,8 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_Layers = depth;
 	m_MipMaps = mip_maps;
 	m_Format = format;
-	//m_DepthBytes = 0;
+
+	m_DepthBytes = 4; // TODO: support other formats
 
 	WGPUTextureDescriptor descriptor;
 	descriptor.label = nullptr;

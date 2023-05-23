@@ -99,7 +99,7 @@ public:
 	inline int										GetLayers			( void ) const { return m_Layers; }
 	inline int										GetMipMaps			( void ) const { return m_MipMaps; }
 	inline WGPUTextureFormat						GetFormat			( void ) const { return m_Format; }
-	//inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
+	inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
 
 protected:
 
@@ -112,7 +112,7 @@ protected:
 	int												m_Height = 0;
 	int												m_Layers = 1;
 	int												m_MipMaps = 1;
-	//int												m_DepthBytes = 0;
+	int												m_DepthBytes = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

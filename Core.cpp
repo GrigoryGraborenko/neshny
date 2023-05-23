@@ -110,12 +110,19 @@ void WorkerThreadPool::Stop(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WorkerThreadPool::DoTask(std::function<void*()> task, std::function<void(void* result)> callback) {
+	if (m_Threads.empty()) {
+		callback(task());
+		return;
+	}
 	const std::lock_guard<std::mutex> lock(m_Lock);
 	m_Tasks.push_back(new Task{ task, callback });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void WorkerThreadPool::Sync(void) {
+	if (m_Threads.empty()) {
+		return;
+	}
 	m_Lock.lock();
 	std::vector<Task*> finished = m_FinishedTasks;
 	m_FinishedTasks.clear();
@@ -174,7 +181,12 @@ Core::~Core(void) {
 ////////////////////////////////////////////////////////////////////////////////
 bool Core::LoopInit(IEngine* engine) {
 
-	m_ResourceThreads.Start(1); // started here so you have access to m_Window value
+	// m_ResourceThreads started here so you have access to m_Window value
+#ifdef __EMSCRIPTEN__
+	m_ResourceThreads.Start(0); // could not get multithreading to work with webGPU in emscripten - why?
+#else
+	m_ResourceThreads.Start(4);
+#endif
 
 	g_StaticInstance = this;
 
