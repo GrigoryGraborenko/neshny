@@ -25,6 +25,7 @@
 #include "NeshnyUtils.h"
 
 #include "GLUtils.h"
+#include "NeshnyStructs.h"
 #include "LinearAlgebra.h"
 #include "Serialization.h"
 #include "Core.h"

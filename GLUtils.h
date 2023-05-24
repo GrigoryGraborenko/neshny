@@ -157,7 +157,42 @@ protected:
 #ifdef SSBO_DEBUG
 	int												m_NumberResizes = 0;
 #endif // SSBO_DEBUG
-
 };
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class RTT {
+
+public:
+
+	enum class Mode {
+		RGBA
+		,RGBA_FLOAT32
+		,RGBA_FLOAT16
+	};
+
+								RTT			( void ) {}
+								~RTT		( void ) { Destroy(); }
+
+	Token						Activate	( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
+
+	inline GLuint				GetColorTex	( int index ) { return index >= m_ColorTextures.size() ? 0 : m_ColorTextures[index]; }
+	inline GLuint				GetDepthTex	( void ) { return m_DepthTex; }
+
+private:
+
+	void						Destroy		( void );
+
+	std::vector<Mode>			m_Modes = {};
+	bool						m_CaptureDepthStencil = false;
+	int							m_Width = 0;
+	int							m_Height = 0;
+	GLuint						m_FrameBuffer = 0;
+	std::vector<GLuint>			m_ColorTextures;
+	GLuint						m_DepthTex = 0;
+	GLuint						m_DepthBuffer = 0;
+};
+
 
 } // namespace Neshny

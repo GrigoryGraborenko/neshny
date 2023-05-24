@@ -125,13 +125,19 @@ public:
 
 	inline static BufferViewer&	Singleton			( void ) { static BufferViewer instance; return instance; }
 
+#if defined(NESHNY_GL)
 	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
 	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
 	static inline void			Checkpoint			( QString stage, class GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 	void						RenderImGui			( InterfaceBufferViewer& data );
 
+#if defined(NESHNY_GL)
 	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 	static inline void			Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
 	static inline void			ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
@@ -156,10 +162,14 @@ protected:
 							BufferViewer		( void ) {}
 							~BufferViewer		( void ) {}
 
+#if defined(NESHNY_GL)
 	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
 	void					ICheckpoint			( QString stage, class GPUEntity& entity );
-	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	std::shared_ptr<GLSSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
+#elif defined(NESHNY_WEBGPU)
+#endif
+
+	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }
 
 	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
@@ -173,7 +183,11 @@ protected:
 class ShaderViewer {
 public:
 	static void						RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
+#if defined(NESHNY_GL)
 	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search );
+#elif defined(NESHNY_WEBGPU)
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, QString search );
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +215,10 @@ public:
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
+#if defined(NESHNY_GL)
 	static auto					ActivateRTT				( void );
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
@@ -209,7 +226,10 @@ private:
 
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
+#if defined(NESHNY_GL)
 	RTT							m_RTT;
+#elif defined(NESHNY_WEBGPU)
+#endif
 	int							m_Width = 32;
 	int							m_Height = 32;
 	std::optional<Vec2>			m_LastMousePos = std::nullopt;
@@ -228,7 +248,10 @@ public:
 
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
+#if defined(NESHNY_GL)
 	static auto					ActivateRTT					( void );
+#elif defined(NESHNY_WEBGPU)
+#endif
 	static fMatrix4				GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
 	static inline void			Line						( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
@@ -243,7 +266,10 @@ private:
 
 	void						IRenderImGui				( InterfaceScrapbook3D& data );
 
+#if defined(NESHNY_GL)
 	RTT							m_RTT;
+#elif defined(NESHNY_WEBGPU)
+#endif
 	int							m_Width = 32;
 	int							m_Height = 32;
 	bool						m_NeedsReset = true;

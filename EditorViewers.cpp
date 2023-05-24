@@ -6,6 +6,8 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
+#if defined(NESHNY_GL)
+
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
 
@@ -121,6 +123,8 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 
 	glDisable(GL_BLEND);
 	glDepthMask(GL_TRUE);
+#elif defined(NESHNY_WEBGPU)
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,9 +165,11 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::SameLine();
 
+#ifdef NESHNY_TESTING
 	if (ImGui::Button("Run Unit Tests")) {
 		UnitTester::Execute();
 	}
+#endif
 	ImGui::SameLine();
 	auto& timings = DebugTiming::GetTimings();
 	if (ImGui::Button("Reset Timings")) {
@@ -232,7 +238,7 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 			ImGui::TableSetColumnIndex(2);
 			ImGui::Text("%.6f", total_av_secs * 1000.0);
 			ImGui::TableSetColumnIndex(3);
-			ImGui::Text("%i", iter->p_NumCalls);
+			ImGui::Text("%lli", iter->p_NumCalls);
 			ImGui::TableSetColumnIndex(4);
 			ImGui::Text("%.6f", iter->p_MinNanos * MICRO_CONVERT);
 			ImGui::TableSetColumnIndex(5);
@@ -245,6 +251,7 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	ImGui::End();
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
@@ -267,6 +274,24 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<GLSSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
+
+	auto existing = m_Frames.find(name);
+	if (existing == m_Frames.end()) {
+		return nullptr;
+	}
+	for (auto& frame : existing->second.p_Frames) {
+		if (frame.p_Tick == tick) {
+			count = frame.p_Count;
+			return std::make_shared<GLSSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
+		}
+	}
+	return nullptr;
+}
+#elif defined(NESHNY_WEBGPU)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
@@ -281,22 +306,6 @@ void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const Str
 	while (existing->second.p_Frames.size() > max_frames) {
 		existing->second.p_Frames.pop_back();
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<GLSSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
-
-	auto existing = m_Frames.find(name);
-	if (existing == m_Frames.end()) {
-		return nullptr;
-	}
-	for (auto& frame : existing->second.p_Frames) {
-		if (frame.p_Tick == tick) {
-			count = frame.p_Count;
-			return std::make_shared<GLSSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
-		}
-	}
-	return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,7 +386,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 		ImGui::SameLine();
 
 		ImGui::SetNextItemOpen(found->p_Open);
-		if (found->p_Open = ImGui::CollapsingHeader(header.data())) {
+		if ((found->p_Open = ImGui::CollapsingHeader(header.data()))) {
 
 			int max_frames = std::min((int)frames.size(), MAX_COLS);
 			int max_count = 0;
@@ -523,12 +532,13 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	ImGui::BeginChild("ShaderList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	auto shaders = Core::Singleton().GetShaders();
+#if defined(NESHNY_GL)
 	auto compute_shaders = Core::Singleton().GetComputeShaders();
-
 	for (auto& shader : compute_shaders) {
 		auto info = RenderShader(data, shader.first, shader.second, true, search);
 		info->p_Open = (info->p_Open || all_open) && (!all_close);
 	}
+#endif
 	for (auto& shader : shaders) {
 		auto info = RenderShader(data, shader.first, shader.second, false, search);
 		info->p_Open = (info->p_Open || all_open) && (!all_close);
@@ -538,7 +548,11 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+#if defined(NESHNY_GL)
 InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search) {
+#elif defined(NESHNY_WEBGPU)
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, QString name, WebGPUShader* shader, bool is_compute, QString search) {
+#endif
 
 	const int context_lines = 4;
 	const int number_width = 50;
@@ -566,6 +580,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 
 	ImGui::SetNextItemOpen(found->p_Open);
 
+#if defined(NESHNY_GL)
 	if (found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data())) {
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {
@@ -624,6 +639,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 			}
 		}
 	}
+#elif defined(NESHNY_WEBGPU)
+#endif
 	ImGui::PopStyleColor(3);
 	return found;
 }
@@ -639,8 +656,8 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 
 	ImGui::Begin("Resource Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 
-	ImGui::Text("CPU Memory Allocated: %i", core.GetMemoryAllocated());
-	ImGui::Text("Graphics Memory Allocated: %i", core.GetGPUMemoryAllocated());
+	ImGui::Text("CPU Memory Allocated: %lli", core.GetMemoryAllocated());
+	ImGui::Text("Graphics Memory Allocated: %lli", core.GetGPUMemoryAllocated());
 
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 	const int size_banner = 80;
@@ -680,10 +697,10 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 			ImGui::Text(status.data());
 
 			ImGui::TableSetColumnIndex(2);
-			ImGui::Text("%i", resource.second.m_Memory);
+			ImGui::Text("%lli", resource.second.m_Memory);
 
 			ImGui::TableSetColumnIndex(3);
-			ImGui::Text("%i", resource.second.m_GPUMemory);
+			ImGui::Text("%lli", resource.second.m_GPUMemory);
 
 			ImGui::TableSetColumnIndex(4);
 			ImGui::Text("%i", ticks - resource.second.m_LastTickAccessed);
@@ -699,6 +716,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	ImGui::End();
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 auto Scrapbook2D::ActivateRTT(void) {
 	auto& self = Singleton();
@@ -706,6 +724,8 @@ auto Scrapbook2D::ActivateRTT(void) {
 	self.m_NeedsReset = false;
 	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
 }
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
@@ -749,6 +769,11 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	m_Height = space_available.y - size_banner;
 	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height).ToOpenGL();
 
+	ImVec2 im_pos(8, size_banner);
+	ImVec2 im_size(m_Width, m_Height);
+	ImGui::SetCursorPos(im_pos);
+	auto im_screen_pos = ImGui::GetCursorScreenPos();
+#if defined(NESHNY_GL)
 	{
 		auto token = ActivateRTT();
 		glEnable(GL_DEPTH_TEST);
@@ -763,12 +788,10 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		m_NeedsReset = true;
 	}
 
-	ImVec2 im_pos(8, size_banner);
-	ImVec2 im_size(m_Width, m_Height);
-	ImGui::SetCursorPos(im_pos);
-	auto im_screen_pos = ImGui::GetCursorScreenPos();
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);
@@ -798,6 +821,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImGui::End();
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 auto Scrapbook3D::ActivateRTT(void) {
 	auto& self = Singleton();
@@ -805,6 +829,8 @@ auto Scrapbook3D::ActivateRTT(void) {
 	self.m_NeedsReset = false;
 	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
 }
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
@@ -835,6 +861,10 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	m_Height = space_available.y - size_banner;
 	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height).ToOpenGL();
 
+	ImVec2 im_pos(8, size_banner);
+	ImVec2 im_size(m_Width, m_Height);
+	ImGui::SetCursorPos(im_pos);
+#if defined(NESHNY_GL)
 	{
 		auto token = ActivateRTT();
 		glEnable(GL_DEPTH_TEST);
@@ -850,11 +880,10 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 		m_NeedsReset = true;
 	}
 
-	ImVec2 im_pos(8, size_banner);
-	ImVec2 im_size(m_Width, m_Height);
-	ImGui::SetCursorPos(im_pos);
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
+#elif defined(NESHNY_WEBGPU)
+#endif
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);

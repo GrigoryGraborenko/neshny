@@ -86,3 +86,20 @@ void Shuffle(std::vector<T>& vect) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 uint64_t TimeSinceEpochMilliseconds();
+
+namespace Neshny {
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+struct Token {
+	Token(std::function<void()> destruction, bool valid = true) : p_DestructFunc(destruction), p_Valid(valid) {}
+	Token() : p_DestructFunc(), p_Valid(false) {}
+	~Token(void) { p_DestructFunc(); }
+	inline bool IsValid(void) { return p_Valid; }
+private:
+	std::function<void()>	p_DestructFunc;
+	bool					p_Valid;
+};
+
+} // namespace Neshny
