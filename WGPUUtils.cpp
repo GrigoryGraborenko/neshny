@@ -22,7 +22,7 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 		const auto& msg = compilationInfo->messages[i];
 		shader->m_Errors.push_back({
 			msg.type,
-			QString(msg.message),
+			QByteArray(msg.message),
 			msg.lineNum,
 			msg.linePos
 		});
@@ -37,7 +37,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 	if (arr.isNull()) {
 		m_Errors.push_back({
 			WGPUCompilationMessageType_Error,
-			"File error - " + err_msg,
+			("File error - " + err_msg).toLocal8Bit(),
 			-1u,
 			-1u
 		});
@@ -58,7 +58,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 	wgpuShaderModuleGetCompilationInfo(m_Shader, CompilationInfoCallback, this);
 #endif
 
-	return false;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

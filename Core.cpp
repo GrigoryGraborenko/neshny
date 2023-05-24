@@ -872,7 +872,6 @@ WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 		for (auto err : new_shader->GetErrors()) {
 			qDebug() << err.m_Message;
 			printf("COMPILE ERROR: %s\n", (char*)err.m_Message.data());
-
 		}
 		m_Interface.p_ShaderView.p_Visible = true;
 	}

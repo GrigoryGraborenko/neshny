@@ -14,7 +14,7 @@ public:
 
 	struct Error {
 		WGPUCompilationMessageType	m_Type;
-		QString						m_Message;
+		QByteArray					m_Message;
 		uint64_t					m_LineNum;
 		uint64_t					m_LinePos;
 	};

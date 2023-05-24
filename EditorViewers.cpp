@@ -580,8 +580,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 
 	ImGui::SetNextItemOpen(found->p_Open);
 
-#if defined(NESHNY_GL)
 	if (found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data())) {
+#if defined(NESHNY_GL)
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {
 			ImGui::TextUnformatted(src.m_Type.toLocal8Bit().data());
@@ -638,9 +638,59 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 				}
 			}
 		}
-	}
 #elif defined(NESHNY_WEBGPU)
+
+		QList<QByteArray> lines = shader->GetSource().split('\n');
+		for (const auto& err : shader->GetErrors()) {
+			ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), err.m_Message.data());
+		}
+		if (search.isNull()) {
+			for (int line = 0; line < lines.size(); line++) {
+				ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), QString("%1").arg(line).toLocal8Bit().data());
+				ImGui::SameLine();
+				ImGui::SetCursorPosX(number_width);
+				ImGui::TextUnformatted(lines[line].data());
+			}
+		} else {
+
+			int context_countdown = 0;
+			int last_line = 0;
+			int num_lines = lines.size();
+			int match_count = 0;
+			std::deque<bool> look_ahead_match;
+
+			for(int line = 0; line < num_lines; line++) {
+				while (look_ahead_match.size() <= context_lines) {
+					int ahead = line + (int)look_ahead_match.size();
+					bool found = (ahead < num_lines) && QString(lines[ahead]).contains(search, Qt::CaseInsensitive);
+					match_count += found ? 1 : 0;
+					look_ahead_match.push_back(found);
+				}
+				bool found = false;
+				if (!look_ahead_match.empty()) {
+					found = look_ahead_match[0];
+					look_ahead_match.pop_front();
+				}
+				context_countdown = found ? context_lines + 1 : context_countdown - 1;
+
+				if ((match_count <= 0) && (context_countdown <= 0)) {
+					continue;
+				}
+				if (last_line != (line - 1)) {
+					ImGui::Separator();
+				}
+				auto line_num_str = QString("%1").arg(line).toLocal8Bit();
+				ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.data());
+				ImGui::SameLine();
+				ImGui::SetCursorPosX(number_width);
+				ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), lines[line].data());
+				last_line = line;
+
+				match_count -= found ? 1 : 0;
+			}
+		}
 #endif
+	}
 	ImGui::PopStyleColor(3);
 	return found;
 }
