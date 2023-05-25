@@ -65,6 +65,100 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
+	m_Flags	( flags )
+{
+	if (size > 0) {
+		EnsureSizeBytes(size);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int size) :
+	m_Flags		( flags )
+	,m_Size		( size )
+{
+	Create(size, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::Create(int size, unsigned char* data) {
+	WGPUBufferDescriptor desc = {};
+	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex | WGPUBufferUsage_Index | WGPUBufferUsage_Uniform | WGPUBufferUsage_Storage;
+	desc.size = size;
+	desc.nextInChain = nullptr;
+	desc.label = nullptr;
+
+	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetDevice(), &desc);
+	if (data) {
+		wgpuQueueWriteBuffer(Core::Singleton().GetQueue(), m_Buffer, 0, data, size);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPUBuffer::~WebGPUBuffer(void) {
+	wgpuBufferDestroy(m_Buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
+
+	// ensure size doubles each time
+	size_bytes = RoundUpPowerTwo(size_bytes);
+
+	if (m_Size >= size_bytes) {
+		if (clear_after) {
+			ClearBuffer();
+		}
+		return;
+	}
+
+	WGPUBuffer old_buffer = m_Buffer;
+	Create(size_bytes, nullptr);
+	
+	ClearBuffer();
+	if (!clear_after) {
+		// TODO: replace
+		//glCopyNamedBufferSubData(old_buffer, m_Buffer, 0, 0, m_Size);
+		//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
+	if (old_buffer) {
+		wgpuBufferDestroy(old_buffer);
+	}
+
+	m_Size = size_bytes;
+#ifdef SSBO_DEBUG
+	m_NumberResizes++;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::ClearBuffer() {
+
+	// TODO: replace
+	//GLubyte val = 0;
+	//glClearNamedBufferData(m_Buffer, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &val);
+	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
+	max_size = max_size >= 0 ? max_size : m_Size;
+	if (max_size <= 0) {
+		return std::shared_ptr<unsigned char[]>(nullptr);
+	}
+	unsigned char* ptr = new unsigned char[max_size];
+	// TODO: replace
+	//glGetNamedBufferSubData(m_Buffer, 0, max_size, ptr);
+	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	return std::shared_ptr<unsigned char[]>(ptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 WebGPUTexture::~WebGPUTexture(void) {
 	if (m_View) {
 		wgpuTextureViewRelease(m_View);

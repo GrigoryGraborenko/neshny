@@ -47,10 +47,58 @@ class WebGPUBuffer {
 
 public:
 
-													WebGPUBuffer		( void );
+													WebGPUBuffer		( WGPUBufferUsageFlags flags, int size = 0 );
+													WebGPUBuffer		( WGPUBufferUsageFlags flags, unsigned char* data, int size );
 			 										~WebGPUBuffer		( void );
 
+	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
+	void											ClearBuffer		( void );
+	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
+
+	inline WGPUBuffer								Get				( void ) { return m_Buffer; }
+	inline int										GetSizeBytes	( void ) { return m_Size; }
+	inline WGPUBufferUsageFlags						GetFlags		( void ) { return m_Flags; }
+
+	template<class T>
+	inline void										SetSingleValue(int index, T value) {
+		// TODO: replace
+		//glNamedBufferSubData(m_Buffer, index * sizeof(T), sizeof(T), &value);
+	}
+
+	template<class T>
+	inline void										SetValues(const std::vector<T>& items, int offset = 0) {
+		if (items.empty()) {
+			return;
+		}
+		// TODO: replace
+		//glNamedBufferSubData(m_Buffer, offset * sizeof(T), items.size() * sizeof(T), &(items[0]));
+	}
+
+	template<class T>
+	inline T										GetSingleValue(int index) {
+		T result;
+		// TODO: replace
+		//glGetNamedBufferSubData(m_Buffer, index * sizeof(T), sizeof(T), &result);
+		return result;
+	}
+
+	template<class T>
+	inline void										GetValues(std::vector<T>& items, int count, int offset = 0) {
+		if (count <= 0) {
+			return;
+		}
+		items.resize(count);
+		// TODO: replace
+		//glGetNamedBufferSubData(m_Buffer, offset * sizeof(T), count * sizeof(T), &(items[0]));
+	}
+
 protected:
+
+	void											Create(int size, unsigned char* data);
+
+	WGPUBufferUsageFlags							m_Flags = 0;
+	WGPUBuffer										m_Buffer = nullptr;
+	int												m_Size = 0;
 
 };
 

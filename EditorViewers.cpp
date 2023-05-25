@@ -580,7 +580,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 
 	ImGui::SetNextItemOpen(found->p_Open);
 
-	if (found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data())) {
+	if ((found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data()))) {
 #if defined(NESHNY_GL)
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {
