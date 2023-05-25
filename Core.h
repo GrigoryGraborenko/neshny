@@ -430,6 +430,7 @@ public:
 	struct ResourceResult {
 		ResourceResult(const ResourceContainer& container) : m_State(container.m_State), m_Resource((T*)container.m_Resource), m_Error(container.m_Error) {}
 		T* operator->() const { return m_Resource; }
+		T* Ptr() const { return m_Resource; }
 		bool IsValid(void) const { return m_State == ResourceState::DONE; }
 		ResourceState	m_State = ResourceState::PENDING;
 		T*				m_Resource = nullptr;

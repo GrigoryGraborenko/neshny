@@ -56,8 +56,8 @@ public:
 	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
 
 	inline WGPUBuffer								Get				( void ) { return m_Buffer; }
-	inline int										GetSizeBytes	( void ) { return m_Size; }
-	inline WGPUBufferUsageFlags						GetFlags		( void ) { return m_Flags; }
+	inline int										GetSizeBytes	( void ) const { return m_Size; }
+	inline WGPUBufferUsageFlags						GetFlags		( void ) const { return m_Flags; }
 
 	template<class T>
 	inline void										SetSingleValue(int index, T value) {
@@ -155,6 +155,7 @@ public:
 	inline int										GetMipMaps			( void ) const { return m_MipMaps; }
 	inline WGPUTextureFormat						GetFormat			( void ) const { return m_Format; }
 	inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
+	inline WGPUTextureViewDimension					GetViewDimension	( void ) const { return m_ViewDimension; }
 
 protected:
 
@@ -163,6 +164,7 @@ protected:
 	WGPUTexture										m_Texture = nullptr;
 	WGPUTextureView									m_View = nullptr;
 	WGPUTextureFormat								m_Format;
+	WGPUTextureViewDimension						m_ViewDimension;
 	int												m_Width = 0;
 	int												m_Height = 0;
 	int												m_Layers = 1;
@@ -211,6 +213,43 @@ protected:
 	WGPUFilterMode									m_Filter;
 	bool											m_LinearMipMaps;
 	unsigned int									m_MaxAnisotropy;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class WebGPURenderPipeline {
+
+public:
+
+	struct Buffer {
+		WebGPUBuffer&			p_Buffer;
+		bool					p_ReadOnly = true;
+	};
+
+								WebGPURenderPipeline	( QString shader ): m_ShaderName(shader) {}
+								~WebGPURenderPipeline	( void );
+
+	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, bool read_only = false ) { m_Buffers.push_back({ buffer, read_only }); return *this; }
+	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
+	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
+
+	void						Finalize				( void );
+
+	inline WGPURenderPipeline	GetPipeline				( void ) { return m_Pipeline; }
+	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
+
+protected:
+
+
+	QString						m_ShaderName;
+	std::vector<Buffer>			m_Buffers;
+	std::vector<const WebGPUTexture*>	m_Textures;
+	std::vector<const WebGPUSampler*>	m_Samplers;
+
+	WGPURenderPipeline			m_Pipeline;
+	WGPUBindGroup				m_BindGroup;
+
 };
 
 } // namespace Neshny

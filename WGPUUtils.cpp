@@ -188,6 +188,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_Layers = depth;
 	m_MipMaps = mip_maps;
 	m_Format = format;
+	m_ViewDimension = view_dimension;
 
 	m_DepthBytes = 4; // TODO: support other formats
 
@@ -354,6 +355,186 @@ WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool l
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUSampler::~WebGPUSampler(void) {
 	wgpuSamplerRelease(m_Sampler);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+WebGPURenderPipeline::~WebGPURenderPipeline(void) {
+	// TODO: delete everything
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPURenderPipeline::Finalize() {
+
+	WGPUShaderModule shader = Core::GetShader(m_ShaderName)->Get();
+
+	// bind group layout (used by both the pipeline layout and uniform bind group, released at the end of this function)
+	int binding_num = 0;
+	int num_bindings = int(m_Buffers.size() + m_Textures.size() + m_Samplers.size());
+	std::vector<WGPUBindGroupLayoutEntry> layout_entries;
+	std::vector<WGPUBindGroupEntry> entries;
+	
+	layout_entries.resize(num_bindings);
+	entries.resize(num_bindings);
+
+	//for (int i = 0; i < num_bindings; i++) {
+	//}
+
+	for (auto buffer : m_Buffers) {
+		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		layout_entry.nextInChain = nullptr;
+		layout_entry.binding = binding_num;
+		// TODO: why does this visibility cause errors?
+		//layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+		layout_entry.visibility = WGPUShaderStage_Fragment;
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.size = buffer.p_Buffer.GetSizeBytes();
+		entry.buffer = buffer.p_Buffer.Get();
+
+		WGPUBufferBindingLayout buffer_layout;
+		buffer_layout.nextInChain = nullptr;
+		// TODO: what about hasDynamicOffset and minBindingSize?
+		buffer_layout.hasDynamicOffset = false;
+		buffer_layout.minBindingSize = 0;
+		if (buffer.p_Buffer.GetFlags() & WGPUBufferUsage_Uniform) {
+			buffer_layout.type = WGPUBufferBindingType_Uniform;
+		} else if(buffer.p_ReadOnly) {
+			buffer_layout.type = WGPUBufferBindingType_ReadOnlyStorage;
+		} else {
+			buffer_layout.type = WGPUBufferBindingType_Storage;
+		}
+		layout_entry.buffer = buffer_layout;
+		binding_num++;
+	}
+	for (auto tex : m_Textures) {
+		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		layout_entry.nextInChain = nullptr;
+		layout_entry.binding = binding_num;
+		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+		//layout_entry.visibility = WGPUShaderStage_Fragment;
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.textureView = tex->GetTextureView();
+
+		WGPUTextureBindingLayout buff_texture;
+		buff_texture.nextInChain = nullptr;
+		buff_texture.multisampled = false;
+		buff_texture.viewDimension = tex->GetViewDimension();
+		buff_texture.sampleType = WGPUTextureSampleType_Float;
+
+		layout_entry.texture = buff_texture;
+		binding_num++;
+	}
+	for (auto sampler : m_Samplers) {
+		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		layout_entry.nextInChain = nullptr;
+		layout_entry.binding = binding_num;
+		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+		//layout_entry.visibility = WGPUShaderStage_Fragment;
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.sampler = sampler->Get();
+
+		WGPUSamplerBindingLayout buff_sampler;
+		buff_sampler.nextInChain = nullptr;
+		buff_sampler.type = WGPUSamplerBindingType_Filtering;
+
+		layout_entry.sampler = buff_sampler;
+		binding_num++;
+	}
+
+	WGPUBindGroupLayoutDescriptor bgl_desc = {};
+	bgl_desc.entryCount = num_bindings;
+	bgl_desc.entries = &layout_entries[0];
+	WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetDevice(), &bgl_desc);
+
+	// pipeline layout (used by the render pipeline, released after its creation)
+	WGPUPipelineLayoutDescriptor layout_desc = {};
+	layout_desc.bindGroupLayoutCount = 1;
+	layout_desc.bindGroupLayouts = &bind_group_layout;
+	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetDevice(), &layout_desc);
+
+	// describe buffer layouts
+	WGPUVertexAttribute vertAttrs[1] = {};
+	vertAttrs[0].format = WGPUVertexFormat_Float32x2;
+	vertAttrs[0].offset = 0;
+	vertAttrs[0].shaderLocation = 0;
+	WGPUVertexBufferLayout vertexBufferLayout = {};
+	vertexBufferLayout.arrayStride = 2 * sizeof(float);
+	vertexBufferLayout.attributeCount = 1;
+	vertexBufferLayout.attributes = vertAttrs;
+
+	// Fragment state
+	WGPUBlendState blend = {};
+	blend.color.operation = WGPUBlendOperation_Add;
+	blend.color.srcFactor = WGPUBlendFactor_One;
+	blend.color.dstFactor = WGPUBlendFactor_One;
+	blend.alpha.operation = WGPUBlendOperation_Add;
+	blend.alpha.srcFactor = WGPUBlendFactor_One;
+	blend.alpha.dstFactor = WGPUBlendFactor_One;
+
+	WGPUColorTargetState colorTarget = {};
+	colorTarget.format = WGPUTextureFormat_BGRA8Unorm;
+
+	colorTarget.blend = &blend;
+	colorTarget.writeMask = WGPUColorWriteMask_All;
+
+	WGPUDepthStencilState depthState = {};
+	depthState.depthCompare = WGPUCompareFunction_Less;
+	depthState.depthWriteEnabled = true;
+	depthState.format = WGPUTextureFormat_Depth24Plus;
+	depthState.stencilReadMask = 0;
+	depthState.stencilWriteMask = 0;
+	depthState.stencilFront.compare = WGPUCompareFunction_Always;
+	depthState.stencilBack.compare = WGPUCompareFunction_Always;
+
+	{
+		WGPUFragmentState fragment = {};
+		fragment.module = shader;
+		fragment.entryPoint = "frag_main";
+		fragment.targetCount = 1;
+		fragment.targets = &colorTarget;
+
+		WGPURenderPipelineDescriptor desc = {};
+		desc.fragment = &fragment;
+		desc.depthStencil = &depthState;
+
+		// Other state
+		desc.layout = pipelineLayout;
+		//desc.depthStencil = nullptr;
+
+		desc.vertex.module = shader;
+		desc.vertex.entryPoint = "vertex_main";
+		desc.vertex.bufferCount = 1;//0;
+		desc.vertex.buffers = &vertexBufferLayout;
+
+		desc.multisample.count = 1;
+		desc.multisample.mask = 0xFFFFFFFF;
+		desc.multisample.alphaToCoverageEnabled = false;
+
+		desc.primitive.frontFace = WGPUFrontFace_CCW;
+		desc.primitive.cullMode = WGPUCullMode_None;
+		desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+		desc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
+
+		m_Pipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetDevice(), &desc);
+	}
+	wgpuPipelineLayoutRelease(pipelineLayout);
+
+	WGPUBindGroupDescriptor bind_group_desc = {};
+	bind_group_desc.layout = bind_group_layout;
+	bind_group_desc.entryCount = num_bindings;
+	bind_group_desc.entries = &entries[0];
+
+	m_BindGroup = wgpuDeviceCreateBindGroup(Core::Singleton().GetDevice(), &bind_group_desc);
 }
 
 } // namespace Neshny
