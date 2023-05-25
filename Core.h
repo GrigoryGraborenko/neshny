@@ -465,6 +465,8 @@ public:
 	inline WGPUDevice					GetDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetQueue				( void ) { return m_Queue; }
 	static WebGPUShader*				GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static WebGPUSampler*				GetSampler				( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
+
 #endif
 
 	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -584,6 +586,7 @@ private:
 	GLShader*							IGetComputeShader		( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
 	WebGPUShader*						IGetShader				( QString name, QString insertion );
+	WebGPUSampler*						IGetSampler				( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 #endif
 
 	template<class T, typename P = T::Params>
@@ -630,6 +633,7 @@ private:
 	std::map<QString, GLShader*>		m_ComputeShaders;
 #elif defined(NESHNY_WEBGPU)
 	std::map<QString, WebGPUShader*>	m_Shaders;
+	std::vector<WebGPUSampler*>			m_Samplers;
 #endif
 	std::map<QString, ResourceContainer>	m_Resources;
 	qint64									m_MemoryAllocated = 0;

@@ -224,4 +224,42 @@ WebGPUTextureView::~WebGPUTextureView(void) {
 	wgpuTextureViewRelease(m_View);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy) :
+	m_Mode				( mode )
+	,m_Filter			( filter )
+	,m_LinearMipMaps	( linear_mipmaps )
+	,m_MaxAnisotropy	( max_anisotropy )
+{
+	WGPUSamplerDescriptor desc;
+	desc.nextInChain = nullptr;
+	desc.label = nullptr;
+	desc.compare = WGPUCompareFunction_Undefined;
+	desc.addressModeU = mode;
+	desc.addressModeV = mode;
+	desc.addressModeW = mode;
+	desc.lodMinClamp = 0;
+	desc.lodMaxClamp = 32;
+	desc.magFilter = filter;
+	desc.minFilter = filter;
+	desc.maxAnisotropy = 1;
+
+	// odd inconsistency between web and native - web is probably more logical here
+#ifdef __EMSCRIPTEN__
+	desc.mipmapFilter = linear_mipmaps ? WGPUFilterMode_Linear : WGPUFilterMode_Nearest;
+#else
+	desc.mipmapFilter = linear_mipmaps ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
+#endif
+
+	m_Sampler = wgpuDeviceCreateSampler(Core::Singleton().GetDevice(), &desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPUSampler::~WebGPUSampler(void) {
+	wgpuSamplerRelease(m_Sampler);
+}
+
 } // namespace Neshny

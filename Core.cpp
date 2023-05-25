@@ -877,6 +877,24 @@ WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 	}
 	return new_shader;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPUSampler* Core::IGetSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy) {
+	for (auto existing : m_Samplers) {
+		if (
+			(mode == existing->GetMode()) &&
+			(filter == existing->GetFilter()) &&
+			(linear_mipmaps == existing->GetLinearMipMaps()) &&
+			(max_anisotropy == existing->GetMaxAnisotropy())
+		) {
+			return existing;
+		}
+	}
+	WebGPUSampler* new_sampler = new WebGPUSampler(mode, filter, linear_mipmaps, max_anisotropy);
+	m_Samplers.push_back(new_sampler);
+	return new_sampler;
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -132,8 +132,37 @@ public:
 													WebGPUTextureView		( WGPUTexture texture, WGPUTextureViewDimension dimension, WGPUTextureFormat format, WGPUTextureAspect aspect, int layers, int mipmaps );
 			 										~WebGPUTextureView		( void );
 
+	inline WGPUTextureView							Get						( void ) const { return m_View; }
+
+protected:
+
 	WGPUTextureView									m_View = nullptr;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class WebGPUSampler {
+
+public:
+
+													WebGPUSampler		( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 );
+			 										~WebGPUSampler		( void );
+
+	inline WGPUSampler								Get					( void ) const { return m_Sampler; }
+
+	inline WGPUAddressMode							GetMode				( void ) const { return m_Mode; }
+	inline WGPUFilterMode							GetFilter			( void ) const { return m_Filter; }
+	inline bool										GetLinearMipMaps	( void ) const { return m_LinearMipMaps; }
+	inline unsigned int								GetMaxAnisotropy	( void ) const { return m_MaxAnisotropy; }
+
+protected:
+
+	WGPUSampler										m_Sampler = nullptr;
+	WGPUAddressMode									m_Mode;
+	WGPUFilterMode									m_Filter;
+	bool											m_LinearMipMaps;
+	unsigned int									m_MaxAnisotropy;
+};
 
 } // namespace Neshny
