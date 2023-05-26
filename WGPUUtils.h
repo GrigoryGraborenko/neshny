@@ -102,6 +102,38 @@ protected:
 
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class WebGPURenderBuffer {
+
+public:
+
+	struct VertexFormatItem {
+		WGPUVertexFormat	p_Type;
+		int					p_Size;
+		QString				p_TypeName;
+	};
+
+
+													WebGPURenderBuffer		( WGPUVertexFormat attribute, std::vector<float> vertex_data, std::vector<uint16_t> index_data = {} ): WebGPURenderBuffer(std::vector<WGPUVertexFormat>{ attribute  }, vertex_data, index_data) {}
+													WebGPURenderBuffer		( std::vector<WGPUVertexFormat> attributes, std::vector<float> vertex_data, std::vector<uint16_t> index_data );
+
+			 										~WebGPURenderBuffer		( void );
+
+	inline const std::vector<VertexFormatItem>&		GetFormat				( void ) { return m_Attributes; }
+	inline WGPUBuffer								GetVertex				( void ) { return m_VertexBuffer->Get(); }
+	inline WGPUBuffer								GetIndex				( void ) { return m_IndexBuffer ? m_IndexBuffer->Get() : nullptr; }
+	inline WebGPUBuffer*							GetVertexBuffer			( void ) { return m_VertexBuffer; }
+	inline WebGPUBuffer*							GetIndexBuffer			( void ) { return m_IndexBuffer; }
+
+protected:
+
+	WebGPUBuffer*									m_VertexBuffer = nullptr;
+	WebGPUBuffer*									m_IndexBuffer = nullptr;
+	std::vector<VertexFormatItem>					m_Attributes;
+};
+
 constexpr int AUTO_MIPMAPS = 65536;
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -227,22 +259,20 @@ public:
 		bool					p_ReadOnly = true;
 	};
 
-								WebGPURenderPipeline	( QString shader ): m_ShaderName(shader) {}
+								WebGPURenderPipeline	( void ) {}
 								~WebGPURenderPipeline	( void );
 
 	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, bool read_only = false ) { m_Buffers.push_back({ buffer, read_only }); return *this; }
 	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						Finalize				( void );
+	void						Finalize				( QString shader_name, WebGPURenderBuffer* render_buffer );
 
 	inline WGPURenderPipeline	GetPipeline				( void ) { return m_Pipeline; }
 	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
 
 protected:
 
-
-	QString						m_ShaderName;
 	std::vector<Buffer>			m_Buffers;
 	std::vector<const WebGPUTexture*>	m_Textures;
 	std::vector<const WebGPUSampler*>	m_Samplers;

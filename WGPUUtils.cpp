@@ -159,6 +159,64 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+WebGPURenderBuffer::WebGPURenderBuffer(std::vector<WGPUVertexFormat> attributes, std::vector<float> vertex_data, std::vector<uint16_t> index_data) {
+
+	for (auto attr: attributes) {
+
+		VertexFormatItem item;
+		item.p_Type = attr;
+
+		switch (attr) {
+			case WGPUVertexFormat_Uint8x2: item.p_Size = sizeof(char) * 2; break;
+			case WGPUVertexFormat_Uint8x4: item.p_Size = sizeof(char) * 4; break;
+			case WGPUVertexFormat_Sint8x2: item.p_Size = sizeof(char) * 2; break;
+			case WGPUVertexFormat_Sint8x4: item.p_Size = sizeof(char) * 4; break;
+			case WGPUVertexFormat_Unorm8x2: item.p_Size = sizeof(char) * 2; break;
+			case WGPUVertexFormat_Unorm8x4: item.p_Size = sizeof(char) * 4; break;
+			case WGPUVertexFormat_Snorm8x2: item.p_Size = sizeof(char) * 2; break;
+			case WGPUVertexFormat_Snorm8x4: item.p_Size = sizeof(char) * 4; break;
+			case WGPUVertexFormat_Uint16x2: item.p_Size = sizeof(short) * 2; break;
+			case WGPUVertexFormat_Uint16x4: item.p_Size = sizeof(short) * 4; break;
+			case WGPUVertexFormat_Sint16x2: item.p_Size = sizeof(short) * 2; break;
+			case WGPUVertexFormat_Sint16x4: item.p_Size = sizeof(short) * 4; break;
+			case WGPUVertexFormat_Unorm16x2: item.p_Size = sizeof(short) * 2; break;
+			case WGPUVertexFormat_Unorm16x4: item.p_Size = sizeof(short) * 4; break;
+			case WGPUVertexFormat_Snorm16x2: item.p_Size = sizeof(short) * 2; break;
+			case WGPUVertexFormat_Snorm16x4: item.p_Size = sizeof(short) * 4; break;
+			case WGPUVertexFormat_Float16x2: item.p_Size = sizeof(short) * 2; break;
+			case WGPUVertexFormat_Float16x4: item.p_Size = sizeof(short) * 4; break;
+			case WGPUVertexFormat_Float32: item.p_Size = sizeof(float) * 1; break;
+			case WGPUVertexFormat_Float32x2: item.p_Size = sizeof(float) * 2; break;
+			case WGPUVertexFormat_Float32x3: item.p_Size = sizeof(float) * 3; break;
+			case WGPUVertexFormat_Float32x4: item.p_Size = sizeof(float) * 4; break;
+			case WGPUVertexFormat_Uint32: item.p_Size = sizeof(int) * 1; break;
+			case WGPUVertexFormat_Uint32x2: item.p_Size = sizeof(int) * 2; break;
+			case WGPUVertexFormat_Uint32x3: item.p_Size = sizeof(int) * 3; break;
+			case WGPUVertexFormat_Uint32x4: item.p_Size = sizeof(int) * 4; break;
+			case WGPUVertexFormat_Sint32: item.p_Size = sizeof(int) * 1; break;
+			case WGPUVertexFormat_Sint32x2: item.p_Size = sizeof(int) * 2; break;
+			case WGPUVertexFormat_Sint32x3: item.p_Size = sizeof(int) * 3; break;
+			case WGPUVertexFormat_Sint32x4: item.p_Size = sizeof(int) * 4; break;
+		}
+		m_Attributes.push_back(item);
+	}
+
+	m_VertexBuffer = new WebGPUBuffer(WGPUBufferUsage_Vertex, (unsigned char*)&vertex_data[0], sizeof(float) * (int)vertex_data.size());
+	if (!index_data.empty()) {
+		m_IndexBuffer = new WebGPUBuffer(WGPUBufferUsage_Index, (unsigned char*)&index_data[0], sizeof(uint16_t) * (int)index_data.size());
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPURenderBuffer::~WebGPURenderBuffer(void) {
+	delete m_VertexBuffer;
+	delete m_IndexBuffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 WebGPUTexture::~WebGPUTexture(void) {
 	if (m_View) {
 		wgpuTextureViewRelease(m_View);
@@ -365,9 +423,9 @@ WebGPURenderPipeline::~WebGPURenderPipeline(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPURenderPipeline::Finalize() {
+void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* render_buffer) {
 
-	WGPUShaderModule shader = Core::GetShader(m_ShaderName)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
 
 	// bind group layout (used by both the pipeline layout and uniform bind group, released at the end of this function)
 	int binding_num = 0;
@@ -463,14 +521,27 @@ void WebGPURenderPipeline::Finalize() {
 	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetDevice(), &layout_desc);
 
 	// describe buffer layouts
-	WGPUVertexAttribute vertAttrs[1] = {};
-	vertAttrs[0].format = WGPUVertexFormat_Float32x2;
-	vertAttrs[0].offset = 0;
-	vertAttrs[0].shaderLocation = 0;
-	WGPUVertexBufferLayout vertexBufferLayout = {};
-	vertexBufferLayout.arrayStride = 2 * sizeof(float);
-	vertexBufferLayout.attributeCount = 1;
-	vertexBufferLayout.attributes = vertAttrs;
+	WGPUVertexBufferLayout vertex_buffer_layout = {};
+	std::vector<WGPUVertexAttribute> formats;
+	{
+		auto vertex_format = render_buffer->GetFormat();
+		int num_formats = vertex_format.size();
+
+		int stride = 0;
+		formats.resize(num_formats);
+		for(int i = 0; i < num_formats; i++) {
+			auto& item = vertex_format[i];
+			auto& output = formats[i];
+			output.shaderLocation = i;
+			output.offset = stride;
+			output.format = item.p_Type;
+			stride += item.p_Size;
+		}
+		vertex_buffer_layout.arrayStride = stride;
+		vertex_buffer_layout.stepMode = WGPUVertexStepMode_Vertex;
+	}
+	vertex_buffer_layout.attributeCount = (int)formats.size();
+	vertex_buffer_layout.attributes = &formats[0];
 
 	// Fragment state
 	WGPUBlendState blend = {};
@@ -514,7 +585,7 @@ void WebGPURenderPipeline::Finalize() {
 		desc.vertex.module = shader;
 		desc.vertex.entryPoint = "vertex_main";
 		desc.vertex.bufferCount = 1;//0;
-		desc.vertex.buffers = &vertexBufferLayout;
+		desc.vertex.buffers = &vertex_buffer_layout;
 
 		desc.multisample.count = 1;
 		desc.multisample.mask = 0xFFFFFFFF;
