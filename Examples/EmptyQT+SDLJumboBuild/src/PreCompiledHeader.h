@@ -3,6 +3,7 @@
 #pragma once
 
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
+#define SDL_OPENGL_LOOP
 
 #include <QCoreApplication>
 #include <QString>

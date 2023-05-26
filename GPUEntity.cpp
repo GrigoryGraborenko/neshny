@@ -220,7 +220,7 @@ Token RTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_sten
 		m_Height = height;
 		m_CaptureDepthStencil = capture_depth_stencil;
 		if (m_Modes.empty()) {
-			return Token();
+			return Token([](){});
 		}
 		clear = true;
 
@@ -276,7 +276,7 @@ Token RTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_sten
 			bool FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS = (state == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS);
 
 			glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
-			return Token();
+			return Token([](){});
 		}
 	} else {
 		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
