@@ -56,4 +56,32 @@ private:
 
 std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);
 
+////////////////////////////////////////////////////////////////////////////////
+template<typename V>
+bool RaySphere(V sphere_pos, double sphere_rad, V ray_origin, V ray_end, V& hit_pos, double& hit_frac, V* normal = nullptr) {
+
+	V d = ray_end - ray_origin;
+	V f = ray_origin - sphere_pos;
+
+	double sqr_size = sphere_rad * sphere_rad;
+	double a = d | d;
+	double b = 2.0 * (f | d);
+	double c = (f | f) - sqr_size;
+
+	double det = b * b - 4.0 * a * c;
+	if(det < 0.0) {
+		return false;
+	}
+
+	det = sqrt(det);
+	double t = (-b - det) / (2.0 * a); // assume smallest frac - doesn't handle exit point
+	hit_frac = t;
+	hit_pos = d * t + ray_origin;
+
+	if (normal) {
+		*normal = (hit_pos - sphere_pos).NormalizeCopy();
+	}
+	return true;
+}
+
 } // namespace Neshny

@@ -58,7 +58,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 	wgpuShaderModuleGetCompilationInfo(m_Shader, CompilationInfoCallback, this);
 #endif
 
-	return true;
+	return m_Errors.size() == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

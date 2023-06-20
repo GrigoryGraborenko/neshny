@@ -219,6 +219,8 @@ struct BaseVec2 {
 
 	inline T			LengthSquared	( void ) const { return x * x + y * y; }
 	inline T			Length			( void ) const { return sqrt(x * x + y * y); }
+	inline BaseVec2<T>	Perpendicular	( void ) const { return BaseVec2<T>(y, -x); }
+
 	inline void			Normalize		( void ) {
 		T dist = Length();
 		dist = dist == 0 ? ALMOST_ZERO : dist;
@@ -235,6 +237,13 @@ struct BaseVec2 {
 		}
 		return BaseVec2<T>(x, new_val);
 	}
+	inline T			GetAxis			( Axis axis ) const {
+		if (axis == Axis::X) {
+			return x;
+		}
+		return y;
+	}
+
 	inline bool			Nearby			( const BaseVec2<T>& other, T tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance); };
 	inline T			MinVal			( void ) const { return std::min(x, y); }
 	inline T			MaxVal			( void ) const { return std::max(x, y); }

@@ -85,6 +85,19 @@ void Shuffle(std::vector<T>& vect) {
 	vect = std::move(output);
 }
 ////////////////////////////////////////////////////////////////////////////////
+template <class T>
+T Modulo(T x, T y) {
+	return x - y * floor(x / y);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template <class T>
+T RadiansDiff(T rad_a, T rad_b) {
+	T diff = Modulo(rad_b - rad_a + TWOPI + PI, TWOPI) - PI;
+	return diff;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 uint64_t TimeSinceEpochMilliseconds();
 
 namespace Neshny {
