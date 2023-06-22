@@ -117,6 +117,7 @@ public:
 			return false;
 		}
 		m_Texture.Init2D(im.width(), im.height());
+		auto sync_token = Core::Singleton().SyncWithMainThread();
 		m_Texture.CopyData2D((unsigned char*)im.bits(), depth, im.bytesPerLine());
 		return true;
 	}
@@ -152,6 +153,7 @@ public:
 			if (i == 0) {
 				m_Texture.InitCubeMap(im.width(), im.height());
 			}
+			auto sync_token = Core::Singleton().SyncWithMainThread();
 			m_Texture.CopyDataLayer(i, (unsigned char*)im.bits(), 4, im.bytesPerLine(), false);
 		}
 		return true;
@@ -205,6 +207,7 @@ public:
 
 		m_Texture.Init2DArray(m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
 
+		auto sync_token = Core::Singleton().SyncWithMainThread();
 		for (int i = 0; i < m_TileCount; i++) {
 			int x = (i % num_wid) * m_Params.p_TileWidth;
 			int y = (i / num_hei) * m_Params.p_TileHeight;

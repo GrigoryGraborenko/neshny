@@ -140,6 +140,8 @@ void WorkerThreadPool::Sync(void) {
 ////////////////////////////////////////////////////////////////////////////////
 Core::Core(void) {
 
+	m_MainThreadId = std::this_thread::get_id();
+
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
 
@@ -163,6 +165,7 @@ Core::~Core(void) {
 		delete resource.second.m_Resource;
 	}
 	m_Resources.clear();
+	m_SyncLock.unlock();
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::WriteOnly)) {
@@ -176,6 +179,25 @@ Core::~Core(void) {
 		//QDataStream out(&file);
 		//out << m_Interface;
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Token Core::SyncWithMainThread(void) {
+
+#ifdef __EMSCRIPTEN__
+	bool ignore = true;
+#else
+	bool ignore = m_MainThreadId == std::this_thread::get_id();
+#endif
+	if (ignore) {
+		return Token([this]() {}, true);
+	}
+	m_SyncsRequested.fetch_add(1, std::memory_order_relaxed);
+	m_SyncLock.lock();
+	return Token([this] () {
+		m_SyncsRequested.fetch_add(-1, std::memory_order_relaxed);
+		m_SyncLock.unlock();
+	}, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,6 +276,15 @@ void Core::LoopInner(IEngine* engine, int width, int height) {
 #endif
 
 	engine->Render(width, height);
+
+	// open up lock for sync across resource threads
+	int requests = m_SyncsRequested.load(std::memory_order_relaxed);
+	if(requests > 0) {
+		DebugTiming dt0("Core::SyncRequest");
+		m_SyncLock.unlock();
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		m_SyncLock.lock();
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,6 +338,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
+	m_SyncLock.lock();
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();
@@ -391,16 +423,153 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #ifdef SDL_WEBGPU_LOOP
 
 ////////////////////////////////////////////////////////////////////////////////
+void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
+#ifdef __EMSCRIPTEN__
+	m_Device = emscripten_webgpu_get_device();
+	m_Queue = wgpuDeviceGetQueue(m_Device);
+
+	WGPUSurfaceDescriptorFromCanvasHTMLSelector canvDesc = {};
+	canvDesc.chain.sType = WGPUSType_SurfaceDescriptorFromCanvasHTMLSelector;
+	canvDesc.selector = "canvas";
+
+	WGPUSurfaceDescriptor surfDesc = {};
+	surfDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&canvDesc);
+
+	m_Surface = wgpuInstanceCreateSurface(nullptr, &surfDesc);
+#else
+
+	dawn::native::Instance instance;
+	instance.DiscoverDefaultAdapters();
+
+	// Get an adapter for the backend to use, and create the device.
+	dawn::native::Adapter backendAdapter;
+	{
+		std::vector<dawn::native::Adapter> adapters = instance.GetAdapters();
+		auto adapterIt = std::find_if(adapters.begin(), adapters.end(),
+			[this, backend](const dawn::native::Adapter adapter) -> bool {
+				wgpu::AdapterProperties properties;
+				adapter.GetProperties(&properties);
+
+				if (backend == WebGPUNativeBackend::D3D12) {
+					return properties.backendType == wgpu::BackendType::D3D12;
+				} else if (backend == WebGPUNativeBackend::Metal) {
+					return properties.backendType == wgpu::BackendType::Metal;
+				} else if (backend == WebGPUNativeBackend::Vulkan) {
+					return properties.backendType == wgpu::BackendType::Vulkan;
+				} else if (backend == WebGPUNativeBackend::OpenGL) {
+					return properties.backendType == wgpu::BackendType::OpenGL;
+				} else if (backend == WebGPUNativeBackend::OpenGLES) {
+					return properties.backendType == wgpu::BackendType::OpenGLES;
+				}
+				return false;
+				//return properties.backendType == wgpu::BackendType::D3D12;
+			});
+		ASSERT(adapterIt != adapters.end());
+		backendAdapter = *adapterIt;
+	}
+
+	WGPUSupportedLimits supported;
+	supported.nextInChain = nullptr;
+	bool limits_success = backendAdapter.GetLimits(&supported);
+	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
+
+	std::vector<const char*> enableToggleNames;
+	std::vector<const char*> disabledToggleNames;
+	//for (const std::string& toggle : enableToggles) {
+	//	enableToggleNames.push_back(toggle.c_str());
+	//}
+
+	//for (const std::string& toggle : disableToggles) {
+	//	disabledToggleNames.push_back(toggle.c_str());
+	//}
+	WGPUDawnTogglesDescriptor toggles;
+	toggles.chain.sType = WGPUSType_DawnTogglesDescriptor;
+	toggles.chain.next = nullptr;
+	toggles.enabledToggles = enableToggleNames.data();
+	toggles.enabledTogglesCount = static_cast<uint32_t>(enableToggleNames.size());
+	toggles.disabledToggles = disabledToggleNames.data();
+	toggles.disabledTogglesCount = static_cast<uint32_t>(disabledToggleNames.size());
+
+	WGPUDeviceDescriptor deviceDesc = {};
+	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
+
+	WGPURequiredLimits requiredLimits;
+	requiredLimits.nextInChain = nullptr;
+	requiredLimits.limits = supported.limits;
+	deviceDesc.nextInChain = nullptr;
+	deviceDesc.requiredFeatures = nullptr;
+	deviceDesc.requiredFeaturesCount = 0;
+	deviceDesc.label = nullptr;
+	deviceDesc.requiredLimits = &requiredLimits;
+
+	m_Device = backendAdapter.CreateDevice(&deviceDesc);
+	DawnProcTable backendProcs = dawn::native::GetProcs();
+	dawnProcSetProcs(&backendProcs);
+
+	static auto cCallback = [](WGPUErrorType type, char const* message, void* userdata) -> void {
+		printf("Uncaptured error: %s\n", message);
+	};
+	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
+
+	// WINDOWS SPECIFIC STUFF
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(window, &wmInfo);
+	HWND hwnd = wmInfo.info.win.window;
+
+	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
+	surfaceChainedDesc->hwnd = hwnd;
+	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+
+	WGPUSurfaceDescriptor surfaceDesc;
+	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
+	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
+	m_Queue = wgpuDeviceGetQueue(m_Device);
+
+#endif
+	SetResolution(width, height);
+	SyncResolution();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::SyncResolution(void) {
+
+	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight) && m_SwapChain) {
+		return;
+	}
+#pragma msg("delete old shit")
+
+	WGPUSwapChainDescriptor swapChainDesc = {};
+	swapChainDesc.usage = WGPUTextureUsage_RenderAttachment;
+	swapChainDesc.format = WGPUTextureFormat_BGRA8Unorm;
+
+	swapChainDesc.width = m_RequestedWidth;
+	swapChainDesc.height = m_RequestedHeight;
+	swapChainDesc.presentMode = WGPUPresentMode_Fifo;
+	m_SwapChain = wgpuDeviceCreateSwapChain(m_Device, m_Surface, &swapChainDesc);
+
+	m_CurrentWidth = m_RequestedWidth;
+	m_CurrentHeight = m_RequestedHeight;
+
+	delete m_DepthTex;
+	m_DepthTex = new WebGPUTexture();
+	m_DepthTex->InitDepth(m_RequestedWidth, m_RequestedHeight);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Core::SDLLoopInner() {
 	qint64 loop_nanos = DebugTiming::MainLoopTimer();
 #ifdef NESHNY_EDITOR_VIEWERS
 	InfoViewer::LoopTime(loop_nanos);
 #endif
 
-	//if (is_mouse_relative ^ thing->IsMouseRelative()) {
-	//	is_mouse_relative = !is_mouse_relative;
-	//	SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
-	//}
+#ifdef NESHNY_WEBGPU
+	WGPUTextureView view = GetCurrentSwapTextureView();
+	if (!view) {
+		LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
+		return;
+	}
+#endif
 
 /*
 	if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
@@ -443,7 +612,7 @@ void Core::SDLLoopInner() {
 	if (m_Engine->Tick(nanos, m_Ticks)) {
 		m_Ticks++;
 	}
-	m_Engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
+	m_Engine->ManageResources(GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
 
 	///////////////////////////////////////////// render engine
 
@@ -453,15 +622,70 @@ void Core::SDLLoopInner() {
 
 	ImGui::NewFrame();
 	LoopInner(m_Engine, width, height);
-	// you need to call LoopFinishImGui from within engine render
+	LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
 
 	m_ResourceThreads.Sync();
+
+#ifdef NESHNY_WEBGPU
+
+	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(GetWebGPUDevice(), nullptr); // create encoder
+
+	WGPURenderPassColorAttachment colorDesc = {};
+	colorDesc.view = view;
+	//colorDesc.loadOp = WGPULoadOp_Clear;
+	colorDesc.loadOp = WGPULoadOp_Load;
+	colorDesc.storeOp = WGPUStoreOp_Store;
+	colorDesc.clearValue.r = 0.0f;
+	colorDesc.clearValue.g = 0.0f;
+	colorDesc.clearValue.b = 0.0f;
+	colorDesc.clearValue.a = 1.0f;
+	WGPURenderPassDepthStencilAttachment depthDesc = {};
+	depthDesc.view = m_DepthTex->GetTextureView();
+	depthDesc.depthClearValue = 1.0f;
+	depthDesc.depthLoadOp = WGPULoadOp_Clear;
+	depthDesc.depthStoreOp = WGPUStoreOp_Store;
+	depthDesc.depthReadOnly = false;
+	depthDesc.stencilClearValue = 0;
+	depthDesc.stencilLoadOp = WGPULoadOp_Undefined;
+	depthDesc.stencilStoreOp = WGPUStoreOp_Undefined;
+	depthDesc.stencilReadOnly = true;
+
+	WGPURenderPassDescriptor renderPass = {};
+	renderPass.colorAttachmentCount = 1;
+	renderPass.colorAttachments = &colorDesc;
+	renderPass.depthStencilAttachment = &depthDesc;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPass);	// create pass
+
+	auto draw_data = ImGui::GetDrawData();
+	if (draw_data) {
+		ImGui_ImplWGPU_RenderDrawData(draw_data, pass);
+	}
+
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+
+	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);				// create commands
+	wgpuCommandEncoderRelease(encoder);														// release encoder
+	wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+	wgpuCommandBufferRelease(commands);														// release commands
+
+	//wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), ErrorCallback, nullptr);
+
+	wgpuTextureViewRelease(view);													// release textureView
+#ifndef __EMSCRIPTEN__
+	wgpuSwapChainPresent(Core::Singleton().GetWebGPUSwapChain());
+#endif
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
+bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height) {
 	m_Window = window;
 	m_Engine = engine;
+	InitWebGPU(backend, m_Window, width, height);
+
 	if (!LoopInit(engine)) {
 		return false;
 	}
@@ -472,17 +696,13 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	ImGui_ImplSDL2_InitForD3D(window);
 	ImGui_ImplWGPU_Init(m_Device, 3, WGPUTextureFormat_BGRA8Unorm, WGPUTextureFormat_Depth24Plus);
 
-	//bool is_mouse_relative = true;
-	//SDL_SetRelativeMouseMode(is_mouse_relative ? SDL_TRUE : SDL_FALSE);
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 
 	m_FrameTimer.restart();
-	const double inv_nano = 1.0 / 1000000000;
-
-	int unfocus_timeout = 0;
 
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
+	m_SyncLock.lock();
 
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop([]() {
@@ -492,8 +712,8 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	while (!engine->ShouldExit()) {
 		SDLLoopInner();
 	}
-	qDebug() << "Finished";
 #endif
+	qDebug() << "Finished";
 
 	return true;
 }
@@ -513,6 +733,7 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 
 	ImGuiIO& io = ImGui::GetIO();
 	DebugTiming::MainLoopTimer(); // init to zero
+	m_SyncLock.lock();
 	while (!engine->ShouldExit()) {
 
 		qint64 loop_nanos = DebugTiming::MainLoopTimer();

@@ -437,54 +437,64 @@ public:
 		QString			m_Error;
 	};
 
-	inline static Core&					Singleton				( void ) { static Core core; return core; }
+	inline static Core&					Singleton					( void ) { static Core core; return core; }
 
-	void								SetEmbeddableFileLoader	( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
-	inline void							SetTicksOverride		( int ticks ) { m_Ticks = ticks; }
+	void								SetEmbeddableFileLoader		( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
+	inline void							SetTicksOverride			( int ticks ) { m_Ticks = ticks; }
+	Token								SyncWithMainThread			( void );
 
-	bool								LoopInit				( IEngine* engine );
-	void								LoopInner				( IEngine* engine, int width, int height );
-	void								LoopFinishImGui			( IEngine* engine, int width, int height );
+	bool								LoopInit					( IEngine* engine );
+	void								LoopInner					( IEngine* engine, int width, int height );
+	void								LoopFinishImGui				( IEngine* engine, int width, int height );
 
 #ifdef SDL_OPENGL_LOOP
-	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
+	bool								SDLLoop						( SDL_Window* window, IEngine* engine );
 #endif
 #ifdef QT_LOOP
-	bool								QTLoop					( QOpenGLWindow* window, IEngine* engine );
+	bool								QTLoop						( QOpenGLWindow* window, IEngine* engine );
 #endif
 #ifdef SDL_WEBGPU_LOOP
-	void								SDLLoopInner			( void );
-	bool								SDLLoop					( SDL_Window* window, IEngine* engine );
+	enum class WebGPUNativeBackend {
+		D3D12, Metal, Vulkan, OpenGL, OpenGLES
+	};
+	void								SDLLoopInner				( void );
+	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height );
+	inline void							SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
+	void								SyncResolution				( void );
 #endif
 
 #if defined(NESHNY_GL)
-	static GLShader*					GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
-	static GLShader*					GetComputeShader		( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
-	static GLBuffer*					GetBuffer				( QString name ) { return Singleton().IGetBuffer(name); }
+	static GLShader*					GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static GLShader*					GetComputeShader			( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
+	static GLBuffer*					GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 #elif defined(NESHNY_WEBGPU)
-	inline void							SetupWebGPU				( WGPUDevice device, WGPUQueue queue ) { m_Device = device; m_Queue = queue; }
-	inline WGPUDevice					GetDevice				( void ) { return m_Device; }
-	inline WGPUQueue					GetQueue				( void ) { return m_Queue; }
-	static WebGPUShader*				GetShader				( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
-	static WebGPUSampler*				GetSampler				( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
+	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height );
+	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
+	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
+	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
+	inline WGPUSurface					GetWebGPUSurface			( void ) { return m_Surface; }
+	inline WGPUSwapChain				GetWebGPUSwapChain			( void ) { return m_SwapChain; }
+	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
+	static WebGPUShader*				GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 
 #endif
 
 	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource(QString path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(path, params); }
 
-	static inline bool					IsBufferEnabled			( QString name ) { return Singleton().IIsBufferEnabled(name); }
-	static inline const InterfaceCore&	GetInterfaceData		( void ) { return Singleton().m_Interface; }
-	static inline const std::map<QString, ResourceContainer>	GetResources	( void ) { return Singleton().m_Resources; }
+	static inline bool					IsBufferEnabled				( QString name ) { return Singleton().IIsBufferEnabled(name); }
+	static inline const InterfaceCore&	GetInterfaceData			( void ) { return Singleton().m_Interface; }
+	static inline const std::map<QString, ResourceContainer> GetResources	( void ) { return Singleton().m_Resources; }
 
-	void								UnloadAllShaders		( void );
-	void								UnloadAllResources		( void );
+	void								UnloadAllShaders			( void );
+	void								UnloadAllResources			( void );
 
 #ifdef NESHNY_GL
-	static void							DispatchMultiple		( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
+	static void							DispatchMultiple			( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
 #endif
 	template <class T>
-	static bool							SaveBinary				( const T& item, QString filename ) {
+	static bool							SaveBinary					( const T& item, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::WriteOnly)) {
 			return false;
@@ -494,7 +504,7 @@ public:
 		return true;
 	}
 	template <class T>
-	static bool							LoadBinary				( T& item, QString filename ) {
+	static bool							LoadBinary					( T& item, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::ReadOnly)) {
 			return false;
@@ -505,7 +515,7 @@ public:
 	}
 
 	template <class T>
-	static bool							LoadJSON				( std::vector<T>& items, QString filename ) {
+	static bool							LoadJSON					( std::vector<T>& items, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::ReadOnly)) {
 			return false;
@@ -515,7 +525,7 @@ public:
 		return !err;
 	}
 	template <class T>
-	static bool							LoadJSON				( T& item, QString filename ) {
+	static bool							LoadJSON					( T& item, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::ReadOnly)) {
 			return false;
@@ -526,7 +536,7 @@ public:
 	}
 
 	template <class T>
-	static bool							SaveJSON				( std::vector<T>& items, QString filename ) {
+	static bool							SaveJSON					( std::vector<T>& items, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::WriteOnly)) {
 			return false;
@@ -539,7 +549,7 @@ public:
 		return file.write(data) == data.size();
 	}
 	template <class T>
-	static bool							SaveJSON				( T& item, QString filename ) {
+	static bool							SaveJSON					( T& item, QString filename ) {
 		QFile file(filename);
 		if (!file.open(QIODevice::WriteOnly)) {
 			return false;
@@ -552,46 +562,46 @@ public:
 		return file.write(data) == data.size();
 	}
 
-	inline static void					RenderEditor			( void ) { Singleton().IRenderEditor(); }
-	inline static int					GetTicks				( void ) { return Singleton().m_Ticks; }
+	inline static void					RenderEditor				( void ) { Singleton().IRenderEditor(); }
+	inline static int					GetTicks					( void ) { return Singleton().m_Ticks; }
 
 #if defined(NESHNY_GL)
-	inline const std::map<QString, GLShader*>&	GetShaders				( void ) { return m_Shaders; }
-	inline const std::map<QString, GLShader*>&	GetComputeShaders		( void ) { return m_ComputeShaders; }
+	inline const std::map<QString, GLShader*>&	GetShaders			( void ) { return m_Shaders; }
+	inline const std::map<QString, GLShader*>&	GetComputeShaders	( void ) { return m_ComputeShaders; }
 
-	int									CreateGLContext			( void );
-	bool 								ActivateGLContext		( int index );
-	void 								DeleteGLContext			( int index );
-	static void							OpenGLSync				( void );
+	int									CreateGLContext				( void );
+	bool 								ActivateGLContext			( int index );
+	void 								DeleteGLContext				( int index );
+	static void							OpenGLSync					( void );
 #elif defined(NESHNY_WEBGPU)
-	inline const std::map<QString, WebGPUShader*>& GetShaders(void) { return m_Shaders; }
+	inline const std::map<QString, WebGPUShader*>& GetShaders		( void ) { return m_Shaders; }
 #endif
 
-	inline qint64						GetMemoryAllocated		( void ) { return m_MemoryAllocated; }
-	inline qint64						GetGPUMemoryAllocated	( void ) { return m_GPUMemoryAllocated; }
+	inline qint64						GetMemoryAllocated			( void ) { return m_MemoryAllocated; }
+	inline qint64						GetGPUMemoryAllocated		( void ) { return m_GPUMemoryAllocated; }
 
 	ResourceManagementToken				GetResourceManagementToken ( void );
 
 #ifdef SDL_h_
-	SDL_Window*							GetSDLWindow			( void ) { return m_Window; }
+	SDL_Window*							GetSDLWindow				( void ) { return m_Window; }
 #endif
 
 private:
 
-										Core					( void );
-										~Core					( void );
+										Core						( void );
+										~Core						( void );
 
 #if defined(NESHNY_GL)
-	GLShader*							IGetShader				( QString name, QString insertion );
-	GLBuffer*							IGetBuffer				( QString name );
-	GLShader*							IGetComputeShader		( QString name, QString insertion );
+	GLShader*							IGetShader					( QString name, QString insertion );
+	GLBuffer*							IGetBuffer					( QString name );
+	GLShader*							IGetComputeShader			( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
-	WebGPUShader*						IGetShader				( QString name, QString insertion );
-	WebGPUSampler*						IGetSampler				( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
+	WebGPUShader*						IGetShader					( QString name, QString insertion );
+	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 #endif
 
 	template<class T, typename P = T::Params>
-	inline const ResourceResult<T>		IGetResource			( QString path, const P& params ) {
+	inline const ResourceResult<T>		IGetResource				( QString path, const P& params ) {
 
 		QString key = path;
 		int size_params = sizeof(P);
@@ -625,8 +635,8 @@ private:
 		});
 		return ResourceResult<T>(resource);
 	}
-	void								IRenderEditor			( void );
-	bool								IIsBufferEnabled		( QString name );
+	void								IRenderEditor				( void );
+	bool								IIsBufferEnabled			( QString name );
 
 #if defined(NESHNY_GL)
 	std::map<QString, GLShader*>		m_Shaders;
@@ -643,6 +653,9 @@ private:
 	int									m_Ticks = 0;
 	QElapsedTimer						m_FrameTimer;
 	bool								m_FullScreenHover = true;
+	std::thread::id						m_MainThreadId;
+	std::mutex							m_SyncLock;
+	std::atomic_int						m_SyncsRequested = 0;
 
 	QFile								m_LogFile;
 
@@ -659,9 +672,15 @@ private:
 
 #ifdef NESHNY_WEBGPU
 	IEngine*							m_Engine = nullptr;
-	WGPUDevice							m_Device;
-	WGPUQueue							m_Queue;
-	//WGPUSwapChain						m_SwapChain;
+	WGPUDevice							m_Device = nullptr;
+	WGPUQueue							m_Queue = nullptr;
+	WGPUSurface							m_Surface = nullptr;
+	WGPUSwapChain						m_SwapChain = nullptr;
+	int									m_CurrentWidth = -1;
+	int									m_CurrentHeight = -1;
+	int									m_RequestedWidth = -1;
+	int									m_RequestedHeight = -1;
+	WebGPUTexture*						m_DepthTex = nullptr;
 #endif
 
 };

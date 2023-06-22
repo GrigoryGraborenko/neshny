@@ -32,6 +32,10 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 ////////////////////////////////////////////////////////////////////////////////
 bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& loader, QString filename, QString insertion) {
 
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPUShader::Init");
+#endif
+
 	QString err_msg;
 	QByteArray arr = loader(filename, err_msg);
 	if (arr.isNull()) {
@@ -53,7 +57,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 	auto fname_bytes = filename.toLocal8Bit();
 	desc.label = fname_bytes.data();
 
-	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetDevice(), &desc);
+	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetWebGPUDevice(), &desc);
 #ifndef __EMSCRIPTEN__
 	wgpuShaderModuleGetCompilationInfo(m_Shader, CompilationInfoCallback, this);
 #endif
@@ -83,15 +87,16 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int 
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::Create(int size, unsigned char* data) {
+
 	WGPUBufferDescriptor desc = {};
 	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex | WGPUBufferUsage_Index | WGPUBufferUsage_Uniform | WGPUBufferUsage_Storage;
 	desc.size = size;
 	desc.nextInChain = nullptr;
 	desc.label = nullptr;
 
-	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetDevice(), &desc);
+	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
 	if (data) {
-		wgpuQueueWriteBuffer(Core::Singleton().GetQueue(), m_Buffer, 0, data, size);
+		wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Buffer, 0, data, size);
 	}
 }
 
@@ -197,6 +202,8 @@ WebGPURenderBuffer::WebGPURenderBuffer(std::vector<WGPUVertexFormat> attributes,
 			case WGPUVertexFormat_Sint32x2: item.p_Size = sizeof(int) * 2; break;
 			case WGPUVertexFormat_Sint32x3: item.p_Size = sizeof(int) * 3; break;
 			case WGPUVertexFormat_Sint32x4: item.p_Size = sizeof(int) * 4; break;
+			case WGPUVertexFormat_Force32:
+			case WGPUVertexFormat_Undefined: item.p_Size = 0; break;
 		}
 		m_Attributes.push_back(item);
 	}
@@ -264,7 +271,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	descriptor.mipLevelCount = mip_maps;
 	descriptor.usage = usage;
 
-	m_Texture = wgpuDeviceCreateTexture(Core::Singleton().GetDevice(), &descriptor);
+	m_Texture = wgpuDeviceCreateTexture(Core::Singleton().GetWebGPUDevice(), &descriptor);
 
 	WGPUTextureViewDescriptor view_desc;
 	view_desc.label = nullptr;
@@ -351,7 +358,7 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	tex_extent.height = hei;
 	tex_extent.depthOrArrayLayers = 1;
 
-	wgpuQueueWriteTexture(Core::Singleton().GetQueue(), &tex_cpy, data, bytes_per_row * hei, &tex_layout, &tex_extent);
+	wgpuQueueWriteTexture(Core::Singleton().GetWebGPUQueue(), &tex_cpy, data, bytes_per_row * hei, &tex_layout, &tex_extent);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -407,7 +414,7 @@ WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool l
 	desc.mipmapFilter = linear_mipmaps ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
 #endif
 
-	m_Sampler = wgpuDeviceCreateSampler(Core::Singleton().GetDevice(), &desc);
+	m_Sampler = wgpuDeviceCreateSampler(Core::Singleton().GetWebGPUDevice(), &desc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,6 +431,10 @@ WebGPURenderPipeline::~WebGPURenderPipeline(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* render_buffer) {
+
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPURenderPipeline::Finalize");
+#endif
 
 	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
 
@@ -512,13 +523,13 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	WGPUBindGroupLayoutDescriptor bgl_desc = {};
 	bgl_desc.entryCount = num_bindings;
 	bgl_desc.entries = &layout_entries[0];
-	WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetDevice(), &bgl_desc);
+	WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetWebGPUDevice(), &bgl_desc);
 
 	// pipeline layout (used by the render pipeline, released after its creation)
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
 	layout_desc.bindGroupLayouts = &bind_group_layout;
-	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetDevice(), &layout_desc);
+	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetWebGPUDevice(), &layout_desc);
 
 	// describe buffer layouts
 	WGPUVertexBufferLayout vertex_buffer_layout = {};
@@ -596,7 +607,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 		desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
 		desc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
 
-		m_Pipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetDevice(), &desc);
+		m_Pipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetWebGPUDevice(), &desc);
 	}
 	wgpuPipelineLayoutRelease(pipelineLayout);
 
@@ -605,7 +616,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	bind_group_desc.entryCount = num_bindings;
 	bind_group_desc.entries = &entries[0];
 
-	m_BindGroup = wgpuDeviceCreateBindGroup(Core::Singleton().GetDevice(), &bind_group_desc);
+	m_BindGroup = wgpuDeviceCreateBindGroup(Core::Singleton().GetWebGPUDevice(), &bind_group_desc);
 }
 
 } // namespace Neshny
