@@ -141,6 +141,11 @@ void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::ClearBuffer() {
 
+	unsigned char* tmp = new unsigned char[m_Size];
+	memset(tmp, 0, m_Size);
+	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Buffer, 0, tmp, m_Size);
+	delete[] tmp;
+
 	// TODO: replace
 	//GLubyte val = 0;
 	//glClearNamedBufferData(m_Buffer, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &val);
@@ -426,7 +431,9 @@ WebGPUSampler::~WebGPUSampler(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 WebGPURenderPipeline::~WebGPURenderPipeline(void) {
-	// TODO: delete everything
+	wgpuRenderPipelineRelease(m_Pipeline);
+	wgpuBindGroupRelease(m_BindGroup);
+	wgpuBindGroupLayoutRelease(m_BindGroupLayout);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -438,35 +445,21 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 
 	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
 
-	// bind group layout (used by both the pipeline layout and uniform bind group, released at the end of this function)
 	int binding_num = 0;
 	int num_bindings = int(m_Buffers.size() + m_Textures.size() + m_Samplers.size());
 	std::vector<WGPUBindGroupLayoutEntry> layout_entries;
-	std::vector<WGPUBindGroupEntry> entries;
-	
 	layout_entries.resize(num_bindings);
-	entries.resize(num_bindings);
-
-	//for (int i = 0; i < num_bindings; i++) {
-	//}
 
 	for (auto buffer : m_Buffers) {
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
-		WGPUBindGroupEntry& entry = entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
 		// TODO: why does this visibility cause errors?
 		//layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
 		layout_entry.visibility = WGPUShaderStage_Fragment;
-		entry.nextInChain = nullptr;
-		entry.binding = binding_num;
-		entry.offset = 0;
-		entry.size = buffer.p_Buffer.GetSizeBytes();
-		entry.buffer = buffer.p_Buffer.Get();
 
 		WGPUBufferBindingLayout buffer_layout;
 		buffer_layout.nextInChain = nullptr;
-		// TODO: what about hasDynamicOffset and minBindingSize?
 		buffer_layout.hasDynamicOffset = false;
 		buffer_layout.minBindingSize = 0;
 		if (buffer.p_Buffer.GetFlags() & WGPUBufferUsage_Uniform) {
@@ -481,15 +474,9 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	}
 	for (auto tex : m_Textures) {
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
-		WGPUBindGroupEntry& entry = entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
 		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
-		//layout_entry.visibility = WGPUShaderStage_Fragment;
-		entry.nextInChain = nullptr;
-		entry.binding = binding_num;
-		entry.offset = 0;
-		entry.textureView = tex->GetTextureView();
 
 		WGPUTextureBindingLayout buff_texture;
 		buff_texture.nextInChain = nullptr;
@@ -502,15 +489,9 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	}
 	for (auto sampler : m_Samplers) {
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
-		WGPUBindGroupEntry& entry = entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
 		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
-		//layout_entry.visibility = WGPUShaderStage_Fragment;
-		entry.nextInChain = nullptr;
-		entry.binding = binding_num;
-		entry.offset = 0;
-		entry.sampler = sampler->Get();
 
 		WGPUSamplerBindingLayout buff_sampler;
 		buff_sampler.nextInChain = nullptr;
@@ -523,12 +504,12 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	WGPUBindGroupLayoutDescriptor bgl_desc = {};
 	bgl_desc.entryCount = num_bindings;
 	bgl_desc.entries = &layout_entries[0];
-	WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetWebGPUDevice(), &bgl_desc);
+	m_BindGroupLayout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetWebGPUDevice(), &bgl_desc);
 
 	// pipeline layout (used by the render pipeline, released after its creation)
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
-	layout_desc.bindGroupLayouts = &bind_group_layout;
+	layout_desc.bindGroupLayouts = &m_BindGroupLayout;
 	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetWebGPUDevice(), &layout_desc);
 
 	// describe buffer layouts
@@ -591,11 +572,10 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 
 		// Other state
 		desc.layout = pipelineLayout;
-		//desc.depthStencil = nullptr;
 
 		desc.vertex.module = shader;
 		desc.vertex.entryPoint = "vertex_main";
-		desc.vertex.bufferCount = 1;//0;
+		desc.vertex.bufferCount = 1;
 		desc.vertex.buffers = &vertex_buffer_layout;
 
 		desc.multisample.count = 1;
@@ -611,8 +591,54 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 	}
 	wgpuPipelineLayoutRelease(pipelineLayout);
 
+	RefreshBindings();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPURenderPipeline::RefreshBindings(void) {
+
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPURenderPipeline::RefreshBindings");
+#endif
+
+	if (m_BindGroup) {
+		wgpuBindGroupRelease(m_BindGroup);
+	}
+
+	int num_bindings = int(m_Buffers.size() + m_Textures.size() + m_Samplers.size());
+
+	std::vector<WGPUBindGroupEntry> entries;
+	entries.resize(num_bindings);
+
+	int binding_num = 0;
+	for (auto buffer : m_Buffers) {
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.size = buffer.p_Buffer.GetSizeBytes();
+		entry.buffer = buffer.p_Buffer.Get();
+		binding_num++;
+	}
+	for (auto tex : m_Textures) {
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.textureView = tex->GetTextureView();
+		binding_num++;
+	}
+	for (auto sampler : m_Samplers) {
+		WGPUBindGroupEntry& entry = entries[binding_num];
+		entry.nextInChain = nullptr;
+		entry.binding = binding_num;
+		entry.offset = 0;
+		entry.sampler = sampler->Get();
+		binding_num++;
+	}
+
 	WGPUBindGroupDescriptor bind_group_desc = {};
-	bind_group_desc.layout = bind_group_layout;
+	bind_group_desc.layout = m_BindGroupLayout;
 	bind_group_desc.entryCount = num_bindings;
 	bind_group_desc.entries = &entries[0];
 

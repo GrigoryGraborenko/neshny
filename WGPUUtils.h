@@ -267,6 +267,7 @@ public:
 	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
 	void						Finalize				( QString shader_name, WebGPURenderBuffer* render_buffer );
+	void						RefreshBindings			( void );
 
 	inline WGPURenderPipeline	GetPipeline				( void ) { return m_Pipeline; }
 	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
@@ -277,8 +278,9 @@ protected:
 	std::vector<const WebGPUTexture*>	m_Textures;
 	std::vector<const WebGPUSampler*>	m_Samplers;
 
-	WGPURenderPipeline			m_Pipeline;
-	WGPUBindGroup				m_BindGroup;
+	WGPURenderPipeline			m_Pipeline = nullptr;
+	WGPUBindGroupLayout			m_BindGroupLayout = nullptr;
+	WGPUBindGroup				m_BindGroup = nullptr;
 
 };
 

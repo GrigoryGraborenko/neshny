@@ -537,23 +537,25 @@ void Core::SyncResolution(void) {
 	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight) && m_SwapChain) {
 		return;
 	}
-#pragma msg("delete old shit")
+
+	if (m_SwapChain) {
+		wgpuSwapChainRelease(m_SwapChain);
+	}
 
 	WGPUSwapChainDescriptor swapChainDesc = {};
 	swapChainDesc.usage = WGPUTextureUsage_RenderAttachment;
 	swapChainDesc.format = WGPUTextureFormat_BGRA8Unorm;
-
 	swapChainDesc.width = m_RequestedWidth;
 	swapChainDesc.height = m_RequestedHeight;
 	swapChainDesc.presentMode = WGPUPresentMode_Fifo;
 	m_SwapChain = wgpuDeviceCreateSwapChain(m_Device, m_Surface, &swapChainDesc);
 
-	m_CurrentWidth = m_RequestedWidth;
-	m_CurrentHeight = m_RequestedHeight;
-
 	delete m_DepthTex;
 	m_DepthTex = new WebGPUTexture();
 	m_DepthTex->InitDepth(m_RequestedWidth, m_RequestedHeight);
+
+	m_CurrentWidth = m_RequestedWidth;
+	m_CurrentHeight = m_RequestedHeight;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,6 +565,7 @@ void Core::SDLLoopInner() {
 	InfoViewer::LoopTime(loop_nanos);
 #endif
 
+	SyncResolution();
 #ifdef NESHNY_WEBGPU
 	WGPUTextureView view = GetCurrentSwapTextureView();
 	if (!view) {
@@ -576,9 +579,6 @@ void Core::SDLLoopInner() {
 		unfocus_timeout = 2;
 	}
 */
-
-	int width, height;
-	SDL_GetWindowSize(m_Window, &width, &height);
 
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -621,7 +621,7 @@ void Core::SDLLoopInner() {
 	ImGui_ImplSDL2_NewFrame(m_Window);
 
 	ImGui::NewFrame();
-	LoopInner(m_Engine, width, height);
+	LoopInner(m_Engine, m_CurrentWidth, m_CurrentHeight);
 	LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
 
 	m_ResourceThreads.Sync();

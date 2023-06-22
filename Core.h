@@ -459,7 +459,7 @@ public:
 	};
 	void								SDLLoopInner				( void );
 	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height );
-	inline void							SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
+	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
 	void								SyncResolution				( void );
 #endif
 
