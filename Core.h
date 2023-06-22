@@ -476,6 +476,7 @@ public:
 	inline WGPUSwapChain				GetWebGPUSwapChain			( void ) { return m_SwapChain; }
 	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
 	static WebGPUShader*				GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 
 #endif
@@ -597,6 +598,7 @@ private:
 	GLShader*							IGetComputeShader			( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
 	WebGPUShader*						IGetShader					( QString name, QString insertion );
+	WebGPURenderBuffer*					IGetBuffer					( QString name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 #endif
 
@@ -643,8 +645,9 @@ private:
 	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
 #elif defined(NESHNY_WEBGPU)
-	std::map<QString, WebGPUShader*>	m_Shaders;
-	std::vector<WebGPUSampler*>			m_Samplers;
+	std::map<QString, WebGPUShader*>		m_Shaders;
+	std::map<QString, WebGPURenderBuffer*>	m_Buffers;
+	std::vector<WebGPUSampler*>				m_Samplers;
 #endif
 	std::map<QString, ResourceContainer>	m_Resources;
 	qint64									m_MemoryAllocated = 0;

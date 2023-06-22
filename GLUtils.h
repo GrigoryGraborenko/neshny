@@ -162,7 +162,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class RTT {
+class GLRTT {
 
 public:
 
@@ -172,8 +172,8 @@ public:
 		,RGBA_FLOAT16
 	};
 
-								RTT			( void ) {}
-								~RTT		( void ) { Destroy(); }
+								GLRTT		( void ) {}
+								~GLRTT		( void ) { Destroy(); }
 
 	Token						Activate	( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
 
@@ -194,5 +194,6 @@ private:
 	GLuint						m_DepthBuffer = 0;
 };
 
+typedef GLRTT RTT;
 
 } // namespace Neshny

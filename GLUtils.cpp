@@ -532,4 +532,120 @@ std::shared_ptr<unsigned char[]> GLSSBO::MakeCopy(int max_size) {
 	return std::shared_ptr<unsigned char[]>(ptr);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Token GLRTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear) {
+
+	GLint draw_fbo;
+	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+
+	bool modes_same = color_attachments.size() == m_Modes.size();
+	for (int i = 0; modes_same && (i < color_attachments.size()); i++) {
+		modes_same = modes_same && (m_Modes[i] == color_attachments[i]);
+	}
+
+	// set up the stuff if it doesn't exist
+	if ((!modes_same) || (capture_depth_stencil != m_CaptureDepthStencil) || (m_Width != width) || (m_Height != height)) {
+
+		Destroy();
+		m_Modes = color_attachments;
+		m_Width = width;
+		m_Height = height;
+		m_CaptureDepthStencil = capture_depth_stencil;
+		if (m_Modes.empty()) {
+			return Token([](){});
+		}
+		clear = true;
+
+		glGenFramebuffers(1, &m_FrameBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+
+		std::vector<unsigned int> attachments;
+		for (int i = 0; i < m_Modes.size(); i++) {
+			auto mode = m_Modes[i];
+			GLuint tex;
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+			if (mode == Mode::RGBA_FLOAT32) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, NULL);
+			} else if(mode == Mode::RGBA_FLOAT16) {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, m_Width, m_Height, 0, GL_RGBA, GL_FLOAT, NULL);
+			} else {
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_Width, m_Height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+			}
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			unsigned int attach = GL_COLOR_ATTACHMENT0 + i;
+			attachments.push_back(attach);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, attach, GL_TEXTURE_2D, tex, 0);
+			m_ColorTextures.push_back(tex);
+		}
+		glDrawBuffers((int)attachments.size(), &attachments[0]);
+
+		if (m_CaptureDepthStencil) {
+			glGenTextures(1, &m_DepthTex);
+			glBindTexture(GL_TEXTURE_2D, m_DepthTex);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, m_Width, m_Height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthTex, 0);
+		} else {
+			glGenRenderbuffers(1, &m_DepthBuffer);
+			glBindRenderbuffer(GL_RENDERBUFFER, m_DepthBuffer);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_Width, m_Height);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_DepthBuffer);
+		}
+
+		auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		if (state != GL_FRAMEBUFFER_COMPLETE) {
+			auto state = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			bool FRAMEBUFFER_UNSUPPORTED = (state == GL_FRAMEBUFFER_UNSUPPORTED);
+			bool FRAMEBUFFER_UNDEFINED = (state == GL_FRAMEBUFFER_UNDEFINED);
+			bool FRAMEBUFFER_INCOMPLETE_ATTACHMENT = (state == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT);
+			bool FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT = (state == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT);
+			bool FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER = (state == GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER);
+			bool FRAMEBUFFER_INCOMPLETE_READ_BUFFER = (state == GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER);
+			bool FRAMEBUFFER_INCOMPLETE_MULTISAMPLE = (state == GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE);
+			bool FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS = (state == GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+			return Token([](){});
+		}
+	} else {
+		glBindFramebuffer(GL_FRAMEBUFFER, m_FrameBuffer);
+	}
+	if (clear) {
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	}
+
+	glViewport(0, 0, width, height);
+	return Token([draw_fbo]() {
+		glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+	});
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void GLRTT::Destroy(void) {
+
+	if (m_FrameBuffer) {
+		glDeleteFramebuffers(1, &m_FrameBuffer);
+		m_FrameBuffer = 0;
+	}
+	for (auto col : m_ColorTextures) {
+		glDeleteTextures(1, &col);
+	}
+	m_ColorTextures.clear();
+	if (m_DepthTex) {
+		glDeleteTextures(1, &m_DepthTex);
+		m_DepthTex = 0;
+	}
+	if (m_DepthBuffer) {
+		glDeleteRenderbuffers(1, &m_DepthBuffer);
+		m_DepthBuffer = 0;
+	}
+}
+
 } // namespace Neshny

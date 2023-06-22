@@ -628,34 +628,33 @@ void Core::SDLLoopInner() {
 
 #ifdef NESHNY_WEBGPU
 
-	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(GetWebGPUDevice(), nullptr); // create encoder
-
-	WGPURenderPassColorAttachment colorDesc = {};
-	colorDesc.view = view;
+	WGPURenderPassColorAttachment color_desc = {};
+	color_desc.view = view;
 	//colorDesc.loadOp = WGPULoadOp_Clear;
-	colorDesc.loadOp = WGPULoadOp_Load;
-	colorDesc.storeOp = WGPUStoreOp_Store;
-	colorDesc.clearValue.r = 0.0f;
-	colorDesc.clearValue.g = 0.0f;
-	colorDesc.clearValue.b = 0.0f;
-	colorDesc.clearValue.a = 1.0f;
-	WGPURenderPassDepthStencilAttachment depthDesc = {};
-	depthDesc.view = m_DepthTex->GetTextureView();
-	depthDesc.depthClearValue = 1.0f;
-	depthDesc.depthLoadOp = WGPULoadOp_Clear;
-	depthDesc.depthStoreOp = WGPUStoreOp_Store;
-	depthDesc.depthReadOnly = false;
-	depthDesc.stencilClearValue = 0;
-	depthDesc.stencilLoadOp = WGPULoadOp_Undefined;
-	depthDesc.stencilStoreOp = WGPUStoreOp_Undefined;
-	depthDesc.stencilReadOnly = true;
+	color_desc.loadOp = WGPULoadOp_Load;
+	color_desc.storeOp = WGPUStoreOp_Store;
+	color_desc.clearValue.r = 0.0f;
+	color_desc.clearValue.g = 0.0f;
+	color_desc.clearValue.b = 0.0f;
+	color_desc.clearValue.a = 1.0f;
+	WGPURenderPassDepthStencilAttachment depth_desc = {};
+	depth_desc.view = m_DepthTex->GetTextureView();
+	depth_desc.depthClearValue = 1.0f;
+	depth_desc.depthLoadOp = WGPULoadOp_Clear;
+	depth_desc.depthStoreOp = WGPUStoreOp_Store;
+	depth_desc.depthReadOnly = false;
+	depth_desc.stencilClearValue = 0;
+	depth_desc.stencilLoadOp = WGPULoadOp_Undefined;
+	depth_desc.stencilStoreOp = WGPUStoreOp_Undefined;
+	depth_desc.stencilReadOnly = true;
 
-	WGPURenderPassDescriptor renderPass = {};
-	renderPass.colorAttachmentCount = 1;
-	renderPass.colorAttachments = &colorDesc;
-	renderPass.depthStencilAttachment = &depthDesc;
+	WGPURenderPassDescriptor render_pass = {};
+	render_pass.colorAttachmentCount = 1;
+	render_pass.colorAttachments = &color_desc;
+	render_pass.depthStencilAttachment = &depth_desc;
 
-	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &renderPass);	// create pass
+	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(GetWebGPUDevice(), nullptr); // create encoder
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(encoder, &render_pass);	// create pass
 
 	auto draw_data = ImGui::GetDrawData();
 	if (draw_data) {
@@ -667,14 +666,14 @@ void Core::SDLLoopInner() {
 
 	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);				// create commands
 	wgpuCommandEncoderRelease(encoder);														// release encoder
-	wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+	wgpuQueueSubmit(GetWebGPUQueue(), 1, &commands);
 	wgpuCommandBufferRelease(commands);														// release commands
 
-	//wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), ErrorCallback, nullptr);
+	//wgpuDevicePopErrorScope(GetWebGPUDevice(), ErrorCallback, nullptr);
 
 	wgpuTextureViewRelease(view);													// release textureView
 #ifndef __EMSCRIPTEN__
-	wgpuSwapChainPresent(Core::Singleton().GetWebGPUSwapChain());
+	wgpuSwapChainPresent(GetWebGPUSwapChain());
 #endif
 
 #endif
@@ -1097,6 +1096,144 @@ WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 		m_Interface.p_ShaderView.p_Visible = true;
 	}
 	return new_shader;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WebGPURenderBuffer* Core::IGetBuffer(QString name) {
+
+	auto found = m_Buffers.find(name);
+	if (found != m_Buffers.end()) {
+		return found->second;
+	}
+	m_Buffers.insert_or_assign(name, nullptr);
+
+	int vertex_counter = 0;
+	WebGPURenderBuffer* new_buffer = nullptr;
+	if(name == "Square") {
+		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x2, {
+			-1.0, -1.0
+			,1.0, 1.0
+			,1.0, -1.0
+			,-1.0, 1.0
+		}, {
+			0, 1, 2,
+			0, 3, 1
+		});
+	} else if(name == "Cube") {
+
+		const float S = 0.5;
+		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, {
+			-S, -S, -S
+			,-S, S, -S
+			,S, S, -S
+			,S, -S, -S
+			,-S, -S, S
+			,-S, S, S
+			,S, S, S
+			,S, -S, S
+		}, {
+			0, 1, 4
+			,4, 1, 5
+
+			,1, 2, 5
+			,5, 2, 6
+
+			,2, 3, 6
+			,6, 3, 7
+
+			,3, 0, 7
+			,7, 0, 4
+
+			,4, 5, 6
+			,4, 6, 7
+
+			,1, 0, 2
+			,2, 0, 3
+		});
+	} else if(name == "Circle") {
+		/*
+		new_buffer = new GLBuffer();
+
+		constexpr int num_segments = 32;
+		constexpr double seg_rads = (2 * PI) / num_segments;
+
+		std::vector<GLfloat> vertices;
+		double ang = 0;
+		for (int i = 0; i < num_segments; i++) {
+			vertices.push_back(cos(ang));
+			vertices.push_back(sin(ang));
+			ang += seg_rads;
+		}
+		new_buffer->Init(2, GL_LINE_LOOP, vertices);
+		*/
+	} else if(name == "SquareOutline") {
+		/*
+		new_buffer->Init(2, GL_LINE_LOOP
+			,std::vector<GLfloat>({
+				-1.0f, -1.0f
+				,1.0f, -1.0f
+				,1.0f, 1.0f
+				,-1.0f, 1.0f
+			})
+			,std::vector<GLuint>({ 0, 2, 1, 0, 3, 2 }));
+			*/
+	} else if(name == "Cylinder") {
+		/*
+		new_buffer = new GLBuffer();
+
+		constexpr int num_segments = 16;
+		constexpr double seg_rads = (2 * PI) / num_segments;
+
+		std::vector<GLfloat> vertices;
+		double ang = 0;
+		for (int i = 0; i <= num_segments; i++) {
+			double x = -cos(ang);
+			double y = sin(ang);
+			vertices.push_back(x);
+			vertices.push_back(y);
+			vertices.push_back(0);
+			vertices.push_back(x);
+			vertices.push_back(y);
+			vertices.push_back(1);
+			ang += seg_rads;
+		}
+		new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
+		*/
+	} else if(name == "DebugLine") {
+		//new_buffer = new GLBuffer();
+		//new_buffer->Init(3, GL_LINES, std::vector<GLfloat>({0, 0, 0, 1, 1, 1}));
+	} else if(name == "DebugSquare") {
+		//new_buffer = new GLBuffer();
+		//new_buffer->Init(2, GL_LINE_LOOP, std::vector<GLfloat>({0, 0, 0, 1, 1, 1, 1, 0 }));
+	} else if(name == "DebugTriangle") {
+		//new_buffer = new GLBuffer();
+		//new_buffer->Init(2, GL_TRIANGLES, std::vector<GLfloat>({0, 0, 1, 0, 0, 1}));
+	} else if(name == "Mess") {
+
+		//std::vector<GLfloat> vertices;
+		//for (int i = 0; i < 3 * 16; i++) {
+		//	vertices.push_back(Random(-1, 1));
+		//}
+		//new_buffer = new GLBuffer();
+		//new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
+	} else if(name == "TriangleBlob") {
+
+		//new_buffer = new GLBuffer();
+
+		//new_buffer->Init(3, GL_TRIANGLES
+		//	, std::vector<GLfloat>({
+		//		1.0f, 0.0f, 0.0f
+		//		,-1.0f, 0.3f, 0.0f
+		//		,-1.0f, -0.3f, -0.3f
+		//		,-1.0f, -0.3f, 0.3f
+		//		})
+		//	, std::vector<GLuint>({ 0, 1, 2, 0, 2, 3, 0, 3, 1, 1, 3, 2 }));
+
+	} else {
+		return nullptr;
+	}
+	m_Buffers.insert_or_assign(name, new_buffer);
+	return new_buffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -582,6 +582,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer* ren
 		desc.multisample.mask = 0xFFFFFFFF;
 		desc.multisample.alphaToCoverageEnabled = false;
 
+#pragma msg("culling and render mode need to be parameterized")
 		desc.primitive.frontFace = WGPUFrontFace_CCW;
 		desc.primitive.cullMode = WGPUCullMode_None;
 		desc.primitive.topology = WGPUPrimitiveTopology_TriangleList;
@@ -643,6 +644,102 @@ void WebGPURenderPipeline::RefreshBindings(void) {
 	bind_group_desc.entries = &entries[0];
 
 	m_BindGroup = wgpuDeviceCreateBindGroup(Core::Singleton().GetWebGPUDevice(), &bind_group_desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear) {
+
+	int num_color_tex = (int)color_attachments.size();
+	bool modes_same = color_attachments.size() == m_Modes.size();
+	for (int i = 0; modes_same && (i < num_color_tex); i++) {
+		modes_same = modes_same && (m_Modes[i] == color_attachments[i]);
+	}
+
+	// set up the stuff if it doesn't exist
+	if ((!modes_same) || (capture_depth_stencil != m_CaptureDepthStencil) || (m_Width != width) || (m_Height != height)) {
+
+		Destroy();
+		m_Modes = color_attachments;
+		m_Width = width;
+		m_Height = height;
+		m_CaptureDepthStencil = capture_depth_stencil;
+		if (m_Modes.empty()) {
+			return Token([]() {});
+		}
+		clear = true;
+
+		for (int i = 0; i < num_color_tex; i++) {
+			WebGPUTexture* tex = new WebGPUTexture();
+			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding, 1);
+			m_ColorTextures.push_back(tex);
+		}
+		if (m_CaptureDepthStencil) {
+			m_DepthTex = new WebGPUTexture();
+			m_DepthTex->InitDepth(m_Width, m_Height);
+		}
+	}
+
+	std::vector<WGPURenderPassColorAttachment> color_descriptions;
+	color_descriptions.resize(num_color_tex);
+	for (int i = 0; i < num_color_tex; i++) {
+
+		WGPURenderPassColorAttachment& color_desc = color_descriptions[i];
+		color_desc.view = m_ColorTextures[i]->GetTextureView();
+		color_desc.loadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
+		color_desc.storeOp = WGPUStoreOp_Store;
+		color_desc.clearValue.r = 0.0f;
+		color_desc.clearValue.g = 0.0f;
+		color_desc.clearValue.b = 0.0f;
+		color_desc.clearValue.a = 1.0f;
+	}
+
+	WGPURenderPassDescriptor render_pass = {};
+	render_pass.colorAttachmentCount = num_color_tex;
+	render_pass.colorAttachments = &color_descriptions[0];
+
+	WGPURenderPassDepthStencilAttachment depth_desc = {};
+	if (m_DepthTex) {
+		depth_desc.view = m_DepthTex->GetTextureView();
+		depth_desc.depthClearValue = 1.0f;
+		depth_desc.depthLoadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
+		depth_desc.depthStoreOp = WGPUStoreOp_Store;
+		depth_desc.depthReadOnly = false;
+		depth_desc.stencilClearValue = 0;
+		depth_desc.stencilLoadOp = WGPULoadOp_Undefined;
+		depth_desc.stencilStoreOp = WGPUStoreOp_Undefined;
+		depth_desc.stencilReadOnly = true;
+		render_pass.depthStencilAttachment = &depth_desc;
+	} else {
+		render_pass.depthStencilAttachment = nullptr;
+	}
+
+	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+	m_ActivePass = wgpuCommandEncoderBeginRenderPass(encoder, &render_pass);
+
+	return Token([this, encoder]() {
+		wgpuRenderPassEncoderEnd(m_ActivePass);
+		wgpuRenderPassEncoderRelease(m_ActivePass);
+		m_ActivePass = nullptr;
+
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+		wgpuCommandBufferRelease(commands);
+	});
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void WebGPURTT::Destroy(void) {
+	for (auto tex : m_ColorTextures) {
+		delete tex;
+	}
+	m_ColorTextures.clear();
+	delete m_DepthTex;
+	m_DepthTex = nullptr;
 }
 
 } // namespace Neshny

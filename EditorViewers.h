@@ -215,10 +215,7 @@ public:
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
-#if defined(NESHNY_GL)
 	static auto					ActivateRTT				( void );
-#elif defined(NESHNY_WEBGPU)
-#endif
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
@@ -226,10 +223,7 @@ private:
 
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
-#if defined(NESHNY_GL)
 	RTT							m_RTT;
-#elif defined(NESHNY_WEBGPU)
-#endif
 	int							m_Width = 32;
 	int							m_Height = 32;
 	std::optional<Vec2>			m_LastMousePos = std::nullopt;

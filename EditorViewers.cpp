@@ -766,7 +766,6 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	ImGui::End();
 }
 
-#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 auto Scrapbook2D::ActivateRTT(void) {
 	auto& self = Singleton();
@@ -774,8 +773,6 @@ auto Scrapbook2D::ActivateRTT(void) {
 	self.m_NeedsReset = false;
 	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
 }
-#elif defined(NESHNY_WEBGPU)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
@@ -823,11 +820,12 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImVec2 im_size(m_Width, m_Height);
 	ImGui::SetCursorPos(im_pos);
 	auto im_screen_pos = ImGui::GetCursorScreenPos();
-#if defined(NESHNY_GL)
 	{
 		auto token = ActivateRTT();
+#if defined(NESHNY_GL)
 		glEnable(GL_DEPTH_TEST);
-		
+#endif
+
 		// todo: make this a checkbox
 		const double size_grid = 1.0;
 		Line(Vec2(0, 0), Vec2(size_grid, 0), Vec4(1, 0, 0, 1));
@@ -839,9 +837,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	}
 
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
-	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
-#elif defined(NESHNY_WEBGPU)
-#endif
+	ImGui::Image(tex_id, im_size, ImVec2(0, 0), ImVec2(1, 1));
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);

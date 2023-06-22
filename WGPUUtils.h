@@ -284,4 +284,43 @@ protected:
 
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class WebGPURTT {
+
+public:
+
+	enum class Mode {
+		RGBA
+		//,RGBA_FLOAT32
+		//,RGBA_FLOAT16
+	};
+
+									WebGPURTT		( void ) {}
+									~WebGPURTT		( void ) { Destroy(); }
+
+	Token							Activate	( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
+
+	inline WGPUTextureView			GetColorTex	( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
+	inline WGPUTextureView			GetDepthTex	( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
+
+	inline WGPURenderPassEncoder	GetActivePass	( void ) { return m_ActivePass; }
+
+private:
+
+	void							Destroy		( void );
+
+	std::vector<Mode>				m_Modes = {};
+	bool							m_CaptureDepthStencil = false;
+	int								m_Width = 0;
+	int								m_Height = 0;
+	std::vector<WebGPUTexture*>		m_ColorTextures;
+	WebGPUTexture*					m_DepthTex = nullptr;
+
+	WGPURenderPassEncoder			m_ActivePass = nullptr;
+};
+
+typedef WebGPURTT RTT;
+
 } // namespace Neshny
