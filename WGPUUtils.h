@@ -116,8 +116,8 @@ public:
 	};
 
 
-													WebGPURenderBuffer		( WGPUVertexFormat attribute, std::vector<float> vertex_data, std::vector<uint16_t> index_data = {} ): WebGPURenderBuffer(std::vector<WGPUVertexFormat>{ attribute  }, vertex_data, index_data) {}
-													WebGPURenderBuffer		( std::vector<WGPUVertexFormat> attributes, std::vector<float> vertex_data, std::vector<uint16_t> index_data );
+													WebGPURenderBuffer		( WGPUVertexFormat attribute, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data = {} ): WebGPURenderBuffer(std::vector<WGPUVertexFormat>{ attribute }, topology, vertex_data, vertex_data_size, index_data) {}
+													WebGPURenderBuffer		( std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data );
 
 			 										~WebGPURenderBuffer		( void );
 
@@ -126,11 +126,17 @@ public:
 	inline WGPUBuffer								GetIndex				( void ) { return m_IndexBuffer ? m_IndexBuffer->Get() : nullptr; }
 	inline WebGPUBuffer*							GetVertexBuffer			( void ) { return m_VertexBuffer; }
 	inline WebGPUBuffer*							GetIndexBuffer			( void ) { return m_IndexBuffer; }
+	inline WGPUPrimitiveTopology					GetTopology				( void ) { return m_Topology; }
+	inline int										GetNumVertices			( void ) { return m_NumVertices; }
+	inline int										GetNumIndices			( void ) { return m_NumIndices; }
 
 protected:
 
 	WebGPUBuffer*									m_VertexBuffer = nullptr;
 	WebGPUBuffer*									m_IndexBuffer = nullptr;
+	WGPUPrimitiveTopology							m_Topology;
+	int												m_NumVertices = -1;
+	int												m_NumIndices = -1;
 	std::vector<VertexFormatItem>					m_Attributes;
 };
 
@@ -266,8 +272,9 @@ public:
 	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						Finalize				( QString shader_name, WebGPURenderBuffer* render_buffer );
+	void						Finalize				( QString shader_name, WebGPURenderBuffer& render_buffer );
 	void						RefreshBindings			( void );
+	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
 
 	inline WGPURenderPipeline	GetPipeline				( void ) { return m_Pipeline; }
 	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
@@ -277,6 +284,7 @@ protected:
 	std::vector<Buffer>			m_Buffers;
 	std::vector<const WebGPUTexture*>	m_Textures;
 	std::vector<const WebGPUSampler*>	m_Samplers;
+	WebGPURenderBuffer*			m_RenderBuffer = nullptr;
 
 	WGPURenderPipeline			m_Pipeline = nullptr;
 	WGPUBindGroupLayout			m_BindGroupLayout = nullptr;
@@ -297,15 +305,17 @@ public:
 		//,RGBA_FLOAT16
 	};
 
-									WebGPURTT		( void ) {}
+									WebGPURTT		( void );
 									~WebGPURTT		( void ) { Destroy(); }
 
-	Token							Activate	( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
+	Token							Activate		( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
+	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, bool clear = true );
+
+	void							Render			( WebGPURenderPipeline* pipeline, int instances = 1 );
+	Token							RenderPassToken	( WGPURenderPassEncoder& pass );
 
 	inline WGPUTextureView			GetColorTex	( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
 	inline WGPUTextureView			GetDepthTex	( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
-
-	inline WGPURenderPassEncoder	GetActivePass	( void ) { return m_ActivePass; }
 
 private:
 
@@ -318,7 +328,10 @@ private:
 	std::vector<WebGPUTexture*>		m_ColorTextures;
 	WebGPUTexture*					m_DepthTex = nullptr;
 
-	WGPURenderPassEncoder			m_ActivePass = nullptr;
+	std::vector<WGPURenderPassColorAttachment>	m_ColorDescriptors;
+	WGPURenderPassDepthStencilAttachment		m_DepthDesc;
+	WGPURenderPassDescriptor		m_PassDescriptor;
+	WGPUCommandEncoder				m_ActiveEncoder = nullptr;
 };
 
 typedef WebGPURTT RTT;

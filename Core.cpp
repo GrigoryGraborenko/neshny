@@ -630,7 +630,7 @@ void Core::SDLLoopInner() {
 
 	WGPURenderPassColorAttachment color_desc = {};
 	color_desc.view = view;
-	//colorDesc.loadOp = WGPULoadOp_Clear;
+	//color_desc.loadOp = WGPULoadOp_Clear;
 	color_desc.loadOp = WGPULoadOp_Load;
 	color_desc.storeOp = WGPUStoreOp_Store;
 	color_desc.clearValue.r = 0.0f;
@@ -1110,19 +1110,20 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 	int vertex_counter = 0;
 	WebGPURenderBuffer* new_buffer = nullptr;
 	if(name == "Square") {
-		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x2, {
+		std::vector<float> vertices = {
 			-1.0, -1.0
 			,1.0, 1.0
 			,1.0, -1.0
 			,-1.0, 1.0
-		}, {
+		};
+		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
 			0, 1, 2,
 			0, 3, 1
 		});
 	} else if(name == "Cube") {
 
 		const float S = 0.5;
-		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, {
+		std::vector<float> vertices = {
 			-S, -S, -S
 			,-S, S, -S
 			,S, S, -S
@@ -1131,7 +1132,8 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,-S, S, S
 			,S, S, S
 			,S, -S, S
-		}, {
+		};
+		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
 			0, 1, 4
 			,4, 1, 5
 
@@ -1200,8 +1202,9 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 		new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
 		*/
 	} else if(name == "DebugLine") {
-		//new_buffer = new GLBuffer();
-		//new_buffer->Init(3, GL_LINES, std::vector<GLfloat>({0, 0, 0, 1, 1, 1}));
+		std::vector<float> vertices = { 0, 0, 0, 1, 1, 1 };
+		//new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), { 0, 1 });
+		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
 	} else if(name == "DebugSquare") {
 		//new_buffer = new GLBuffer();
 		//new_buffer->Init(2, GL_LINE_LOOP, std::vector<GLfloat>({0, 0, 0, 1, 1, 1, 1, 0 }));

@@ -767,11 +767,11 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-auto Scrapbook2D::ActivateRTT(void) {
+Token Scrapbook2D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
-	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
+	return self.m_RTT.Activate({ RTT::Mode::RGBA }, true, self.m_Width, self.m_Height, reset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

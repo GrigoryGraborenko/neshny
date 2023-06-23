@@ -215,7 +215,10 @@ public:
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
-	static auto					ActivateRTT				( void );
+	static Token				ActivateRTT				( void );
+#if defined(NESHNY_WEBGPU)
+	static void					RenderPipeline			( WebGPURenderPipeline* pipeline ) { Singleton().m_RTT.Render(pipeline); }
+#endif
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
