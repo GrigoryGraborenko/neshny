@@ -57,8 +57,14 @@ protected:
 		bool p_Filled = false;
 	};
 
+#if defined(NESHNY_WEBGPU)
+	void										IRender3DDebug		( WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+#elif defined(NESHNY_GL)
 	void										IRender3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
-    inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
+#endif
+	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
+
+												~BaseDebugRender	( void ) { delete m_Uniforms; }
 
     std::vector<DebugLine>						m_Lines;
     std::vector<DebugPoint>						m_Points;
@@ -67,6 +73,13 @@ protected:
 	std::vector<DebugSquare>					m_Squares;
     //std::vector<QString> 						m_Strings;
 	//std::unordered_map<QString, QString>		m_PersistStrings;
+
+#if defined(NESHNY_WEBGPU)
+	WebGPUBuffer*								m_Uniforms = nullptr;
+	WebGPURenderPipeline						m_LinePipline;
+	WebGPURenderBuffer							m_LineBuffer;
+#endif
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +91,11 @@ public:
 
 	static inline DebugRender&					Singleton			( void ) { static DebugRender instance; return instance; }
 
+#if defined(NESHNY_WEBGPU)
+	static inline void							Render3DDebug		( WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
+#else
 	static inline void							Render3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+#endif
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }
 
@@ -245,10 +262,7 @@ public:
 
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
-#if defined(NESHNY_GL)
-	static auto					ActivateRTT					( void );
-#elif defined(NESHNY_WEBGPU)
-#endif
+	static Token				ActivateRTT					( void );
 	static fMatrix4				GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
 	static inline void			Line						( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
@@ -263,10 +277,7 @@ private:
 
 	void						IRenderImGui				( InterfaceScrapbook3D& data );
 
-#if defined(NESHNY_GL)
 	RTT							m_RTT;
-#elif defined(NESHNY_WEBGPU)
-#endif
 	int							m_Width = 32;
 	int							m_Height = 32;
 	bool						m_NeedsReset = true;

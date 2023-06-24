@@ -1,16 +1,22 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct VertexIn {
 	@location(0) aPos : vec3f,
+	@location(1) aCol : vec4f
 }
 struct VertexOut {
 	@location(0) vCol : vec4f,
 	@builtin(position) Position : vec4f
 }
+struct Uniforms {
+    p_VP : mat4x4f
+}
+@group(0) @binding(0) var<uniform> uniforms : Uniforms;
+
 @vertex
 fn vertex_main(input : VertexIn) -> VertexOut {
 	var output : VertexOut;
-	output.Position = vec4f(input.aPos, 1.0);
-	output.vCol = vec4f(1.0, 0.0, 0.0, 1.0);
+	output.Position = uniforms.p_VP * vec4f(input.aPos, 1.0);
+	output.vCol = input.aCol;
 	return output;
 }
 @fragment

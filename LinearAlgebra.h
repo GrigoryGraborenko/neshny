@@ -322,6 +322,9 @@ struct BaseVec4 {
 	BaseVec4(const BaseVec3<T>& t2, T w_val) : x((T)t2.x), y((T)t2.y), z((T)t2.z), w(w_val) {}
 	BaseVec4(Axis ax, T v) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0), w(ax == Axis::W ? v : 0) {}
 
+	inline BaseVec4<float>	ToFloat4( void ) const { return BaseVec4<float>(float(x), float(y), float(z), float(w)); }
+	inline BaseVec4<int>	ToInt4	( void ) const { return BaseVec4<int>(int(floor(x)), int(floor(y)), int(floor(z), int(floor(w)))); }
+
 	inline void			Set(T e0, T e1, T e2, T e3) { x = e0; y = e1; z = e2; w = e3; }
 
 	inline void			operator=		(const BaseVec4<T>& t2) { x = t2.x; y = t2.y; z = t2.z; w = t2.w; }

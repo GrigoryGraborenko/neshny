@@ -1108,7 +1108,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 	m_Buffers.insert_or_assign(name, nullptr);
 
 	int vertex_counter = 0;
-	WebGPURenderBuffer* new_buffer = nullptr;
+	WebGPURenderBuffer* new_buffer = new WebGPURenderBuffer();
 	if(name == "Square") {
 		std::vector<float> vertices = {
 			-1.0, -1.0
@@ -1116,7 +1116,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,1.0, -1.0
 			,-1.0, 1.0
 		};
-		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
 			0, 1, 2,
 			0, 3, 1
 		});
@@ -1133,7 +1133,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,S, S, S
 			,S, -S, S
 		};
-		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		new_buffer->Init(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
 			0, 1, 4
 			,4, 1, 5
 
@@ -1204,7 +1204,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 	} else if(name == "DebugLine") {
 		std::vector<float> vertices = { 0, 0, 0, 1, 1, 1 };
 		//new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), { 0, 1 });
-		new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
+		new_buffer->Init(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
 	} else if(name == "DebugSquare") {
 		//new_buffer = new GLBuffer();
 		//new_buffer->Init(2, GL_LINE_LOOP, std::vector<GLfloat>({0, 0, 0, 1, 1, 1, 1, 0 }));
@@ -1233,6 +1233,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 		//	, std::vector<GLuint>({ 0, 1, 2, 0, 2, 3, 0, 3, 1, 1, 3, 2 }));
 
 	} else {
+		delete new_buffer;
 		return nullptr;
 	}
 	m_Buffers.insert_or_assign(name, new_buffer);

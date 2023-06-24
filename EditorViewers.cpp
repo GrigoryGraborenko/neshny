@@ -3,10 +3,43 @@
 
 namespace Neshny {
 
-////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void ErrorCallback(WGPUErrorType type, char const* message, void* userdata) {
+	if (strlen(message) > 0) {
+		printf("SETUP ERROR: %s\n", message);
+	}
+}
 
-#if defined(NESHNY_GL)
+#if defined(NESHNY_WEBGPU)
+////////////////////////////////////////////////////////////////////////////////
+void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+
+	struct DebugLine {
+		fVec3	p_Pos;
+		fVec4	p_Col;
+	};
+	std::vector<DebugLine> debug_lines;
+	debug_lines.reserve(512);
+	for (const auto& line : m_Lines) {
+		debug_lines.push_back({ line.p_A.ToFloat3(), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ line.p_B.ToFloat3(), line.p_Col.ToFloat4() });
+	}
+	m_LineBuffer.Init({ WGPUVertexFormat_Float32x3, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(DebugLine));
+
+	if (!m_Uniforms) {
+
+		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
+		m_LinePipline
+			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex | WGPUShaderStage_Fragment, true)
+			.Finalize("DebugLine", m_LineBuffer);
+	}
+	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &view_perspective, sizeof(fMatrix4));
+
+	rtt.Render(&m_LinePipline);
+}
+
+#elif defined(NESHNY_GL)
+////////////////////////////////////////////////////////////////////////////////
+void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
@@ -123,9 +156,8 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4& view_perspective, int width
 
 	glDisable(GL_BLEND);
 	glDepthMask(GL_TRUE);
-#elif defined(NESHNY_WEBGPU)
-#endif
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void InfoViewer::ILoopTime(qint64 nanos) {
@@ -831,7 +863,11 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		Line(Vec2(0, 0), Vec2(size_grid, 0), Vec4(1, 0, 0, 1));
 		Line(Vec2(0, 0), Vec2(0, size_grid), Vec4(0, 1, 0, 1));
 
+#if defined(NESHNY_WEBGPU)
+		IRender3DDebug((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
+#else
 		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
+#endif
 		IClear();
 		m_NeedsReset = true;
 	}
@@ -867,16 +903,13 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	ImGui::End();
 }
 
-#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
-auto Scrapbook3D::ActivateRTT(void) {
+Token Scrapbook3D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
-	return self.m_RTT.Activate({ RTT::Mode::RGBA }, false, self.m_Width, self.m_Height, reset);
+	return self.m_RTT.Activate({ RTT::Mode::RGBA }, true, self.m_Width, self.m_Height, reset);
 }
-#elif defined(NESHNY_WEBGPU)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
@@ -910,26 +943,29 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);
 	ImGui::SetCursorPos(im_pos);
-#if defined(NESHNY_GL)
 	{
 		auto token = ActivateRTT();
+#if defined(NESHNY_GL)
 		glEnable(GL_DEPTH_TEST);
-
+#endif
 		// todo: make this a checkbox
 		const double size_grid = 10.0;
 		AddLine(Vec3(0, 0, 0), Vec3(size_grid, 0, 0), Vec4(1, 0, 0, 1));
 		AddLine(Vec3(0, 0, 0), Vec3(0, size_grid, 0), Vec4(0, 1, 0, 1));
 		AddLine(Vec3(0, 0, 0), Vec3(0, 0, size_grid), Vec4(0, 0, 1, 1));
 
+#if defined(NESHNY_WEBGPU)
+		IRender3DDebug((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
+#else
 		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
+#endif
+
 		IClear();
 		m_NeedsReset = true;
 	}
 
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
-#elif defined(NESHNY_WEBGPU)
-#endif
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);

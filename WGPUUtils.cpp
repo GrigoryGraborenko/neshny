@@ -169,7 +169,13 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPURenderBuffer::WebGPURenderBuffer(std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data) {
+void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data) {
+
+	delete m_VertexBuffer;
+	delete m_IndexBuffer;
+	m_VertexBuffer = nullptr;
+	m_IndexBuffer = nullptr;
+	m_Attributes.clear();
 
 	int vertex_bytes = 0;
 	for (auto attr: attributes) {
@@ -436,9 +442,15 @@ WebGPUSampler::~WebGPUSampler(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 WebGPURenderPipeline::~WebGPURenderPipeline(void) {
-	wgpuRenderPipelineRelease(m_Pipeline);
-	wgpuBindGroupRelease(m_BindGroup);
-	wgpuBindGroupLayoutRelease(m_BindGroupLayout);
+	if (m_Pipeline) {
+		wgpuRenderPipelineRelease(m_Pipeline);
+	}
+	if (m_BindGroup) {
+		wgpuBindGroupRelease(m_BindGroup);
+	}
+	if (m_BindGroupLayout) {
+		wgpuBindGroupLayoutRelease(m_BindGroupLayout);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,9 +471,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
-		// TODO: why does this visibility cause errors?
-		//layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
-		layout_entry.visibility = WGPUShaderStage_Fragment;
+		layout_entry.visibility = buffer.p_VisibilityFlags;
 
 		WGPUBufferBindingLayout buffer_layout;
 		buffer_layout.nextInChain = nullptr;
@@ -725,9 +735,9 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 			color_desc.view = m_ColorTextures[i]->GetTextureView();
 			color_desc.loadOp = WGPULoadOp_Clear;
 			color_desc.storeOp = WGPUStoreOp_Store;
-			color_desc.clearValue.r = 0.4f;
+			color_desc.clearValue.r = 0.0f;
 			color_desc.clearValue.g = 0.0f;
-			color_desc.clearValue.b = 0.4f;
+			color_desc.clearValue.b = 0.0f;
 			color_desc.clearValue.a = 1.0f;
 		}
 

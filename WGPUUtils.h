@@ -116,8 +116,10 @@ public:
 	};
 
 
-													WebGPURenderBuffer		( WGPUVertexFormat attribute, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data = {} ): WebGPURenderBuffer(std::vector<WGPUVertexFormat>{ attribute }, topology, vertex_data, vertex_data_size, index_data) {}
-													WebGPURenderBuffer		( std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data );
+													WebGPURenderBuffer		( void ) {}
+
+	void											Init					( WGPUVertexFormat attribute, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data = {} ) { Init(std::vector<WGPUVertexFormat>{ attribute }, topology, vertex_data, vertex_data_size, index_data); }
+	void											Init					( std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data = {} );
 
 			 										~WebGPURenderBuffer		( void );
 
@@ -262,13 +264,14 @@ public:
 
 	struct Buffer {
 		WebGPUBuffer&			p_Buffer;
-		bool					p_ReadOnly = true;
+		WGPUShaderStageFlags	p_VisibilityFlags;
+		bool					p_ReadOnly;
 	};
 
 								WebGPURenderPipeline	( void ) {}
 								~WebGPURenderPipeline	( void );
 
-	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, bool read_only = false ) { m_Buffers.push_back({ buffer, read_only }); return *this; }
+	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only }); return *this; }
 	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
