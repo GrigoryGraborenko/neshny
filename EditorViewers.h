@@ -80,6 +80,8 @@ protected:
 	WebGPURenderBuffer							m_LineBuffer;
 	WebGPURenderPipeline						m_CirclePipline;
 	WebGPUBuffer*								m_CircleBuffer = nullptr;
+	WebGPURenderPipeline						m_SquarePipline;
+	WebGPUBuffer*								m_SquareBuffer = nullptr;
 #endif
 
 };

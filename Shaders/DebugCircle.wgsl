@@ -21,7 +21,7 @@ fn vertex_main(@builtin(instance_index) index: u32, input : VertexIn) -> VertexO
 	var output : VertexOut;
 
 	let circle = circles[index];
-	output.Position = uniforms.p_VP * vec4f(circle.p_PosRadius.xy + input.aPos * circle.p_PosRadius.z, 0.0, 1.0);
+	output.Position = uniforms.p_VP * vec4f(circle.p_PosRadius.xy + input.aPos * circle.p_PosRadius.zw, 0.0, 1.0);
 	output.vCol = circle.p_Col;
 	return output;
 }

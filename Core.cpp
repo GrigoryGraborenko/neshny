@@ -1166,16 +1166,19 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 		}
 		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
 	} else if(name == "SquareOutline") {
-		/*
-		new_buffer->Init(2, GL_LINE_LOOP
-			,std::vector<GLfloat>({
-				-1.0f, -1.0f
-				,1.0f, -1.0f
-				,1.0f, 1.0f
-				,-1.0f, 1.0f
-			})
-			,std::vector<GLuint>({ 0, 2, 1, 0, 3, 2 }));
-			*/
+
+		std::vector<float> vertices = {
+			-1.0, -1.0
+			,1.0, -1.0
+			,1.0, 1.0
+			,-1.0, 1.0
+			,-1.0, -1.0
+		};
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
+#pragma msg("why does this fail with indices? combo of WGPUPrimitiveTopology_LineStrip and indices causes issues")
+		//new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		//	0, 1, 2, 3, 0
+		//});
 	} else if(name == "Cylinder") {
 		/*
 		new_buffer = new GLBuffer();

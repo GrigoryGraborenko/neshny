@@ -19,21 +19,57 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 	};
 	std::vector<RenderPoint> debug_lines;
 	std::vector<RenderPoint> debug_circles;
+	std::vector<RenderPoint> debug_squares;
+	
 	debug_lines.reserve(m_Lines.size() * 2);
 	debug_circles.reserve(m_Circles.size());
+	debug_squares.reserve(m_Squares.size());
+	Vec2 offset2d(offset.x, offset.y);
 	for (const auto& line : m_Lines) {
-		debug_lines.push_back({ fVec4(line.p_A.ToFloat3(), 1.0), line.p_Col.ToFloat4() });
-		debug_lines.push_back({ fVec4(line.p_B.ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 0.0), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 0.0), line.p_Col.ToFloat4() });
 	}
 	for (const auto& circle : m_Circles) {
-		debug_circles.push_back({ fVec4(circle.p_Pos.x, circle.p_Pos.y, circle.p_Radius, 0.0), circle.p_Col.ToFloat4() });
+		debug_circles.push_back({ fVec4((circle.p_Pos.x - offset.x) * scale, (circle.p_Pos.y - offset.y) * scale, circle.p_Radius * scale, circle.p_Radius * scale), circle.p_Col.ToFloat4() });
 	}
+	for (auto it = m_Points.begin(); it != m_Points.end(); it++) {
+
+		// TODO: use on_top
+		//if (it->p_OnTop) {
+		//} else {
+		//}
+		Vec3 dpos = (it->p_Pos - offset) * scale;
+
+		for (int i = 0; i < 2; i++) {
+			Vec3 off = (it->p_Pos - offset + Vec3(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
+			debug_lines.push_back({ fVec4(it->p_Pos.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
+			debug_lines.push_back({ fVec4(off.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
+		}
+		if (it->p_Str.size() <= 0) {
+			continue;
+		}
+		fVec3 result = view_perspective * fVec3(dpos.x, dpos.y, dpos.z);
+		if (result.z > 1) {
+			continue;
+		}
+		int x = (int)floor((result.x + 1.0) * 0.5 * width);
+		int y = (int)floor((1.0 - result.y) * 0.5 * height);
+		ImGui::SetCursorPos(ImVec2(x, y));
+		ImGui::Text(it->p_Str.c_str());
+	}
+	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
+		Vec2 mid_pos = ((it->p_MaxPos + it->p_MinPos) * 0.5 - offset2d) * scale;
+		Vec2 radius = (it->p_MaxPos - it->p_MinPos).Abs() * 0.5 * scale;
+		debug_squares.push_back({ fVec4(mid_pos.x, mid_pos.y, radius.x, radius.y), it->p_Col.ToFloat4() });
+	}
+
 	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
 
 		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
 		m_CircleBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
+		m_SquareBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
 		m_LinePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.Finalize("DebugLine", m_LineBuffer);
@@ -41,14 +77,24 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_CircleBuffer, WGPUShaderStage_Vertex, true)
 			.Finalize("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
+		m_SquarePipline
+			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.AddBuffer(*m_SquareBuffer, WGPUShaderStage_Vertex, true)
+			.Finalize("DebugCircle", *Core::Singleton().GetBuffer("SquareOutline"));
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(debug_circles);
 	m_CirclePipline.RefreshBindings();
+
+	m_SquareBuffer->EnsureSizeBytes((int)debug_squares.size() * sizeof(RenderPoint));
+	m_SquareBuffer->SetValues(debug_squares);
+	m_SquarePipline.RefreshBindings();
+
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &view_perspective, sizeof(fMatrix4));
 
 	rtt.Render(&m_LinePipline);
 	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
+	rtt.Render(&m_SquarePipline, (int)m_Squares.size());
 }
 
 #elif defined(NESHNY_GL)
