@@ -78,6 +78,8 @@ protected:
 	WebGPUBuffer*								m_Uniforms = nullptr;
 	WebGPURenderPipeline						m_LinePipline;
 	WebGPURenderBuffer							m_LineBuffer;
+	WebGPURenderPipeline						m_CirclePipline;
+	WebGPUBuffer*								m_CircleBuffer = nullptr;
 #endif
 
 };

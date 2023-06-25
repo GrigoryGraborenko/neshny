@@ -141,6 +141,10 @@ void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::ClearBuffer() {
 
+	if (m_Size <= 0) {
+		return;
+	}
+
 	unsigned char* tmp = new unsigned char[m_Size];
 	memset(tmp, 0, m_Size);
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Buffer, 0, tmp, m_Size);
@@ -163,6 +167,11 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 	//glGetNamedBufferSubData(m_Buffer, 0, max_size, ptr);
 	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 	return std::shared_ptr<unsigned char[]>(ptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+WGPUQueue WebGPUBuffer::GetCoreQueue(void) {
+	return Core::Singleton().GetWebGPUQueue();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -667,6 +676,9 @@ void WebGPURenderPipeline::RefreshBindings(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPURenderPipeline::Render(WGPURenderPassEncoder pass, int instances) {
+	if (instances <= 0) {
+		return;
+	}
 	wgpuRenderPassEncoderSetPipeline(pass, m_Pipeline);
 	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, 0);
 	wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_RenderBuffer->GetVertex(), 0, WGPU_WHOLE_SIZE);
@@ -752,12 +764,8 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 		}
 	}
 
-	for (auto& color_desc : m_ColorDescriptors) {
-		color_desc.loadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
-	}
-	m_DepthDesc.depthLoadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
-
 	m_ActiveEncoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+	m_ClearNext = clear;
 
 	return Token([this]() {
 		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_ActiveEncoder, nullptr);
@@ -777,7 +785,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 	for (int i = 0; i < num_color_tex; i++) {
 		WGPURenderPassColorAttachment& color_desc = m_ColorDescriptors[i];
 		color_desc.view = color_attachments[i];
-		color_desc.loadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
+		color_desc.loadOp = WGPULoadOp_Clear;
 		color_desc.storeOp = WGPUStoreOp_Store;
 		color_desc.clearValue.r = 0.0f;
 		color_desc.clearValue.g = 0.0f;
@@ -790,13 +798,14 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 
 	if (depth_tex) {
 		m_DepthDesc.view = depth_tex;
-		m_DepthDesc.depthLoadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
+		m_DepthDesc.depthLoadOp = WGPULoadOp_Clear;
 		m_PassDescriptor.depthStencilAttachment = &m_DepthDesc;
 	} else {
 		m_PassDescriptor.depthStencilAttachment = nullptr;
 	}
 
 	m_ActiveEncoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+	m_ClearNext = clear;
 
 	return Token([this]() {
 		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_ActiveEncoder, nullptr);
@@ -809,6 +818,13 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void WebGPURTT::Render(WebGPURenderPipeline* pipeline, int instances) {
+
+	for (auto& color_desc : m_ColorDescriptors) {
+		color_desc.loadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
+	}
+	m_DepthDesc.depthLoadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
+	m_ClearNext = false;
+
 	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_ActiveEncoder, &m_PassDescriptor);
 	if (pipeline) {
 		pipeline->Render(pass, instances);
@@ -819,6 +835,13 @@ void WebGPURTT::Render(WebGPURenderPipeline* pipeline, int instances) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Token WebGPURTT::RenderPassToken(WGPURenderPassEncoder& pass) {
+
+	for (auto& color_desc : m_ColorDescriptors) {
+		color_desc.loadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
+	}
+	m_DepthDesc.depthLoadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
+	m_ClearNext = false;
+
 	pass = wgpuCommandEncoderBeginRenderPass(m_ActiveEncoder, &m_PassDescriptor);
 	return Token([&pass]() {
 		wgpuRenderPassEncoderEnd(pass);

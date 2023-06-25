@@ -13,28 +13,42 @@ void ErrorCallback(WGPUErrorType type, char const* message, void* userdata) {
 ////////////////////////////////////////////////////////////////////////////////
 void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
-	struct DebugLine {
-		fVec3	p_Pos;
+	struct RenderPoint {
+		fVec4	p_Pos;
 		fVec4	p_Col;
 	};
-	std::vector<DebugLine> debug_lines;
-	debug_lines.reserve(512);
+	std::vector<RenderPoint> debug_lines;
+	std::vector<RenderPoint> debug_circles;
+	debug_lines.reserve(m_Lines.size() * 2);
+	debug_circles.reserve(m_Circles.size());
 	for (const auto& line : m_Lines) {
-		debug_lines.push_back({ line.p_A.ToFloat3(), line.p_Col.ToFloat4() });
-		debug_lines.push_back({ line.p_B.ToFloat3(), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(line.p_A.ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(line.p_B.ToFloat3(), 1.0), line.p_Col.ToFloat4() });
 	}
-	m_LineBuffer.Init({ WGPUVertexFormat_Float32x3, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(DebugLine));
+	for (const auto& circle : m_Circles) {
+		debug_circles.push_back({ fVec4(circle.p_Pos.x, circle.p_Pos.y, circle.p_Radius, 0.0), circle.p_Col.ToFloat4() });
+	}
+	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
 
 		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
+		m_CircleBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
 		m_LinePipline
-			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex | WGPUShaderStage_Fragment, true)
+			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.Finalize("DebugLine", m_LineBuffer);
+		m_CirclePipline
+			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.AddBuffer(*m_CircleBuffer, WGPUShaderStage_Vertex, true)
+			.Finalize("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
 	}
+	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
+	m_CircleBuffer->SetValues(debug_circles);
+	m_CirclePipline.RefreshBindings();
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &view_perspective, sizeof(fMatrix4));
 
 	rtt.Render(&m_LinePipline);
+	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
 }
 
 #elif defined(NESHNY_GL)

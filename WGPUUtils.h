@@ -61,8 +61,7 @@ public:
 
 	template<class T>
 	inline void										SetSingleValue(int index, T value) {
-		// TODO: replace
-		//glNamedBufferSubData(m_Buffer, index * sizeof(T), sizeof(T), &value);
+		wgpuQueueWriteBuffer(GetCoreQueue(), m_Buffer, index * sizeof(T), (unsigned char*)&value, sizeof(T));
 	}
 
 	template<class T>
@@ -70,8 +69,7 @@ public:
 		if (items.empty()) {
 			return;
 		}
-		// TODO: replace
-		//glNamedBufferSubData(m_Buffer, offset * sizeof(T), items.size() * sizeof(T), &(items[0]));
+		wgpuQueueWriteBuffer(GetCoreQueue(), m_Buffer, offset, (unsigned char*)&items[0], items.size() * sizeof(T));
 	}
 
 	template<class T>
@@ -99,6 +97,10 @@ protected:
 	WGPUBufferUsageFlags							m_Flags = 0;
 	WGPUBuffer										m_Buffer = nullptr;
 	int												m_Size = 0;
+
+private:
+
+	WGPUQueue										GetCoreQueue(void);
 
 };
 
@@ -317,8 +319,9 @@ public:
 	void							Render			( WebGPURenderPipeline* pipeline, int instances = 1 );
 	Token							RenderPassToken	( WGPURenderPassEncoder& pass );
 
-	inline WGPUTextureView			GetColorTex	( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
-	inline WGPUTextureView			GetDepthTex	( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
+	inline void						ClearBeforeNextRender	( void ) { m_ClearNext = true; }
+	inline WGPUTextureView			GetColorTex				( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
+	inline WGPUTextureView			GetDepthTex				( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
 
 private:
 
@@ -335,6 +338,7 @@ private:
 	WGPURenderPassDepthStencilAttachment		m_DepthDesc;
 	WGPURenderPassDescriptor		m_PassDescriptor;
 	WGPUCommandEncoder				m_ActiveEncoder = nullptr;
+	bool							m_ClearNext = true;
 };
 
 typedef WebGPURTT RTT;

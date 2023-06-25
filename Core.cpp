@@ -1153,21 +1153,18 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,2, 0, 3
 		});
 	} else if(name == "Circle") {
-		/*
-		new_buffer = new GLBuffer();
-
+		
 		constexpr int num_segments = 32;
 		constexpr double seg_rads = (2 * PI) / num_segments;
 
-		std::vector<GLfloat> vertices;
+		std::vector<float> vertices;
 		double ang = 0;
-		for (int i = 0; i < num_segments; i++) {
+		for (int i = 0; i <= num_segments; i++) {
 			vertices.push_back(cos(ang));
 			vertices.push_back(sin(ang));
 			ang += seg_rads;
 		}
-		new_buffer->Init(2, GL_LINE_LOOP, vertices);
-		*/
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
 	} else if(name == "SquareOutline") {
 		/*
 		new_buffer->Init(2, GL_LINE_LOOP
@@ -1201,10 +1198,6 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 		}
 		new_buffer->Init(3, GL_TRIANGLE_STRIP, vertices);
 		*/
-	} else if(name == "DebugLine") {
-		std::vector<float> vertices = { 0, 0, 0, 1, 1, 1 };
-		//new_buffer = new WebGPURenderBuffer(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), { 0, 1 });
-		new_buffer->Init(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_LineList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
 	} else if(name == "DebugSquare") {
 		//new_buffer = new GLBuffer();
 		//new_buffer->Init(2, GL_LINE_LOOP, std::vector<GLfloat>({0, 0, 0, 1, 1, 1, 1, 0 }));
