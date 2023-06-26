@@ -74,6 +74,8 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
 {
 	if (size > 0) {
 		EnsureSizeBytes(size);
+	} else {
+		Create(0, nullptr);
 	}
 }
 
@@ -88,8 +90,15 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::Create(int size, unsigned char* data) {
 
+	m_Flags |= WGPUBufferUsage_CopyDst;
+	if (m_Flags == WGPUBufferUsage_CopyDst) {
+		m_Flags |= WGPUBufferUsage_MapRead;
+	} else {
+		m_Flags |= WGPUBufferUsage_CopySrc;
+	}
+
 	WGPUBufferDescriptor desc = {};
-	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex | WGPUBufferUsage_Index | WGPUBufferUsage_Uniform | WGPUBufferUsage_Storage;
+	desc.usage = m_Flags;
 	desc.size = size;
 	desc.nextInChain = nullptr;
 	desc.label = nullptr;
@@ -117,22 +126,26 @@ void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
 		}
 		return;
 	}
-
+	int old_size = m_Size;
 	WGPUBuffer old_buffer = m_Buffer;
+
+	m_Size = size_bytes;
 	Create(size_bytes, nullptr);
 	
 	ClearBuffer();
 	if (!clear_after) {
-		// TODO: replace
-		//glCopyNamedBufferSubData(old_buffer, m_Buffer, 0, 0, m_Size);
-		//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+		wgpuCommandEncoderCopyBufferToBuffer(encoder, old_buffer, 0, m_Buffer, 0, old_size);
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+		wgpuCommandBufferRelease(commands);
 	}
 
 	if (old_buffer) {
 		wgpuBufferDestroy(old_buffer);
 	}
 
-	m_Size = size_bytes;
 #ifdef SSBO_DEBUG
 	m_NumberResizes++;
 #endif
@@ -157,15 +170,75 @@ void WebGPUBuffer::ClearBuffer() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::Read(unsigned char* buffer, int max_size) {
+
+	max_size = max_size >= 0 ? std::min(max_size, m_Size) : m_Size;
+	if (max_size <= 0) {
+		return;
+	}
+
+	struct AsyncInfo {
+		WGPUBuffer					p_Buffer;
+		unsigned char*				p_Destination;
+		int							p_Size;
+		bool						p_Complete = false;
+		WGPUBufferMapAsyncStatus	m_Status;
+	};
+	bool directly_usable = m_Flags == (WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead);
+
+	WGPUBuffer copy_buffer = m_Buffer;
+	if (!directly_usable) {
+
+		WGPUBufferDescriptor desc = {};
+		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+		desc.size = max_size;
+		desc.nextInChain = nullptr;
+		desc.label = nullptr;
+
+		copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
+
+		WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+		wgpuCommandEncoderCopyBufferToBuffer(encoder, m_Buffer, 0, copy_buffer, 0, max_size);
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+		wgpuCommandBufferRelease(commands);
+	}
+
+	AsyncInfo info = { copy_buffer, buffer, max_size };
+	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, max_size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
+		AsyncInfo* input_info = (AsyncInfo*)user_data;
+
+		if (status == WGPUBufferMapAsyncStatus_Success) {
+			auto buffer_data = wgpuBufferGetConstMappedRange(input_info->p_Buffer, 0, input_info->p_Size);
+			memcpy(input_info->p_Destination, buffer_data, input_info->p_Size);
+			wgpuBufferUnmap(input_info->p_Buffer);
+		}
+		input_info->m_Status = status;
+		input_info->p_Complete = true;
+	}, &info);
+
+	while (!info.p_Complete) {
+#ifndef __EMSCRIPTEN__
+		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#else
+		emscripten_sleep(0);
+#endif
+	}
+
+	if (!directly_usable) {
+		wgpuBufferDestroy(copy_buffer);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
-	max_size = max_size >= 0 ? max_size : m_Size;
+	max_size = max_size >= 0 ? std::min(max_size, m_Size) : m_Size;
 	if (max_size <= 0) {
 		return std::shared_ptr<unsigned char[]>(nullptr);
 	}
 	unsigned char* ptr = new unsigned char[max_size];
-	// TODO: replace
-	//glGetNamedBufferSubData(m_Buffer, 0, max_size, ptr);
-	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	Read(ptr, max_size);
 	return std::shared_ptr<unsigned char[]>(ptr);
 }
 

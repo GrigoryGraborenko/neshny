@@ -323,7 +323,7 @@ struct BaseVec4 {
 	BaseVec4(Axis ax, T v) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0), w(ax == Axis::W ? v : 0) {}
 
 	inline BaseVec4<float>	ToFloat4( void ) const { return BaseVec4<float>(float(x), float(y), float(z), float(w)); }
-	inline BaseVec4<int>	ToInt4	( void ) const { return BaseVec4<int>(int(floor(x)), int(floor(y)), int(floor(z), int(floor(w)))); }
+	inline BaseVec4<int>	ToInt4	( void ) const { return BaseVec4<int>(int(floor(x)), int(floor(y)), int(floor(z)), int(floor(w))); }
 
 	inline void			Set(T e0, T e1, T e2, T e3) { x = e0; y = e1; z = e2; w = e3; }
 

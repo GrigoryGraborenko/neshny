@@ -53,6 +53,7 @@ public:
 
 	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
 	void											ClearBuffer		( void );
+	void											Read			( unsigned char* buffer, int max_size = -1 );
 	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
 
 	inline WGPUBuffer								Get				( void ) { return m_Buffer; }
