@@ -705,7 +705,8 @@ void WebGPURenderPipeline::RefreshBindings(void) {
 	entries.resize(num_bindings);
 
 	int binding_num = 0;
-	for (auto buffer : m_Buffers) {
+	for (auto& buffer : m_Buffers) {
+		buffer.p_LastSeenBuffer = buffer.p_Buffer.Get();
 		WGPUBindGroupEntry& entry = entries[binding_num];
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
@@ -743,6 +744,13 @@ void WebGPURenderPipeline::RefreshBindings(void) {
 void WebGPURenderPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (instances <= 0) {
 		return;
+	}
+	bool needs_refresh = false;
+	for (auto& buffer : m_Buffers) {
+		needs_refresh = needs_refresh || (buffer.p_LastSeenBuffer != buffer.p_Buffer.Get());
+	}
+	if (needs_refresh) {
+		RefreshBindings();
 	}
 	wgpuRenderPassEncoderSetPipeline(pass, m_Pipeline);
 	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, 0);

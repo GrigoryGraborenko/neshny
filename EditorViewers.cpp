@@ -67,7 +67,7 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
-
+		// TODO: this throws an error for one frame due to buffers being empty at first
 		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
 		m_CircleBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
 		m_SquareBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
@@ -85,11 +85,9 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(debug_circles);
-	m_CirclePipline.RefreshBindings();
 
 	m_SquareBuffer->EnsureSizeBytes((int)debug_squares.size() * sizeof(RenderPoint));
 	m_SquareBuffer->SetValues(debug_squares);
-	m_SquarePipline.RefreshBindings();
 
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &view_perspective, sizeof(fMatrix4));
 

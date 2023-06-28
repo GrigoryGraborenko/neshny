@@ -47,18 +47,18 @@ class WebGPUBuffer {
 
 public:
 
-													WebGPUBuffer		( WGPUBufferUsageFlags flags, int size = 0 );
-													WebGPUBuffer		( WGPUBufferUsageFlags flags, unsigned char* data, int size );
-			 										~WebGPUBuffer		( void );
+													WebGPUBuffer			( WGPUBufferUsageFlags flags, int size = 0 );
+													WebGPUBuffer			( WGPUBufferUsageFlags flags, unsigned char* data, int size );
+			 										~WebGPUBuffer			( void );
 
-	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
-	void											ClearBuffer		( void );
-	void											Read			( unsigned char* buffer, int offset = 0, int size = -1 );
-	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
+	void											EnsureSizeBytes			( int size_bytes, bool clear_after = true );
+	void											ClearBuffer				( void );
+	void											Read					( unsigned char* buffer, int offset = 0, int size = -1 );
+	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 
-	inline WGPUBuffer								Get				( void ) { return m_Buffer; }
-	inline int										GetSizeBytes	( void ) const { return m_Size; }
-	inline WGPUBufferUsageFlags						GetFlags		( void ) const { return m_Flags; }
+	inline WGPUBuffer								Get						( void ) { return m_Buffer; }
+	inline int										GetSizeBytes			( void ) const { return m_Size; }
+	inline WGPUBufferUsageFlags						GetFlags				( void ) const { return m_Flags; }
 
 	template<class T>
 	inline void										SetSingleValue(int index, T value) {
@@ -267,12 +267,13 @@ public:
 		WebGPUBuffer&			p_Buffer;
 		WGPUShaderStageFlags	p_VisibilityFlags;
 		bool					p_ReadOnly;
+		WGPUBuffer				p_LastSeenBuffer = nullptr;
 	};
 
 								WebGPURenderPipeline	( void ) {}
 								~WebGPURenderPipeline	( void );
 
-	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only }); return *this; }
+	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
 	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
