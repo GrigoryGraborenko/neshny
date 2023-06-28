@@ -53,7 +53,7 @@ public:
 
 	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
 	void											ClearBuffer		( void );
-	void											Read			( unsigned char* buffer, int max_size = -1 );
+	void											Read			( unsigned char* buffer, int offset = 0, int size = -1 );
 	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
 
 	inline WGPUBuffer								Get				( void ) { return m_Buffer; }
@@ -76,8 +76,7 @@ public:
 	template<class T>
 	inline T										GetSingleValue(int index) {
 		T result;
-		// TODO: replace
-		//glGetNamedBufferSubData(m_Buffer, index * sizeof(T), sizeof(T), &result);
+		Read((unsigned char*)&result, index * sizeof(T), sizeof(T));
 		return result;
 	}
 
@@ -87,12 +86,12 @@ public:
 			return;
 		}
 		items.resize(count);
-		// TODO: replace
-		//glGetNamedBufferSubData(m_Buffer, offset * sizeof(T), count * sizeof(T), &(items[0]));
+		Read((unsigned char*)&(items[0]), offset * sizeof(T), count * sizeof(T));
 	}
 
 protected:
 
+	void											Init(void);
 	void											Create(int size, unsigned char* data);
 
 	WGPUBufferUsageFlags							m_Flags = 0;
@@ -102,7 +101,6 @@ protected:
 private:
 
 	WGPUQueue										GetCoreQueue(void);
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////

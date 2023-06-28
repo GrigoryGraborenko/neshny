@@ -1,4 +1,4 @@
-include(${CMAKE_SOURCE_DIR}/UserSettings.cmake)
+include(${BASE_DIR}/UserSettings.cmake)
 
 # creates CPP resources file "EmbeddedFiles.cpp" from input files
 function(create_resources output_fname)
@@ -35,7 +35,7 @@ endfunction()
 # get the list of shaders from the app
 file(GLOB_RECURSE ShaderList ${SHADER_PATH}/*.*)
 file(GLOB_RECURSE NeshnyShaderList ${NESHNY_DIR}/shaders/*.*)
-create_resources("src/EmbeddedFiles.cpp" ${NeshnyShaderList} ${ShaderList})
+create_resources("${BASE_DIR}/src/EmbeddedFiles.cpp" ${NeshnyShaderList} ${ShaderList})
 
 # creates an empty file whose timestamp determines if the embed step has run, preventing pointless reruns
-file(WRITE ".embedded_token" "")
+file(WRITE ${CMAKE_BINARY_DIR}/.embedded_token "")

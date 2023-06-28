@@ -423,6 +423,14 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #ifdef SDL_WEBGPU_LOOP
 
 ////////////////////////////////////////////////////////////////////////////////
+void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
+
+	if (WGPUErrorType_NoError == type) {
+		return;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
 #ifdef __EMSCRIPTEN__
 	m_Device = emscripten_webgpu_get_device();
@@ -565,11 +573,17 @@ void Core::SDLLoopInner() {
 	InfoViewer::LoopTime(loop_nanos);
 #endif
 
+	wgpuDevicePushErrorScope(Core::Singleton().GetWebGPUDevice(), WGPUErrorFilter_Validation);
+
 	SyncResolution();
 #ifdef NESHNY_WEBGPU
 	WGPUTextureView view = GetCurrentSwapTextureView();
 	if (!view) {
 		LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
+		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
+#ifndef __EMSCRIPTEN__
+		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#endif
 		return;
 	}
 #endif
@@ -669,13 +683,14 @@ void Core::SDLLoopInner() {
 	wgpuQueueSubmit(GetWebGPUQueue(), 1, &commands);
 	wgpuCommandBufferRelease(commands);														// release commands
 
-	//wgpuDevicePopErrorScope(GetWebGPUDevice(), ErrorCallback, nullptr);
-
 	wgpuTextureViewRelease(view);													// release textureView
 #ifndef __EMSCRIPTEN__
 	wgpuSwapChainPresent(GetWebGPUSwapChain());
 #endif
-
+	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
+#ifndef __EMSCRIPTEN__
+	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#endif
 #endif
 }
 

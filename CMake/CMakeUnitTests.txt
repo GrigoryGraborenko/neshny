@@ -1,4 +1,4 @@
-include(${CMAKE_SOURCE_DIR}/UserSettings.cmake)
+include(${BASE_DIR}/UserSettings.cmake)
 
 function(create_unit_tests output_fname)
     # create empty output file
@@ -33,6 +33,6 @@ endfunction()
 
 # get the list of unit test files
 file(GLOB_RECURSE NeshnyUnitTestFiles ${NESHNY_DIR}/UnitTests/*.cpp)
-file(GLOB_RECURSE UnitTestFiles src/UnitTests/*.cpp)
+file(GLOB_RECURSE UnitTestFiles ${BASE_DIR}/src/UnitTests/*.cpp)
 
-create_unit_tests("src/UnitTests.cpp" ${NeshnyUnitTestFiles} ${UnitTestFiles})
+create_unit_tests("${BASE_DIR}/src/UnitTestList.cpp" ${NeshnyUnitTestFiles} ${UnitTestFiles})

@@ -72,6 +72,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
 	m_Flags	( flags )
 {
+	Init();
 	if (size > 0) {
 		EnsureSizeBytes(size);
 	} else {
@@ -84,18 +85,18 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int 
 	m_Flags		( flags )
 	,m_Size		( size )
 {
+	Init();
 	Create(size, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUBuffer::Create(int size, unsigned char* data) {
+void WebGPUBuffer::Init(void) {
+	// this is the only option if you want an expandable buffer - CopySrc has to be included, and thus MapRead can't be
+	m_Flags |= WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
+}
 
-	m_Flags |= WGPUBufferUsage_CopyDst;
-	if (m_Flags == WGPUBufferUsage_CopyDst) {
-		m_Flags |= WGPUBufferUsage_MapRead;
-	} else {
-		m_Flags |= WGPUBufferUsage_CopySrc;
-	}
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::Create(int size, unsigned char* data) {
 
 	WGPUBufferDescriptor desc = {};
 	desc.usage = m_Flags;
@@ -162,55 +163,48 @@ void WebGPUBuffer::ClearBuffer() {
 	memset(tmp, 0, m_Size);
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Buffer, 0, tmp, m_Size);
 	delete[] tmp;
-
-	// TODO: replace
-	//GLubyte val = 0;
-	//glClearNamedBufferData(m_Buffer, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, &val);
-	//glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUBuffer::Read(unsigned char* buffer, int max_size) {
+void WebGPUBuffer::Read(unsigned char* buffer, int offset, int size) {
 
-	max_size = max_size >= 0 ? std::min(max_size, m_Size) : m_Size;
-	if (max_size <= 0) {
+	size = size >= 0 ? size : m_Size - offset;
+	if (size <= 0) {
 		return;
 	}
 
 	struct AsyncInfo {
 		WGPUBuffer					p_Buffer;
 		unsigned char*				p_Destination;
+		int							p_Offset;
 		int							p_Size;
 		bool						p_Complete = false;
 		WGPUBufferMapAsyncStatus	m_Status;
 	};
-	bool directly_usable = m_Flags == (WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead);
 
-	WGPUBuffer copy_buffer = m_Buffer;
-	if (!directly_usable) {
+	WGPUBufferDescriptor desc = {};
+	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+	desc.size = size;
+	desc.nextInChain = nullptr;
+	desc.label = nullptr;
 
-		WGPUBufferDescriptor desc = {};
-		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
-		desc.size = max_size;
-		desc.nextInChain = nullptr;
-		desc.label = nullptr;
-
-		copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
-
+	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
+	{
 		WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
-		wgpuCommandEncoderCopyBufferToBuffer(encoder, m_Buffer, 0, copy_buffer, 0, max_size);
+		wgpuCommandEncoderCopyBufferToBuffer(encoder, m_Buffer, offset, copy_buffer, 0, size);
 		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
 		wgpuCommandEncoderRelease(encoder);
 		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
 		wgpuCommandBufferRelease(commands);
+		offset = 0; // since you are copying from a temp buffer that already took the offset into account, this must be set to zero
 	}
 
-	AsyncInfo info = { copy_buffer, buffer, max_size };
-	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, max_size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
+	AsyncInfo info = { copy_buffer, buffer, offset, size };
+	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, offset, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
 		AsyncInfo* input_info = (AsyncInfo*)user_data;
 
 		if (status == WGPUBufferMapAsyncStatus_Success) {
-			auto buffer_data = wgpuBufferGetConstMappedRange(input_info->p_Buffer, 0, input_info->p_Size);
+			auto buffer_data = wgpuBufferGetConstMappedRange(input_info->p_Buffer, input_info->p_Offset, input_info->p_Size);
 			memcpy(input_info->p_Destination, buffer_data, input_info->p_Size);
 			wgpuBufferUnmap(input_info->p_Buffer);
 		}
@@ -226,9 +220,7 @@ void WebGPUBuffer::Read(unsigned char* buffer, int max_size) {
 #endif
 	}
 
-	if (!directly_usable) {
-		wgpuBufferDestroy(copy_buffer);
-	}
+	wgpuBufferDestroy(copy_buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +230,7 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 		return std::shared_ptr<unsigned char[]>(nullptr);
 	}
 	unsigned char* ptr = new unsigned char[max_size];
-	Read(ptr, max_size);
+	Read(ptr, 0, max_size);
 	return std::shared_ptr<unsigned char[]>(ptr);
 }
 

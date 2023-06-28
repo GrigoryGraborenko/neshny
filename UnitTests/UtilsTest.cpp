@@ -306,6 +306,7 @@ namespace Test {
 
 		const int num_randoms = 100000;
 
+#if defined(NESHNY_GL)
 		Neshny::GLSSBO control_ssbo;
 		Neshny::GLSSBO rando_ssbo;
 
@@ -330,6 +331,10 @@ namespace Test {
 			ind = (ind + 1) % numbers.size();
 			return res;
 		});
+#elif defined(NESHNY_WEBGPU)
+
+#endif
+
 	}
 
 } // namespace Test

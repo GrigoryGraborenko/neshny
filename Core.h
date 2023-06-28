@@ -600,6 +600,8 @@ private:
 	WebGPUShader*						IGetShader					( QString name, QString insertion );
 	WebGPURenderBuffer*					IGetBuffer					( QString name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
+	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
+	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
 #endif
 
 	template<class T, typename P = T::Params>

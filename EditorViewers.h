@@ -64,7 +64,7 @@ protected:
 #endif
 	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
 
-												~BaseDebugRender	( void ) { delete m_Uniforms; }
+												~BaseDebugRender	( void );
 
     std::vector<DebugLine>						m_Lines;
     std::vector<DebugPoint>						m_Points;

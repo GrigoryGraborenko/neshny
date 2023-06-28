@@ -3,13 +3,14 @@
 
 namespace Neshny {
 
-void ErrorCallback(WGPUErrorType type, char const* message, void* userdata) {
-	if (strlen(message) > 0) {
-		printf("SETUP ERROR: %s\n", message);
-	}
+#if defined(NESHNY_WEBGPU)
+////////////////////////////////////////////////////////////////////////////////
+BaseDebugRender::~BaseDebugRender(void) {
+	delete m_Uniforms;
+	delete m_CircleBuffer;
+	delete m_SquareBuffer;
 }
 
-#if defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
 void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
@@ -98,6 +99,10 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 }
 
 #elif defined(NESHNY_GL)
+////////////////////////////////////////////////////////////////////////////////
+BaseDebugRender::~BaseDebugRender(void) {
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
