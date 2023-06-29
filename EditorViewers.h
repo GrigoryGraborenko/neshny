@@ -140,6 +140,35 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
+class LogViewer {
+public:
+
+	struct LogEntry {
+		QDateTime	p_Time;
+		std::string	p_TimeStr;
+		std::string	p_Message;
+		ImVec4		p_Color;
+	};
+
+	inline static LogViewer&					Singleton			( void ) { static LogViewer instance; return instance; }
+
+	inline static void							RenderImGui			( InterfaceLogViewer& data ) { Singleton().IRenderImGui(data); }
+
+	inline void									Clear				( void ) { m_Logs.clear(); };
+	inline void									Log					( LogEntry&& entry ) { m_Logs.emplace_back(entry); }
+
+protected:
+
+												LogViewer			( void ) {}
+
+	void										IRenderImGui		( InterfaceLogViewer& data );
+
+	std::vector<LogEntry>						m_Logs;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
 class BufferViewer {
 
 public:

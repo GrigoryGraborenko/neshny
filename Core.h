@@ -181,6 +181,12 @@ struct InterfaceInfoViewer {
 	bool	p_Visible = false;
 };
 
+struct InterfaceLogViewer {
+	bool		p_Visible = false;
+	bool		p_AutoScroll = true;
+	std::string	p_Search = "";
+};
+
 struct InterfaceBufferViewer {
 	bool	p_Visible = false;
 	bool	p_AllEnabled = false;
@@ -213,6 +219,7 @@ struct InterfaceCore {
 	int						p_Version = INTERFACE_SAVE_VERSION;
 	bool					p_ShowImGuiDemo = false;
 	InterfaceInfoViewer		p_InfoView;
+	InterfaceLogViewer		p_LogView;
 	InterfaceBufferViewer	p_BufferView;
 	InterfaceShaderViewer	p_ShaderView;
 	InterfaceResourceViewer	p_ResourceView;
@@ -228,6 +235,7 @@ namespace meta {
 			member("Version", &Neshny::InterfaceCore::p_Version)
 			,member("ShowImGuiDemo", &Neshny::InterfaceCore::p_ShowImGuiDemo)
 			,member("InfoView", &Neshny::InterfaceCore::p_InfoView)
+			,member("LogView", &Neshny::InterfaceCore::p_LogView)
 			,member("BufferView", &Neshny::InterfaceCore::p_BufferView)
 			,member("ShaderView", &Neshny::InterfaceCore::p_ShaderView)
 			,member("ResourceView", &Neshny::InterfaceCore::p_ResourceView)
@@ -238,6 +246,13 @@ namespace meta {
 	template<> inline auto registerMembers<Neshny::InterfaceInfoViewer>() {
 		return members(
 			member("Visible", &Neshny::InterfaceInfoViewer::p_Visible)
+		);
+	}
+	template<> inline auto registerMembers<Neshny::InterfaceLogViewer>() {
+		return members(
+			member("Visible", &Neshny::InterfaceLogViewer::p_Visible)
+			,member("AutoScroll", &Neshny::InterfaceLogViewer::p_AutoScroll)
+			,member("Search", &Neshny::InterfaceLogViewer::p_Search)
 		);
 	}
 	template<> inline auto registerMembers<Neshny::InterfaceBufferViewer>() {
@@ -300,7 +315,6 @@ namespace meta {
 			,member("RotationAngle", &Neshny::Camera2D::p_RotationAngle)
 		);
 	}
-
 }
 
 namespace Neshny {

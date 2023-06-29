@@ -218,19 +218,36 @@ bool Core::LoopInit(IEngine* engine) {
 	}
 
 	qInstallMessageHandler([](QtMsgType type, const QMessageLogContext& context, const QString& msg) {
+		auto time = QDateTime::currentDateTime();
+		auto time_str = time.toString("hh:mm:ss.zzz");
+		auto msg_str = msg.toStdString();
+#ifdef __EMSCRIPTEN__
+		msg_str += "\n";
+		printf(msg_str.c_str());
+#else
 		switch (type) {
-		case QtDebugMsg:
-		case QtWarningMsg:
-		case QtCriticalMsg:
-		case QtFatalMsg:
-			g_StaticInstance->m_LogFile.write(QString("[%1] %2 \n").arg(QDateTime::currentDateTime().toString("hh:mm:ss.zzz")).arg(msg).toLocal8Bit());
-			g_StaticInstance->m_LogFile.flush();
-			break;
-		case QtInfoMsg:
-		default:
-			break;
+			case QtDebugMsg:
+			case QtWarningMsg:
+			case QtCriticalMsg:
+			case QtFatalMsg:
+				g_StaticInstance->m_LogFile.write(QString("[%1] %2 \n").arg(time_str).arg(msg).toLocal8Bit());
+				g_StaticInstance->m_LogFile.flush();
+				break;
+			case QtInfoMsg: break;
 		}
-		});
+#endif
+#ifdef NESHNY_EDITOR_VIEWERS
+		ImVec4 col;
+		switch (type) {
+			case QtDebugMsg: col = ImVec4(0.8, 0.8, 0.8, 1); break;
+			case QtWarningMsg: col = ImVec4(0.8, 0.5, 0.2, 1); break;
+			case QtCriticalMsg: col = ImVec4(1.0, 0.25, 0.25, 1); break;
+			case QtFatalMsg: col = ImVec4(0.8, 0, 0, 1); break;
+			case QtInfoMsg: col = ImVec4(0.5, 1.0, 0.5, 1); break;
+		}
+		LogViewer::Singleton().Log({ time, time_str.toStdString(), msg_str, col });
+#endif
+	});
 
 	qDebug() << "Core initializing...";
 
@@ -428,6 +445,7 @@ void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
 	if (WGPUErrorType_NoError == type) {
 		return;
 	}
+	int brk = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -786,9 +804,14 @@ bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
 void Core::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
+#ifdef NESHNY_EDITOR_VIEWERS
 	auto info_label = QString("[%2 FPS] %1 info view###info_view").arg(m_Interface.p_InfoView.p_Visible ? "Hide" : "Show").arg((double)ImGui::GetIO().Framerate, 0, 'f', 2).toLocal8Bit();
 	if (ImGui::Button(info_label.constData(), ImVec2(250, 0))) {
 		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(m_Interface.p_LogView.p_Visible ? "Hide log view" : "Show log view")) {
+		m_Interface.p_LogView.p_Visible = !m_Interface.p_LogView.p_Visible;
 	}
 	ImGui::SameLine();
 	if (ImGui::Button(m_Interface.p_BufferView.p_Visible ? "Hide buffer view" : "Show buffer view")) {
@@ -811,6 +834,7 @@ void Core::IRenderEditor(void) {
 		m_Interface.p_Scrapbook3D.p_Visible = !m_Interface.p_Scrapbook3D.p_Visible;
 	}
 	ImGui::SameLine();
+#endif
 	if (ImGui::Button(m_Interface.p_ShowImGuiDemo ? "Hide ImGUI demo" : "Show ImGUI demo")) {
 		m_Interface.p_ShowImGuiDemo = !m_Interface.p_ShowImGuiDemo;
 	}
@@ -834,6 +858,7 @@ void Core::IRenderEditor(void) {
 
 #ifdef NESHNY_EDITOR_VIEWERS
 	InfoViewer::RenderImGui(m_Interface.p_InfoView);
+	LogViewer::Singleton().RenderImGui(m_Interface.p_LogView);
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);

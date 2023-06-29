@@ -346,6 +346,47 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	ImGui::End();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void LogViewer::IRenderImGui(InterfaceLogViewer& data) {
+
+	if (!data.p_Visible) {
+		return;
+	}
+
+	ImGui::Begin("Log Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+
+	ImGui::Checkbox("Auto scroll", &data.p_AutoScroll);
+	ImGui::SameLine(ImGui::GetWindowWidth() - 60);
+	ImGui::SetNextItemWidth(60);
+	if (ImGui::Button("Clear")) {
+		Clear();
+	}
+
+	if (ImGui::BeginTable("##logTable", 2, ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV)) {
+		ImGui::TableSetupScrollFreeze(1, 1);
+
+		ImGui::TableSetupColumn("Timestamp", ImGuiTableColumnFlags_WidthFixed, 90);
+		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		for (const auto& log: m_Logs) {
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			//auto time_str = log.p_Time.toString("hh:mm:ss.zzz").toLocal8Bit();
+			//ImGui::Text(time_str.data());
+			ImGui::Text(log.p_TimeStr.c_str());
+			ImGui::TableSetColumnIndex(1);
+			ImGui::TextColored(log.p_Color, log.p_Message.c_str());
+		}
+
+		if (data.p_AutoScroll) {
+			ImGui::ScrollToItem();
+		}
+		ImGui::EndTable();
+	}
+	ImGui::End();
+}
+
 #if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
