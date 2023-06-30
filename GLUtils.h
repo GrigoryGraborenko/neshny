@@ -195,5 +195,6 @@ private:
 };
 
 typedef GLRTT RTT;
+typedef GLSSBO SSBO;
 
 } // namespace Neshny

@@ -239,11 +239,11 @@ bool Core::LoopInit(IEngine* engine) {
 #ifdef NESHNY_EDITOR_VIEWERS
 		ImVec4 col;
 		switch (type) {
-			case QtDebugMsg: col = ImVec4(0.8, 0.8, 0.8, 1); break;
-			case QtWarningMsg: col = ImVec4(0.8, 0.5, 0.2, 1); break;
-			case QtCriticalMsg: col = ImVec4(1.0, 0.25, 0.25, 1); break;
-			case QtFatalMsg: col = ImVec4(0.8, 0, 0, 1); break;
-			case QtInfoMsg: col = ImVec4(0.5, 1.0, 0.5, 1); break;
+			case QtDebugMsg: col = ImVec4(0.8f, 0.8f, 0.8f, 1); break;
+			case QtWarningMsg: col = ImVec4(0.8f, 0.5f, 0.2f, 1); break;
+			case QtCriticalMsg: col = ImVec4(1.0f, 0.25f, 0.25f, 1); break;
+			case QtFatalMsg: col = ImVec4(0.8f, 0, 0, 1); break;
+			case QtInfoMsg: col = ImVec4(0.5f, 1.0f, 0.5f, 1); break;
 		}
 		LogViewer::Singleton().Log({ time, time_str.toStdString(), msg_str, col });
 #endif

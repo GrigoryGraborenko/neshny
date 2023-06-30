@@ -7,14 +7,23 @@ namespace Neshny {
 bool GPUEntity::Init(int expected_max_count) {
 
 	int max_size = expected_max_count * m_NumDataFloats * sizeof(float);
-	m_SSBO = new GLSSBO(max_size);
+#if defined(NESHNY_GL)
+	m_SSBO = new SSBO(max_size);
 	if (m_DoubleBuffering) {
-		m_OutputSSBO = new GLSSBO(max_size);
+		m_OutputSSBO = new SSBO(max_size);
 	}
 
-	m_ControlSSBO = new GLSSBO();
-	m_FreeList = new GLSSBO();
+	m_ControlSSBO = new SSBO();
+	m_FreeList = new SSBO();
+#elif defined(NESHNY_WEBGPU)
+	m_SSBO = new SSBO(WGPUBufferUsage_Storage, max_size);
+	if (m_DoubleBuffering) {
+		m_OutputSSBO = new SSBO(WGPUBufferUsage_Storage, max_size);
+	}
 
+	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage);
+	m_FreeList = new SSBO(WGPUBufferUsage_Storage);
+#endif
 	m_CurrentCount = 0;
 	m_MaxIndex = 0;
 	m_NextId = 0;
@@ -63,7 +72,7 @@ int GPUEntity::AddInstance(void* data, int* index) {
 	int creation_index = m_MaxIndex;
 
 	if ((m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) && (m_FreeCount > 0)) {
-		glGetNamedBufferSubData(m_FreeList->Get(), (m_FreeCount - 1) * sizeof(float), sizeof(float), (void*)&creation_index);
+		creation_index = m_FreeList->GetSingleValue<int>(m_FreeCount - 1);
 		m_FreeCount--;
 	} else {
 		m_MaxIndex++;
@@ -116,6 +125,8 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	// todo: for each death, take index d from alive and copy it
 	m_ControlSSBO->EnsureSizeBytes(sizeof(int));
 
+#if defined(NESHNY_GL)
+
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
 	defines += "\n#define USE_SSBO\n";
 
@@ -130,6 +141,9 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+#elif defined(NESHNY_WEBGPU)
+	#error finish this
+#endif
 
 	m_MaxIndex -= death_count;
 	m_CurrentCount -= death_count;
@@ -165,7 +179,7 @@ void GPUEntity::SwapInputOutputSSBOs(void) {
 	if (!m_DoubleBuffering) {
 		return;
 	}
-	GLSSBO* tmp = m_SSBO;
+	SSBO* tmp = m_SSBO;
 	m_SSBO = m_OutputSSBO;
 	m_OutputSSBO = tmp;
 }
@@ -188,12 +202,22 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
+#if defined(NESHNY_GL)
 	if (!m_CopyBuffer) {
-		m_CopyBuffer = new GLSSBO();
+		m_CopyBuffer = new SSBO();
 	}
 	m_CopyBuffer->EnsureSizeBytes(size, false);
 	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
 	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
+#elif defined(NESHNY_WEBGPU)
+	if (!m_CopyBuffer) {
+		m_CopyBuffer = new SSBO(WGPUBufferUsage_Storage);
+	}
+	m_CopyBuffer->EnsureSizeBytes(size, false);
+
+	#error finish this
+#endif
+
 }
 
 } // namespace Neshny

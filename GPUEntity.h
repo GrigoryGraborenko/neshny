@@ -208,10 +208,10 @@ public:
 
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	inline QString				GetName					( void ) const { return m_Name; }
-	inline GLSSBO*				GetSSBO					( void ) const { return m_SSBO; }
-	inline GLSSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
-	inline GLSSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
-	inline GLSSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
+	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
+	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
+	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
+	inline SSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
 	inline int					GetCount				( void ) const { return m_CurrentCount; }
 	inline int					GetMaxIndex				( void ) const { return m_MaxIndex; }
 	inline int					GetNextId				( void ) const { return m_NextId; }
@@ -244,12 +244,12 @@ protected:
 	int							m_NumDataFloats = 0;
 
 	bool						m_DoubleBuffering = true;
-	GLSSBO*						m_SSBO = nullptr;
-	GLSSBO*						m_OutputSSBO = nullptr;
+	SSBO*						m_SSBO = nullptr;
+	SSBO*						m_OutputSSBO = nullptr;
 
-	GLSSBO*						m_ControlSSBO = nullptr;
-	GLSSBO*						m_FreeList = nullptr;
-	GLSSBO*						m_CopyBuffer = nullptr;
+	SSBO*						m_ControlSSBO = nullptr;
+	SSBO*						m_FreeList = nullptr;
+	SSBO*						m_CopyBuffer = nullptr;
 
 	int							m_CurrentCount = 0;
 	int							m_MaxIndex = 0;

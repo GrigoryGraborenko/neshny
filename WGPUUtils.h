@@ -342,5 +342,6 @@ private:
 };
 
 typedef WebGPURTT RTT;
+typedef WebGPUBuffer SSBO;
 
 } // namespace Neshny
