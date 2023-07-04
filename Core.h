@@ -488,10 +488,13 @@ public:
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
 	inline WGPUSurface					GetWebGPUSurface			( void ) { return m_Surface; }
 	inline WGPUSwapChain				GetWebGPUSwapChain			( void ) { return m_SwapChain; }
+	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
+	WGPULimits							GetDefaultLimits			( void );
 	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
 	static WebGPUShader*				GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
 	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
+	static void							CopyBufferToBuffer			( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size );
 
 #endif
 
@@ -695,6 +698,7 @@ private:
 	WGPUQueue							m_Queue = nullptr;
 	WGPUSurface							m_Surface = nullptr;
 	WGPUSwapChain						m_SwapChain = nullptr;
+	WGPULimits							m_Limits;
 	int									m_CurrentWidth = -1;
 	int									m_CurrentHeight = -1;
 	int									m_RequestedWidth = -1;

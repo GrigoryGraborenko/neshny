@@ -79,7 +79,7 @@ int GPUEntity::AddInstance(void* data, int* index) {
 	}
 
 	int base = creation_index * m_NumDataFloats;
-	glNamedBufferSubData(m_SSBO->Get(), base * sizeof(float), m_NumDataFloats * sizeof(float), data);
+	m_SSBO->Write((unsigned char*)data, base * sizeof(float), m_NumDataFloats * sizeof(float));
 	if (index) {
 		*index = creation_index;
 	}
@@ -104,14 +104,19 @@ void GPUEntity::DeleteInstance(int index) {
 		}
 
 		int id_value = -1;
-		glNamedBufferSubData(m_SSBO->Get(), index * size_item + pos_index, sizeof(float), (unsigned char*)&id_value);
+
+		m_SSBO->Write((unsigned char*)&id_value, index * size_item + pos_index, sizeof(float));
 		m_FreeList->EnsureSizeBytes((m_FreeCount + 1) * sizeof(int), false);
-		glNamedBufferSubData(m_FreeList->Get(), m_FreeCount * sizeof(int), sizeof(int), (unsigned char*)&index);
+		m_FreeList->Write((unsigned char*)&index, m_FreeCount * sizeof(int), sizeof(int));
 		m_FreeCount++;
 	} else {
 		if (index != (m_MaxIndex - 1)) {
 			// copy the end item into this pos
+#if defined(NESHNY_GL)
 			glCopyNamedBufferSubData(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
+#elif defined(NESHNY_WEBGPU)
+			Core::CopyBufferToBuffer(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
+#endif
 		}
 		m_MaxIndex--;
 	}
@@ -128,7 +133,6 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 #if defined(NESHNY_GL)
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
-	defines += "\n#define USE_SSBO\n";
 
 	GLShader* death_prog = Core::GetComputeShader("Death", defines);
 	death_prog->UseProgram();
@@ -142,7 +146,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #elif defined(NESHNY_WEBGPU)
-	#error finish this
+	#error finish this - who owns the pipeline? makes sense for it to be global?
 #endif
 
 	m_MaxIndex -= death_count;
@@ -202,6 +206,8 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
+
+
 #if defined(NESHNY_GL)
 	if (!m_CopyBuffer) {
 		m_CopyBuffer = new SSBO();
@@ -210,10 +216,6 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
 	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 #elif defined(NESHNY_WEBGPU)
-	if (!m_CopyBuffer) {
-		m_CopyBuffer = new SSBO(WGPUBufferUsage_Storage);
-	}
-	m_CopyBuffer->EnsureSizeBytes(size, false);
 
 	#error finish this
 #endif

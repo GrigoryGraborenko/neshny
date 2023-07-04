@@ -54,6 +54,7 @@ public:
 	void											EnsureSizeBytes			( int size_bytes, bool clear_after = true );
 	void											ClearBuffer				( void );
 	void											Read					( unsigned char* buffer, int offset = 0, int size = -1 );
+	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 
 	inline WGPUBuffer								Get						( void ) { return m_Buffer; }
@@ -62,7 +63,7 @@ public:
 
 	template<class T>
 	inline void										SetSingleValue(int index, T value) {
-		wgpuQueueWriteBuffer(GetCoreQueue(), m_Buffer, index * sizeof(T), (unsigned char*)&value, sizeof(T));
+		Write((unsigned char*)&value, index * sizeof(T), sizeof(T));
 	}
 
 	template<class T>
@@ -70,7 +71,7 @@ public:
 		if (items.empty()) {
 			return;
 		}
-		wgpuQueueWriteBuffer(GetCoreQueue(), m_Buffer, offset, (unsigned char*)&items[0], items.size() * sizeof(T));
+		Write((unsigned char*)&items[0], offset * sizeof(T), items.size() * sizeof(T));
 	}
 
 	template<class T>
@@ -97,10 +98,6 @@ protected:
 	WGPUBufferUsageFlags							m_Flags = 0;
 	WGPUBuffer										m_Buffer = nullptr;
 	int												m_Size = 0;
-
-private:
-
-	WGPUQueue										GetCoreQueue(void);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,9 +256,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class WebGPURenderPipeline {
-
-public:
+class WebGPUPipeline {
 
 	struct Buffer {
 		WebGPUBuffer&			p_Buffer;
@@ -270,30 +265,49 @@ public:
 		WGPUBuffer				p_LastSeenBuffer = nullptr;
 	};
 
-								WebGPURenderPipeline	( void ) {}
-								~WebGPURenderPipeline	( void );
+public:
 
-	WebGPURenderPipeline&		AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
-	WebGPURenderPipeline&		AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
-	WebGPURenderPipeline&		AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
+	enum class Type {
+		UNKNOWN,
+		RENDER,
+		COMPUTE
+	};
 
-	void						Finalize				( QString shader_name, WebGPURenderBuffer& render_buffer );
+								WebGPUPipeline			( void ) : m_Type(Type::UNKNOWN) {}
+								~WebGPUPipeline			( void );
+	void						Reset					( void );
+
+	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
+	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
+	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
+
+	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer );
+	void						FinalizeCompute			( QString shader_name );
 	void						RefreshBindings			( void );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
+	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1) );
 
-	inline WGPURenderPipeline	GetPipeline				( void ) { return m_Pipeline; }
+	inline Type					GetType					( void ) { return m_Type; }
+	inline WGPURenderPipeline	GetRenderPipeline		( void ) { return m_RenderPipeline; }
 	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
 
 protected:
 
+	void						CreateBindGroupLayout	( void );
+
+	Type						m_Type;
+	//QString						m_ShaderName;
+	WebGPURenderBuffer*			m_RenderBuffer = nullptr;
 	std::vector<Buffer>			m_Buffers;
 	std::vector<const WebGPUTexture*>	m_Textures;
 	std::vector<const WebGPUSampler*>	m_Samplers;
-	WebGPURenderBuffer*			m_RenderBuffer = nullptr;
 
-	WGPURenderPipeline			m_Pipeline = nullptr;
+	WGPURenderPipeline			m_RenderPipeline = nullptr;
+	WGPUComputePipeline			m_ComputePipeline = nullptr;
 	WGPUBindGroupLayout			m_BindGroupLayout = nullptr;
 	WGPUBindGroup				m_BindGroup = nullptr;
+
+	WebGPUBuffer*				m_UniformBuffer = nullptr;
 
 };
 
@@ -316,7 +330,7 @@ public:
 	Token							Activate		( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
 	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, bool clear = true );
 
-	void							Render			( WebGPURenderPipeline* pipeline, int instances = 1 );
+	void							Render			( WebGPUPipeline* pipeline, int instances = 1 );
 	Token							RenderPassToken	( WGPURenderPassEncoder& pass );
 
 	inline void						ClearBeforeNextRender	( void ) { m_ClearNext = true; }

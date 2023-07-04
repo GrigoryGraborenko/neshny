@@ -189,15 +189,9 @@ void WebGPUBuffer::Read(unsigned char* buffer, int offset, int size) {
 	desc.label = nullptr;
 
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
-	{
-		WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
-		wgpuCommandEncoderCopyBufferToBuffer(encoder, m_Buffer, offset, copy_buffer, 0, size);
-		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
-		wgpuCommandEncoderRelease(encoder);
-		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
-		wgpuCommandBufferRelease(commands);
-		offset = 0; // since you are copying from a temp buffer that already took the offset into account, this must be set to zero
-	}
+
+	Core::CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
+	offset = 0; // since you are copying from a temp buffer that already took the offset into account, this must be set to zero
 
 	AsyncInfo info = { copy_buffer, buffer, offset, size };
 	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, offset, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
@@ -224,6 +218,14 @@ void WebGPUBuffer::Read(unsigned char* buffer, int offset, int size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void WebGPUBuffer::Write(unsigned char* buffer, int offset, int size) {
+	if ((offset + size) > m_Size) {
+		throw std::invalid_argument("Attempting to write beyond the size of the buffer, use EnsureSize");
+	}
+	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Buffer, offset, buffer, size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 	max_size = max_size >= 0 ? std::min(max_size, m_Size) : m_Size;
 	if (max_size <= 0) {
@@ -232,11 +234,6 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 	unsigned char* ptr = new unsigned char[max_size];
 	Read(ptr, 0, max_size);
 	return std::shared_ptr<unsigned char[]>(ptr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-WGPUQueue WebGPUBuffer::GetCoreQueue(void) {
-	return Core::Singleton().GetWebGPUQueue();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -515,26 +512,43 @@ WebGPUSampler::~WebGPUSampler(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-WebGPURenderPipeline::~WebGPURenderPipeline(void) {
-	if (m_Pipeline) {
-		wgpuRenderPipelineRelease(m_Pipeline);
-	}
-	if (m_BindGroup) {
-		wgpuBindGroupRelease(m_BindGroup);
-	}
-	if (m_BindGroupLayout) {
-		wgpuBindGroupLayoutRelease(m_BindGroupLayout);
-	}
+WebGPUPipeline::~WebGPUPipeline(void) {
+	Reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& render_buffer) {
-#ifdef NESHNY_WEBGPU_PROFILE
-	DebugTiming dt0("WebGPURenderPipeline::Finalize");
-#endif
-	m_RenderBuffer = &render_buffer;
+void WebGPUPipeline::Reset(void) {
+	if (m_RenderPipeline) {
+		wgpuRenderPipelineRelease(m_RenderPipeline);
+		m_RenderPipeline = nullptr;
+	}
+	if (m_ComputePipeline) {
+		wgpuComputePipelineRelease(m_ComputePipeline);
+		m_ComputePipeline = nullptr;
+	}
 
-	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
+	if (m_BindGroup) {
+		wgpuBindGroupRelease(m_BindGroup);
+		m_BindGroup = nullptr;
+	}
+	if (m_BindGroupLayout) {
+		wgpuBindGroupLayoutRelease(m_BindGroupLayout);
+		m_BindGroupLayout = nullptr;
+	}
+	if (m_UniformBuffer) {
+		delete m_UniformBuffer;
+		m_UniformBuffer = nullptr;
+	}
+	m_Type = Type::UNKNOWN;
+
+	m_RenderBuffer = nullptr;
+	m_Buffers.clear();
+	m_Textures.clear();
+	m_Samplers.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::CreateBindGroupLayout(void) {
 
 	int binding_num = 0;
 	int num_bindings = int(m_Buffers.size() + m_Textures.size() + m_Samplers.size());
@@ -545,7 +559,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
-		layout_entry.visibility = buffer.p_VisibilityFlags;
+		layout_entry.visibility = m_Type == Type::COMPUTE ? WGPUShaderStage_Compute : buffer.p_VisibilityFlags;
 
 		WGPUBufferBindingLayout buffer_layout;
 		buffer_layout.nextInChain = nullptr;
@@ -565,7 +579,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
-		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+		layout_entry.visibility = m_Type == Type::COMPUTE ? WGPUShaderStage_Compute : WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
 
 		WGPUTextureBindingLayout buff_texture;
 		buff_texture.nextInChain = nullptr;
@@ -580,7 +594,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 		WGPUBindGroupLayoutEntry& layout_entry = layout_entries[binding_num];
 		layout_entry.nextInChain = nullptr;
 		layout_entry.binding = binding_num;
-		layout_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+		layout_entry.visibility = m_Type == Type::COMPUTE ? WGPUShaderStage_Compute : WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
 
 		WGPUSamplerBindingLayout buff_sampler;
 		buff_sampler.nextInChain = nullptr;
@@ -595,12 +609,27 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 	bgl_desc.entries = layout_entries.empty() ? nullptr : &layout_entries[0];
 
 	m_BindGroupLayout = wgpuDeviceCreateBindGroupLayout(Core::Singleton().GetWebGPUDevice(), &bgl_desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer) {
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
+#endif
+	if (m_Type != Type::UNKNOWN) {
+		throw std::logic_error("Cannot finalize more than once");
+	}
+	m_Type = Type::RENDER;
+	m_RenderBuffer = &render_buffer;
+
+	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
+	CreateBindGroupLayout();
 
 	// pipeline layout (used by the render pipeline, released after its creation)
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
 	layout_desc.bindGroupLayouts = &m_BindGroupLayout;
-	WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetWebGPUDevice(), &layout_desc);
+	WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetWebGPUDevice(), &layout_desc);
 
 	// describe buffer layouts
 	WGPUVertexBufferLayout vertex_buffer_layout = {};
@@ -625,6 +654,7 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 	vertex_buffer_layout.attributeCount = (int)formats.size();
 	vertex_buffer_layout.attributes = &formats[0];
 
+#pragma msg("param blend and depth state as well")
 	// Fragment state
 	WGPUBlendState blend = {};
 	blend.color.operation = WGPUBlendOperation_Add;
@@ -634,34 +664,33 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 	blend.alpha.srcFactor = WGPUBlendFactor_One;
 	blend.alpha.dstFactor = WGPUBlendFactor_One;
 
-	WGPUColorTargetState colorTarget = {};
-	colorTarget.format = WGPUTextureFormat_BGRA8Unorm;
+	WGPUColorTargetState color_target = {};
+	color_target.format = WGPUTextureFormat_BGRA8Unorm;
+	color_target.blend = &blend;
+	color_target.writeMask = WGPUColorWriteMask_All;
 
-	colorTarget.blend = &blend;
-	colorTarget.writeMask = WGPUColorWriteMask_All;
-
-	WGPUDepthStencilState depthState = {};
-	depthState.depthCompare = WGPUCompareFunction_Less;
-	depthState.depthWriteEnabled = true;
-	depthState.format = WGPUTextureFormat_Depth24Plus;
-	depthState.stencilReadMask = 0;
-	depthState.stencilWriteMask = 0;
-	depthState.stencilFront.compare = WGPUCompareFunction_Always;
-	depthState.stencilBack.compare = WGPUCompareFunction_Always;
+	WGPUDepthStencilState depth_state = {};
+	depth_state.depthCompare = WGPUCompareFunction_Less;
+	depth_state.depthWriteEnabled = true;
+	depth_state.format = WGPUTextureFormat_Depth24Plus;
+	depth_state.stencilReadMask = 0;
+	depth_state.stencilWriteMask = 0;
+	depth_state.stencilFront.compare = WGPUCompareFunction_Always;
+	depth_state.stencilBack.compare = WGPUCompareFunction_Always;
 
 	{
 		WGPUFragmentState fragment = {};
 		fragment.module = shader;
 		fragment.entryPoint = "frag_main";
 		fragment.targetCount = 1;
-		fragment.targets = &colorTarget;
+		fragment.targets = &color_target;
 
 		WGPURenderPipelineDescriptor desc = {};
 		desc.fragment = &fragment;
-		desc.depthStencil = &depthState;
+		desc.depthStencil = &depth_state;
 
 		// Other state
-		desc.layout = pipelineLayout;
+		desc.layout = pipeline_layout;
 
 		desc.vertex.module = shader;
 		desc.vertex.entryPoint = "vertex_main";
@@ -678,18 +707,54 @@ void WebGPURenderPipeline::Finalize(QString shader_name, WebGPURenderBuffer& ren
 		desc.primitive.topology = render_buffer.GetTopology();
 		desc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
 
-#ifdef NESHNY_WEBGPU_PROFILE
-	DebugTiming dt1("WebGPURenderPipeline::Finalize wgpuDeviceCreateRenderPipeline");
-#endif
-		m_Pipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetWebGPUDevice(), &desc);
+		m_RenderPipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetWebGPUDevice(), &desc);
 	}
-	wgpuPipelineLayoutRelease(pipelineLayout);
+	wgpuPipelineLayoutRelease(pipeline_layout);
 
 	RefreshBindings();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPURenderPipeline::RefreshBindings(void) {
+void WebGPUPipeline::FinalizeCompute(QString shader_name) {
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPURenderPipeline::FinalizeCompute");
+#endif
+	if (m_Type != Type::UNKNOWN) {
+		throw std::logic_error("Cannot finalize more than once");
+	}
+	m_Type = Type::COMPUTE;
+	m_RenderBuffer = nullptr;
+	m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(iVec2));
+
+	AddBuffer(*m_UniformBuffer, WGPUShaderStage_Compute, true);
+
+	CreateBindGroupLayout();
+	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
+
+	WGPUPipelineLayoutDescriptor layout_desc = {};
+	layout_desc.bindGroupLayoutCount = 1;
+	layout_desc.bindGroupLayouts = &m_BindGroupLayout;
+	WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(Core::Singleton().GetWebGPUDevice(), &layout_desc);
+
+	WGPUComputePipelineDescriptor desc;
+	desc.nextInChain = nullptr;
+	desc.label = nullptr;
+	desc.layout = pipeline_layout;
+	desc.compute.nextInChain = nullptr;
+	desc.compute.module = shader;
+	desc.compute.entryPoint = "main";
+	desc.compute.constants = nullptr;
+	desc.compute.constantCount = 0;
+
+	m_ComputePipeline = wgpuDeviceCreateComputePipeline(Core::Singleton().GetWebGPUDevice(), &desc);
+
+	wgpuPipelineLayoutRelease(pipeline_layout);
+
+	RefreshBindings();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::RefreshBindings(void) {
 
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::RefreshBindings");
@@ -741,7 +806,7 @@ void WebGPURenderPipeline::RefreshBindings(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPURenderPipeline::Render(WGPURenderPassEncoder pass, int instances) {
+void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (instances <= 0) {
 		return;
 	}
@@ -752,8 +817,8 @@ void WebGPURenderPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (needs_refresh) {
 		RefreshBindings();
 	}
-	wgpuRenderPassEncoderSetPipeline(pass, m_Pipeline);
-	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, 0);
+	wgpuRenderPassEncoderSetPipeline(pass, m_RenderPipeline);
+	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, nullptr);
 	wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_RenderBuffer->GetVertex(), 0, WGPU_WHOLE_SIZE);
 
 	if (m_RenderBuffer->GetIndex()) {
@@ -762,6 +827,42 @@ void WebGPURenderPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	} else {
 		wgpuRenderPassEncoderDraw(pass, m_RenderBuffer->GetNumVertices(), instances, 0, 0);
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
+
+	const auto& limits = Core::Singleton().GetLimits();
+	if ((workgroup_size.x < 1) || (workgroup_size.y < 1) || (workgroup_size.z < 1)) {
+		workgroup_size = iVec3(limits.maxComputeInvocationsPerWorkgroup, 1, 1);
+	}
+	int num_threads_per_workgroup = workgroup_size.x * workgroup_size.y * workgroup_size.z;
+	div_t workgroup_div = div(calls, num_threads_per_workgroup);
+	int workgroups = workgroup_div.quot + ((workgroup_div.rem > 0) ? 1 : 0);
+	if (workgroups > limits.maxComputeWorkgroupsPerDimension) {
+		throw std::invalid_argument("Exceeded maxComputeWorkgroupsPerDimension");
+	}
+	m_UniformBuffer->SetSingleValue(0, iVec2(calls, 0));
+
+	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+	WGPUComputePassDescriptor pass_desc;
+	pass_desc.nextInChain = nullptr;
+	pass_desc.label = nullptr;
+	pass_desc.timestampWriteCount = 0;
+	pass_desc.timestampWrites = nullptr;
+	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
+
+	wgpuComputePassEncoderSetPipeline(pass, m_ComputePipeline);
+	wgpuComputePassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, nullptr);
+	wgpuComputePassEncoderDispatchWorkgroups(pass, workgroups, 1, 1);
+
+	wgpuComputePassEncoderEnd(pass);
+	wgpuComputePassEncoderRelease(pass);
+
+	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+	wgpuCommandEncoderRelease(encoder);
+	wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+	wgpuCommandBufferRelease(commands);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -890,7 +991,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void WebGPURTT::Render(WebGPURenderPipeline* pipeline, int instances) {
+void WebGPURTT::Render(WebGPUPipeline* pipeline, int instances) {
 
 	for (auto& color_desc : m_ColorDescriptors) {
 		color_desc.loadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;

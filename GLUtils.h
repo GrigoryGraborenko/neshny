@@ -110,6 +110,9 @@ public:
 	void											EnsureSizeBytes	( int size_bytes, bool clear_after = true );
 	void											Bind			( int index );
 	void											ClearBuffer		( void );
+	void											Read			( unsigned char* buffer, int offset = 0, int size = -1 );
+	void											Write			( unsigned char* buffer, int offset, int size ) { glNamedBufferSubData(m_Buffer, offset, size, buffer); }
+
 	std::shared_ptr<unsigned char[]>				MakeCopy		( int max_size = -1 );
 
 	inline GLuint									Get				( void ) { return m_Buffer; }

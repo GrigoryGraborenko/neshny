@@ -449,6 +449,49 @@ void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+WGPULimits Core::GetDefaultLimits(void) {
+	WGPULimits limits;
+
+	limits.maxTextureDimension1D = 8192;
+	limits.maxTextureDimension2D = 8192;
+	limits.maxTextureDimension3D = 2048;
+	limits.maxTextureArrayLayers = 256;
+	limits.maxBindGroups = 4;
+	limits.maxDynamicUniformBuffersPerPipelineLayout = 8;
+	limits.maxDynamicStorageBuffersPerPipelineLayout = 4;
+	limits.maxSampledTexturesPerShaderStage = 16;
+	limits.maxSamplersPerShaderStage = 16;
+	limits.maxStorageBuffersPerShaderStage = 8;
+	limits.maxStorageTexturesPerShaderStage = 4;
+	limits.maxUniformBuffersPerShaderStage = 12;
+	limits.maxUniformBufferBindingSize = 65536;
+	limits.maxStorageBufferBindingSize = 134217728;
+	limits.minUniformBufferOffsetAlignment = 256;
+	limits.minStorageBufferOffsetAlignment = 256;
+	limits.maxVertexBuffers = 8;
+	limits.maxVertexAttributes = 16;
+	limits.maxVertexBufferArrayStride = 2048;
+	limits.maxInterStageShaderComponents = 60;
+	limits.maxInterStageShaderVariables = 16;
+	limits.maxColorAttachments = 8;
+	limits.maxComputeWorkgroupStorageSize = 16384;
+	limits.maxComputeInvocationsPerWorkgroup = 256;
+	limits.maxComputeWorkgroupSizeX = 256;
+	limits.maxComputeWorkgroupSizeY = 256;
+	limits.maxComputeWorkgroupSizeZ = 64;
+	limits.maxComputeWorkgroupsPerDimension = 65535;
+
+#ifndef __EMSCRIPTEN__
+	// TODO: why are these not included in the emscripten version?
+	limits.maxBindingsPerBindGroup = 1000;
+	limits.maxBufferSize = 268435456;
+	limits.maxColorAttachmentBytesPerSample = 32;
+#endif
+
+	return limits;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
 #ifdef __EMSCRIPTEN__
 	m_Device = emscripten_webgpu_get_device();
@@ -462,6 +505,13 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	surfDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&canvDesc);
 
 	m_Surface = wgpuInstanceCreateSurface(nullptr, &surfDesc);
+
+	WGPUSupportedLimits supported;
+	if (wgpuDeviceGetLimits(m_Device, &supported)) {
+		m_Limits = supported.limits;
+	} else {
+		m_Limits = GetDefaultLimits();
+	}
 #else
 
 	dawn::native::Instance instance;
@@ -498,6 +548,12 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	supported.nextInChain = nullptr;
 	bool limits_success = backendAdapter.GetLimits(&supported);
 	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
+	if (limits_success) {
+		m_Limits = supported.limits;
+	} else {
+		m_Limits = GetDefaultLimits();
+	}
+	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
 
 	std::vector<const char*> enableToggleNames;
 	std::vector<const char*> disabledToggleNames;
@@ -533,7 +589,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	dawnProcSetProcs(&backendProcs);
 
 	static auto cCallback = [](WGPUErrorType type, char const* message, void* userdata) -> void {
-		printf("Uncaptured error: %s\n", message);
+		qWarning() << "Uncaptured error" << message;
 	};
 	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 
@@ -1291,6 +1347,17 @@ WebGPUSampler* Core::IGetSampler(WGPUAddressMode mode, WGPUFilterMode filter, bo
 	WebGPUSampler* new_sampler = new WebGPUSampler(mode, filter, linear_mipmaps, max_anisotropy);
 	m_Samplers.push_back(new_sampler);
 	return new_sampler;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size) {
+	auto& self = Core::Singleton();
+	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(self.m_Device, nullptr);
+	wgpuCommandEncoderCopyBufferToBuffer(encoder, source, source_offset_bytes, destination, dest_offset_bytes, size);
+	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+	wgpuCommandEncoderRelease(encoder);
+	wgpuQueueSubmit(self.m_Queue, 1, &commands);
+	wgpuCommandBufferRelease(commands);
 }
 
 #endif

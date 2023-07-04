@@ -4,6 +4,15 @@
 namespace Neshny {
 
 #if defined(NESHNY_WEBGPU)
+
+////////////////////////////////////////////////////////////////////////////////
+BaseDebugRender::BaseDebugRender(void) :
+	m_LinePipline		( )
+	,m_CirclePipline	( )
+	,m_SquarePipline	( )
+{
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 BaseDebugRender::~BaseDebugRender(void) {
 	delete m_Uniforms;
@@ -73,15 +82,15 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 		m_SquareBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
 		m_LinePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.Finalize("DebugLine", m_LineBuffer);
+			.FinalizeRender("DebugLine", m_LineBuffer);
 		m_CirclePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_CircleBuffer, WGPUShaderStage_Vertex, true)
-			.Finalize("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
+			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
 		m_SquarePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_SquareBuffer, WGPUShaderStage_Vertex, true)
-			.Finalize("DebugCircle", *Core::Singleton().GetBuffer("SquareOutline"));
+			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("SquareOutline"));
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(debug_circles);
@@ -97,6 +106,10 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 }
 
 #elif defined(NESHNY_GL)
+////////////////////////////////////////////////////////////////////////////////
+BaseDebugRender::BaseDebugRender(void) {
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 BaseDebugRender::~BaseDebugRender(void) {
 }

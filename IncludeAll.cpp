@@ -7,8 +7,8 @@
 #undef max
 
 #include "NeshnyUtils.cpp"
-#include "GLUtils.cpp"
 #include "LinearAlgebra.cpp"
+#include "GLUtils.cpp"
 #include "GPUEntity.cpp"
 #include "Core.cpp"
 #include "EditorViewers.cpp"

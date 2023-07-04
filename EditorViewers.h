@@ -64,6 +64,7 @@ protected:
 #endif
 	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
 
+												BaseDebugRender		( void );
 												~BaseDebugRender	( void );
 
     std::vector<DebugLine>						m_Lines;
@@ -76,11 +77,11 @@ protected:
 
 #if defined(NESHNY_WEBGPU)
 	WebGPUBuffer*								m_Uniforms = nullptr;
-	WebGPURenderPipeline						m_LinePipline;
+	WebGPUPipeline								m_LinePipline;
 	WebGPURenderBuffer							m_LineBuffer;
-	WebGPURenderPipeline						m_CirclePipline;
+	WebGPUPipeline								m_CirclePipline;
 	WebGPUBuffer*								m_CircleBuffer = nullptr;
-	WebGPURenderPipeline						m_SquarePipline;
+	WebGPUPipeline								m_SquarePipline;
 	WebGPUBuffer*								m_SquareBuffer = nullptr;
 #endif
 
@@ -267,7 +268,7 @@ public:
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
 	static Token				ActivateRTT				( void );
 #if defined(NESHNY_WEBGPU)
-	static void					RenderPipeline			( WebGPURenderPipeline* pipeline ) { Singleton().m_RTT.Render(pipeline); }
+	static void					RenderPipeline			( WebGPUPipeline* pipeline ) { Singleton().m_RTT.Render(pipeline); }
 #endif
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }

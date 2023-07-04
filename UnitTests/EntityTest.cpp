@@ -222,5 +222,57 @@ namespace Test {
 #endif
     }
 
+	void UnitTest_Compute(void) {
+
+#if defined(NESHNY_WEBGPU)
+		Neshny::WebGPUPipeline pipe;
+
+		Neshny::WebGPUBuffer buffer(WGPUBufferUsage_Storage);
+		const int num = 1024;
+		const int first_pass = 13;
+		const int second_pass = 601;
+		std::vector<float> values;
+		for (int i = 0; i < num; i++) {
+			values.push_back(i * 10000);
+		}
+		buffer.EnsureSizeBytes(num * sizeof(float));
+		buffer.SetValues(values);
+
+		pipe
+			.AddBuffer(buffer, WGPUShaderStage_Compute, false)
+			.FinalizeCompute("UnitTest");
+
+		pipe.Compute(first_pass, Neshny::iVec3(256, 1, 1));
+
+		std::vector<float> out_values;
+		buffer.GetValues(out_values, num);
+
+		for (int i = 0; i < num; i++) {
+			float expected = values[i];
+			float actual = out_values[i];
+			if (i < first_pass) {
+				expected += i + 0.25;
+			}
+			Expect("Value mismatch", expected == actual);
+		}
+
+		pipe.Compute(second_pass, Neshny::iVec3(256, 1, 1));
+
+		out_values.clear();
+		buffer.GetValues(out_values, num);
+
+		for (int i = 0; i < num; i++) {
+			float expected = values[i];
+			float actual = out_values[i];
+			if (i < first_pass) {
+				expected += i + 0.25;
+			}
+			if (i < second_pass) {
+				expected += i + 0.25;
+			}
+			Expect("Value mismatch", expected == actual);
+		}
+#endif
+	}
 
 } // namespace Test

@@ -521,6 +521,14 @@ void GLSSBO::ClearBuffer() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void GLSSBO::Read(unsigned char* buffer, int offset, int size) {
+	if (size < 0) {
+		size = m_Size;
+	}
+	glGetNamedBufferSubData(m_Buffer, offset, size, buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> GLSSBO::MakeCopy(int max_size) {
 	max_size = max_size >= 0 ? max_size : m_Size;
 	if (max_size <= 0) {
