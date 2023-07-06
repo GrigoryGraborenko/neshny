@@ -219,6 +219,30 @@ namespace Test {
 
 #elif defined(NESHNY_WEBGPU)
 
+		Neshny::GPUEntity entities("Thing", Neshny::GPUEntity::DeleteMode::MOVING_COMPACT, &GPUThing::p_Id, "Id");
+		entities.Init(1000);
+
+		const int initial_count = 50;
+		std::vector<GPUThing> expected;
+		for (int i = 0; i < initial_count; i++) {
+			GPUThing thing = GPUThing::Init(i);
+			entities.AddInstance(&thing);
+			expected.push_back(thing);
+		}
+
+		// add in_value to most values
+		const float in_value = 123.4f;
+		const int div_val = 7;
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Prepare();
+		executable->Run();
+
+		for (auto& item : expected) {
+			GPUThing::Add(item, in_value);
+		}
+
+		std::vector<GPUThing> gpu_values;
+		entities.GetSSBO()->GetValues(gpu_values, initial_count);
+
 #endif
     }
 

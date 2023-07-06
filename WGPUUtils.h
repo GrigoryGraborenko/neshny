@@ -280,9 +280,10 @@ public:
 	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
 	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
+	WebGPUPipeline&				SetCount				( unsigned int count );
 
-	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer );
-	void						FinalizeCompute			( QString shader_name );
+	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QString insertion = QString() );
+	void						FinalizeCompute			( QString shader_name, QString insertion = QString() );
 	void						RefreshBindings			( void );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
 	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1) );
@@ -355,7 +356,9 @@ private:
 	bool							m_ClearNext = true;
 };
 
-typedef WebGPURTT RTT;
+typedef WebGPUShader Shader;
+typedef WebGPURenderBuffer RenderableBuffer;
 typedef WebGPUBuffer SSBO;
+typedef WebGPURTT RTT;
 
 } // namespace Neshny

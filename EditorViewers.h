@@ -176,19 +176,13 @@ public:
 
 	inline static BufferViewer&	Singleton			( void ) { static BufferViewer instance; return instance; }
 
-#if defined(NESHNY_GL)
-	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
-	static inline void			Checkpoint			( QString name, QString stage, class GLSSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
-	static inline void			Checkpoint			( QString stage, class GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
-#elif defined(NESHNY_WEBGPU)
-#endif
+	static inline void			Checkpoint			( QString name, QString stage, SSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
+	static inline void			Checkpoint			( QString name, QString stage, SSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
+	static inline void			Checkpoint			( QString stage, GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
 
 	void						RenderImGui			( InterfaceBufferViewer& data );
 
-#if defined(NESHNY_GL)
-	static inline std::shared_ptr<GLSSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
-#elif defined(NESHNY_WEBGPU)
-#endif
+	static inline std::shared_ptr<SSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
 	static inline void			Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
 	static inline void			ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
@@ -213,12 +207,9 @@ protected:
 							BufferViewer		( void ) {}
 							~BufferViewer		( void ) {}
 
-#if defined(NESHNY_GL)
-	void					ICheckpoint			( QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
-	void					ICheckpoint			( QString stage, class GPUEntity& entity );
-	std::shared_ptr<GLSSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
-#elif defined(NESHNY_WEBGPU)
-#endif
+	void					ICheckpoint			( QString name, QString stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
+	void					ICheckpoint			( QString stage, GPUEntity& entity );
+	std::shared_ptr<SSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
 
 	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }

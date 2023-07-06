@@ -4,7 +4,7 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_ssbo, int iterations) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo, int iterations) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
@@ -17,6 +17,10 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, GLBuffer* buffer, 
 	if (cache) {
 		m_ExtraCode += cache->Bind(m_SSBOs);
 	}
+#if defined(NESHNY_WEBGPU)
+	const auto& limits = Core::Singleton().GetLimits();
+	m_LocalSize = iVec3(limits.maxComputeInvocationsPerWorkgroup, 1, 1);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +48,7 @@ PipelineStage& PipelineStage::AddInputOutputVar(QString name, int* in_out) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddSSBO(QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only) {
+PipelineStage& PipelineStage::AddSSBO(QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only) {
 	m_SSBOs.push_back({ ssbo, name, array_type, read_only });
 	return *this;
 }
@@ -97,8 +101,9 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, Q
 	return insertion.join("\n");
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pre_execute) {
+void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_execute) {
 
 	// TODO: investigate GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS
 	// TODO: debug of SSBOs is optional
@@ -117,7 +122,7 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 	std::vector<std::pair<int, int*>> var_vals;
 
 	if (!is_render) {
-		insertion += QString("layout(local_size_x = %1, local_size_y = %2, local_size_z = %3) in;").arg(m_LocalSizeX).arg(m_LocalSizeY).arg(m_LocalSizeZ);
+		insertion += QString("layout(local_size_x = %1, local_size_y = %2, local_size_z = %3) in;").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
 	}
 
 	std::shared_ptr<GLSSBO> replace = nullptr;
@@ -383,10 +388,10 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 
 	////////////////////////////////////////////////////
 	if (m_RunType == RunType::BASIC_COMPUTE) {
-		Core::DispatchMultiple(prog, m_Iterations, m_LocalSizeX* m_LocalSizeY* m_LocalSizeZ);
+		Core::DispatchMultiple(prog, m_Iterations, m_LocalSize.x * m_LocalSize.y * m_LocalSize.z);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if (entity_processing || (m_RunType == RunType::ENTITY_ITERATE)) {
-		Core::DispatchMultiple(prog, num_entities, m_LocalSizeX * m_LocalSizeY * m_LocalSizeZ);
+		Core::DispatchMultiple(prog, num_entities, m_LocalSize.x * m_LocalSize.y * m_LocalSize.z);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	} else if(is_render) {
 		if (!m_Buffer) {
@@ -448,6 +453,52 @@ void PipelineStage::Run(std::optional<std::function<void(GLShader* program)>> pr
 		}
 	}
 }
+#elif defined(NESHNY_WEBGPU)
+
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
+
+	std::shared_ptr<PipelineStage::Prepared> result = std::make_shared<Prepared>();
+	result->p_Pipeline = new WebGPUPipeline();
+
+	QStringList insertion;
+	int entity_deaths = 0;
+	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
+	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
+	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
+
+	if (!is_render) {
+		insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
+	}
+
+	std::shared_ptr<SSBO> replace = nullptr;
+	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
+	if (is_render && m_Entity) {
+		result->p_Pipeline->SetCount(0);
+
+		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
+		if (time_slider > 0) {
+			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
+		}
+	} else if(m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
+		result->p_Pipeline->SetCount(0);
+	}
+
+
+	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+PipelineStage::Prepared::~Prepared(void) {
+	delete p_Pipeline;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void PipelineStage::Prepared::Run(int iterations) {
+
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,6 +537,7 @@ QueryEntities& QueryEntities::ById(int id) {
 ////////////////////////////////////////////////////////////////////////////////
 int QueryEntities::ExecuteQuery(void) {
 
+#if defined(NESHNY_GL)
 	QString main_name;
 	if (m_Query == QueryType::Position2D) {
 		main_name = "Nearest2D";
@@ -523,6 +575,10 @@ int QueryEntities::ExecuteQuery(void) {
 		}
 	});
 	return best_index;
+#else
+#pragma msg("finish webGPU version")
+	return -1;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -531,13 +587,19 @@ int QueryEntities::ExecuteQuery(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 Grid2DCache::Grid2DCache(GPUEntity& entity, QString pos_name) :
-	m_Entity	( entity )
-	,m_PosName	( pos_name )
+	m_Entity		( entity )
+	,m_PosName		( pos_name )
+#if defined(NESHNY_WEBGPU)
+	,m_GridIndices	( WGPUBufferUsage_Storage )
+	,m_GridItems	( WGPUBufferUsage_Storage )
+#endif
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
+
+#if defined(NESHNY_GL)
 
 	m_GridSize = grid_size;
 	m_GridMin = grid_min;
@@ -600,6 +662,10 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	});
 
 	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache_Items", "Gen", m_GridItems, MemberSpec::Type::T_INT);
+#else
+#pragma msg("finish webGPU version")
+#endif
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

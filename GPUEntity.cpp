@@ -146,7 +146,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #elif defined(NESHNY_WEBGPU)
-	#error finish this - who owns the pipeline? makes sense for it to be global?
+#pragma msg("finish this - who owns the pipeline? makes sense for it to be global?")
 #endif
 
 	m_MaxIndex -= death_count;
@@ -216,8 +216,7 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
 	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 #elif defined(NESHNY_WEBGPU)
-
-	#error finish this
+	m_SSBO->Read(ptr, offset, size);
 #endif
 
 }

@@ -197,7 +197,10 @@ private:
 	GLuint						m_DepthBuffer = 0;
 };
 
-typedef GLRTT RTT;
+typedef GLShader Shader;
+typedef GLBuffer RenderableBuffer;
 typedef GLSSBO SSBO;
+typedef GLRTT RTT;
+
 
 } // namespace Neshny

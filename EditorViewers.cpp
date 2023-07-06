@@ -400,9 +400,8 @@ void LogViewer::IRenderImGui(InterfaceLogViewer& data) {
 	ImGui::End();
 }
 
-#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::ICheckpoint(QString name, QString stage, class GLSSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
+void BufferViewer::ICheckpoint(QString name, QString stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
 
@@ -423,7 +422,7 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<GLSSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
+std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
 
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
@@ -432,13 +431,15 @@ std::shared_ptr<GLSSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, 
 	for (auto& frame : existing->second.p_Frames) {
 		if (frame.p_Tick == tick) {
 			count = frame.p_Count;
-			return std::make_shared<GLSSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
+#if defined(NESHNY_GL)
+			return std::make_shared<SSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
+#elif defined(NESHNY_WEBGPU)
+			return std::make_shared<SSBO>(WGPUBufferUsage_Storage, frame.p_Data.get(), existing->second.p_StructSize * frame.p_Count); // TODO: cache this if it's not performant
+#endif
 		}
 	}
 	return nullptr;
 }
-#elif defined(NESHNY_WEBGPU)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {

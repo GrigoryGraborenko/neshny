@@ -612,7 +612,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer) {
+void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, QString insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -622,7 +622,7 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	m_Type = Type::RENDER;
 	m_RenderBuffer = &render_buffer;
 
-	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion)->Get();
 	CreateBindGroupLayout();
 
 	// pipeline layout (used by the render pipeline, released after its creation)
@@ -715,21 +715,19 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeCompute(QString shader_name) {
+void WebGPUPipeline::FinalizeCompute(QString shader_name, QString insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeCompute");
 #endif
 	if (m_Type != Type::UNKNOWN) {
 		throw std::logic_error("Cannot finalize more than once");
 	}
+	SetCount(0);
 	m_Type = Type::COMPUTE;
 	m_RenderBuffer = nullptr;
-	m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(iVec2));
-
-	AddBuffer(*m_UniformBuffer, WGPUShaderStage_Compute, true);
 
 	CreateBindGroupLayout();
-	WGPUShaderModule shader = Core::GetShader(shader_name)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion)->Get();
 
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
@@ -806,6 +804,19 @@ void WebGPUPipeline::RefreshBindings(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+WebGPUPipeline& WebGPUPipeline::SetCount(unsigned int count) {
+	if (!m_UniformBuffer) {
+		if (m_Type != Type::UNKNOWN) {
+			throw std::logic_error("Count was not set before finalization of pipeline");
+		}
+		m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
+		AddBuffer(*m_UniformBuffer, WGPUShaderStage_Compute, true);
+	}
+	m_UniformBuffer->SetSingleValue(0, count);
+	return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (instances <= 0) {
 		return;
@@ -842,7 +853,7 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 	if (workgroups > limits.maxComputeWorkgroupsPerDimension) {
 		throw std::invalid_argument("Exceeded maxComputeWorkgroupsPerDimension");
 	}
-	m_UniformBuffer->SetSingleValue(0, iVec2(calls, 0));
+	SetCount(calls);
 
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	WGPUComputePassDescriptor pass_desc;

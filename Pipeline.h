@@ -18,19 +18,29 @@ public:
 		BASIC_COMPUTE
 	};
 
+#if defined(NESHNY_WEBGPU)
+	class Prepared {
+		WebGPUPipeline*		p_Pipeline = nullptr;
+		friend class PipelineStage;
+	public:
+							~Prepared	( void );
+		void				Run			( int iterations = 1 );
+	};
+#endif
+
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
-	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, bool replace_main, GLBuffer* buffer, const std::vector<QString>& shader_defines = {}) {
+	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, bool replace_main, RenderableBuffer* buffer, const std::vector<QString>& shader_defines = {}) {
 		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, shader_defines);
 	}
 	static PipelineStage IterateEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
-	static PipelineStage RenderBuffer(QString shader_name, GLBuffer* buffer, const std::vector<QString>& shader_defines = {}, GLSSBO* control_ssbo = nullptr) {
+	static PipelineStage RenderBuffer(QString shader_name, RenderableBuffer* buffer, const std::vector<QString>& shader_defines = {}, SSBO* control_ssbo = nullptr) {
 		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, shader_defines, control_ssbo);
 	}
-	static PipelineStage Compute(QString shader_name, int iterations, GLSSBO* control_ssbo, const std::vector<QString>& shader_defines = {}) {
+	static PipelineStage Compute(QString shader_name, int iterations, SSBO* control_ssbo, const std::vector<QString>& shader_defines = {}) {
 		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, shader_defines, control_ssbo, iterations);
 	}
 
@@ -39,10 +49,15 @@ public:
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
-	PipelineStage&				AddSSBO				( QString name, GLSSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
-	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
+	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
 	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
-	void						Run					( std::optional<std::function<void(GLShader* program)>> pre_execute = std::nullopt );
+#if defined(NESHNY_GL)
+	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
+	void						Run					( std::optional<std::function<void(Shader* program)>> pre_execute = std::nullopt );
+#elif defined(NESHNY_WEBGPU)
+	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
+	std::shared_ptr<Prepared>	Prepare				( void );
+#endif
 
 	template <class T>
 	PipelineStage&				AddDataVector		( QString name, const std::vector<T>& items ) {
@@ -50,13 +65,11 @@ public:
 		return *this;
 	}
 
-	inline int					GetLocalSizeX(void) const { return m_LocalSizeX; }
-	inline int					GetLocalSizeY(void) const { return m_LocalSizeY; }
-	inline int					GetLocalSizeZ(void) const { return m_LocalSizeZ; }
-	inline void					SetLocalSizes(int x, int y, int z) { m_LocalSizeX = x; m_LocalSizeY = y; m_LocalSizeZ = z; }
+	inline iVec3				GetLocalSize(void) const { return m_LocalSize; }
+	inline void					SetLocalSize(int x, int y, int z) { m_LocalSize = iVec3(x, y, z); }
 
 	struct AddedSSBO {
-		GLSSBO& p_Buffer;
+		SSBO& p_Buffer;
 		QString					p_Name;
 		MemberSpec::Type		p_Type;
 		bool					p_ReadOnly = true;
@@ -64,7 +77,7 @@ public:
 
 protected:
 
-								PipelineStage		( RunType type, GPUEntity* entity, GLBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, GLSSBO* control_ssbo = nullptr, int iterations = 0);
+								PipelineStage		( RunType type, GPUEntity* entity, RenderableBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo = nullptr, int iterations = 0);
 
 	struct AddedDataVector {
 		QString					p_Name;
@@ -85,8 +98,12 @@ protected:
 	};
 
 	struct AddedTexture {
-		QString		p_Name;
-		GLuint		p_Tex;
+		QString				p_Name;
+#if defined(NESHNY_GL)
+		GLuint				p_Tex;
+#elif defined(NESHNY_WEBGPU)
+		WebGPUTexture*		p_Tex;
+#endif
 	};
 
 	template <class T>
@@ -115,15 +132,13 @@ protected:
 
 	RunType						m_RunType;
 	GPUEntity*					m_Entity = nullptr;
-	GLBuffer*					m_Buffer = nullptr;
+	RenderableBuffer*			m_Buffer = nullptr;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
-	int							m_LocalSizeX = 8;
-	int							m_LocalSizeY = 8;
-	int							m_LocalSizeZ = 8;
+	iVec3						m_LocalSize = iVec3(8, 8, 8);
 	int							m_Iterations = 0;
-	GLSSBO*						m_ControlSSBO = nullptr;
+	SSBO*						m_ControlSSBO = nullptr;
 	QString						m_ExtraCode;
 
 	std::vector<AddedEntity>	m_Entities;
@@ -208,8 +223,8 @@ private:
 	GPUEntity&					m_Entity;
 	QString						m_PosName;
 
-	GLSSBO						m_GridIndices;
-	GLSSBO						m_GridItems;
+	SSBO						m_GridIndices;
+	SSBO						m_GridItems;
 
 	iVec2						m_GridSize;
 	Vec2						m_GridMin;
