@@ -36,6 +36,7 @@ private:
 
 	WGPUShaderModule					m_Shader;
 	QByteArray							m_Source;
+	QByteArray							m_SourcePrePreProcessor;
 	std::vector<Error>					m_Errors;
 
 };
@@ -280,7 +281,6 @@ public:
 	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
 	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
-	WebGPUPipeline&				SetCount				( unsigned int count );
 
 	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QString insertion = QString() );
 	void						FinalizeCompute			( QString shader_name, QString insertion = QString() );
@@ -297,7 +297,6 @@ protected:
 	void						CreateBindGroupLayout	( void );
 
 	Type						m_Type;
-	//QString						m_ShaderName;
 	WebGPURenderBuffer*			m_RenderBuffer = nullptr;
 	std::vector<Buffer>			m_Buffers;
 	std::vector<const WebGPUTexture*>	m_Textures;
@@ -307,9 +306,6 @@ protected:
 	WGPUComputePipeline			m_ComputePipeline = nullptr;
 	WGPUBindGroupLayout			m_BindGroupLayout = nullptr;
 	WGPUBindGroup				m_BindGroup = nullptr;
-
-	WebGPUBuffer*				m_UniformBuffer = nullptr;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////

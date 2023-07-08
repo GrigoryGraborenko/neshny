@@ -48,12 +48,6 @@ PipelineStage& PipelineStage::AddInputOutputVar(QString name, int* in_out) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddSSBO(QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only) {
-	m_SSBOs.push_back({ ssbo, name, array_type, read_only });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
 
 	QStringList insertion;
@@ -459,42 +453,124 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 
 	std::shared_ptr<PipelineStage::Prepared> result = std::make_shared<Prepared>();
-	result->p_Pipeline = new WebGPUPipeline();
+	result->m_RunType = m_RunType;
+	result->m_Entity = m_Entity;
+	result->m_Buffer = m_Buffer;
+
+	result->m_Pipeline = new WebGPUPipeline();
 
 	QStringList insertion;
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
+	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
+
+	QStringList insertion_buffers;
+	std::vector<std::pair<int, int*>> var_vals;
+
+	std::shared_ptr<SSBO> replace = nullptr;
+	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
+	if (is_render && m_Entity) {
+		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
+		if (time_slider > 0) {
+			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
+		}
+	}
+	if (m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
+		result->m_CountBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
+	}
+
+	for (auto str : m_ShaderDefines) {
+		insertion += QString("#define %1").arg(str);
+	}
+
+	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
+	if (result->m_ControlSSBO) {
+		insertion_buffers += "@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;";
+		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, false);
+	}
+
+	if(entity_processing) {
+		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
+		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
+			m_Vars.push_back({ "ioEntityFreeCount", &entity_free_count });
+		}
+	}
+	
+	for (const auto& var : m_Vars) {
+		insertion += QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg((int)var_vals.size());
+		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
+	}
+
+	if(m_Entity) {
+		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
+		result->m_Pipeline->AddBuffer(replace.get() ? *replace.get() : *m_Entity->GetSSBO(), vis_flags, input_read_only);
+		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<i32>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName());
+
+		if (entity_processing && m_Entity->IsDoubleBuffering()) {
+			result->m_Pipeline->AddBuffer(*m_Entity->GetOuputSSBO(), vis_flags, false);
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Output%2: array<i32>;").arg(insertion_buffers.size()).arg(m_Entity->GetName());
+			insertion += m_Entity->GetDoubleBufferGPUInsertion();
+		} else {
+			insertion += m_Entity->GetGPUInsertion();
+		}
+		if (entity_processing) {
+			insertion += m_Entity->GetSpecs().p_GPUInsertion;
+		} else {
+			insertion += m_Entity->GetSpecs().p_GPUReadOnlyInsertion;
+		}
+	}
+
+	if(entity_processing) {
+		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int));
+			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Death: array<i32>;").arg(insertion_buffers.size());
+		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int), false);
+			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
+		}
+		insertion += QString("fn Destroy%1(index: i32) {").arg(m_Entity->GetName());
+		insertion += QString("\tlet base = index * FLOATS_PER_%1;").arg(m_Entity->GetName());
+		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetName());
+
+		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+			insertion += "\tlet death_index = atomicAdd(&ioEntityDeaths, 1);";
+			insertion += QString("\tb_Death[death_index] = index;");
+		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			insertion += "\tatomicAdd(&ioEntityDeaths, 1);";
+			insertion += "\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);";
+			insertion += "\tb_FreeList[free_index] = index;";
+		}
+		insertion += "}";
+	}
 
 	if (!is_render) {
 		insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
 	}
 
-	std::shared_ptr<SSBO> replace = nullptr;
-	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
-	if (is_render && m_Entity) {
-		result->p_Pipeline->SetCount(0);
+	insertion.push_front(insertion_buffers.join("\n"));
+	QString insertion_str = m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n");
 
-		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
-		if (time_slider > 0) {
-			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
-		}
-	} else if(m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
-		result->p_Pipeline->SetCount(0);
-	}
-
+	result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str);
 
 	return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage::Prepared::~Prepared(void) {
-	delete p_Pipeline;
+	delete m_Pipeline;
+	delete m_CountBuffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void PipelineStage::Prepared::Run(int iterations) {
+
+	//m_ControlSSBO
 
 }
 

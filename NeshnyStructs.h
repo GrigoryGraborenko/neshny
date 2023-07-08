@@ -19,6 +19,7 @@ struct MemberSpec {
 	};
 
 	static QString GetGPUType(Type type) {
+#if defined(NESHNY_GL)
 		if (type == MemberSpec::T_INT) {
 			return "int";
 		} else if (type == MemberSpec::T_UINT) {
@@ -38,6 +39,27 @@ struct MemberSpec {
 		} else if (type == MemberSpec::T_IVEC4) {
 			return "ivec4";
 		}
+#elif defined(NESHNY_WEBGPU)
+		if (type == MemberSpec::T_INT) {
+			return "i32";
+		} else if (type == MemberSpec::T_UINT) {
+			return "u32";
+		} else if (type == MemberSpec::T_FLOAT) {
+			return "f32";
+		} else if (type == MemberSpec::T_VEC2) {
+			return "vec2f";
+		} else if (type == MemberSpec::T_VEC3) {
+			return "vec3f";
+		} else if (type == MemberSpec::T_VEC4) {
+			return "vec4f";
+		} else if (type == MemberSpec::T_IVEC2) {
+			return "vec2i";
+		} else if (type == MemberSpec::T_IVEC3) {
+			return "vec3i";
+		} else if (type == MemberSpec::T_IVEC4) {
+			return "vec4i";
+		}
+#endif
 		return QString();
 	}
 
@@ -59,6 +81,7 @@ struct MemberSpec {
 	}
 
 	static QString GetGPUGetSyntax(Type type, int index) {
+#if defined(NESHNY_GL)
 		if (type == MemberSpec::T_INT) {
 			return QString("%2_LOOKUP(base, %1)").arg(index).arg("%1");
 		} else if (type == MemberSpec::T_UINT) {
@@ -78,6 +101,28 @@ struct MemberSpec {
 		} else if (type == MemberSpec::T_IVEC4) {
 			return QString("ivec4(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
 		}
+#elif defined(NESHNY_WEBGPU)
+		if (type == MemberSpec::T_INT) {
+			return QString("%2_LOOKUP(base, %1)").arg(index).arg("%1");
+		} else if (type == MemberSpec::T_UINT) {
+			return QString("u32(%2_LOOKUP(base, %1))").arg(index).arg("%1");
+		} else if (type == MemberSpec::T_FLOAT) {
+			return QString("bitcast<f32>(%2_LOOKUP(base, %1))").arg(index).arg("%1");
+		} else if (type == MemberSpec::T_VEC2) {
+			return QString("vec2f(bitcast<f32>(%3_LOOKUP(base, %1)), bitcast<f32>(%3_LOOKUP(base, %2)))").arg(index).arg(index + 1).arg("%1");
+		} else if (type == MemberSpec::T_VEC3) {
+			return QString("vec3f(bitcast<f32>(%4_LOOKUP(base, %1)), bitcast<f32>(%4_LOOKUP(base, %2)), bitcast<f32>(%4_LOOKUP(base, %3)))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
+		} else if (type == MemberSpec::T_VEC4) {
+			return QString("vec4f(bitcast<f32>(%5_LOOKUP(base, %1)), bitcast<f32>(%5_LOOKUP(base, %2)), bitcast<f32>(%5_LOOKUP(base, %3)), bitcast<f32>(%5_LOOKUP(base, %4)))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
+		} else if (type == MemberSpec::T_IVEC2) {
+			return QString("vec2i(%3_LOOKUP(base, %1), %3_LOOKUP(base, %2))").arg(index).arg(index + 1).arg("%1");
+		} else if (type == MemberSpec::T_IVEC3) {
+			return QString("vec3i(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
+		} else if (type == MemberSpec::T_IVEC4) {
+			return QString("vec4i(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
+		}
+#endif
+
 		return QString();
 	}
 

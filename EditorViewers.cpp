@@ -791,15 +791,39 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 #elif defined(NESHNY_WEBGPU)
 
 		QList<QByteArray> lines = shader->GetSource().split('\n');
-		for (const auto& err : shader->GetErrors()) {
-			ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), err.m_Message.data());
+		const auto& errors = shader->GetErrors();
+		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
+		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);
+		for (const auto& err : errors) {
+			ImGui::TextColored(error_col, err.m_Message.data());
 		}
 		if (search.isNull()) {
 			for (int line = 0; line < lines.size(); line++) {
-				ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), QString("%1").arg(line).toLocal8Bit().data());
-				ImGui::SameLine();
-				ImGui::SetCursorPosX(number_width);
-				ImGui::TextUnformatted(lines[line].data());
+				bool err_found = false;
+				for (const auto& err : errors) {
+					if (err.m_LineNum == line) {
+						err_found = true;
+						ImGui::TextColored(error_col, QString("%1").arg(line).toLocal8Bit().data());
+						ImGui::SameLine();
+						ImGui::SetCursorPosX(number_width);
+
+						auto before_error = lines[line].left(err.m_LinePos + 1);
+						auto after_error = lines[line].right(lines[line].size() - err.m_LinePos - 1);
+
+						ImGui::TextUnformatted(before_error.data());
+						ImGui::SameLine(0.0, 0.0);
+						ImGui::PushStyleColor(ImGuiCol_Text, error_col);
+						ImGui::TextUnformatted(after_error.data());
+						ImGui::PopStyleColor();
+						break;
+					}
+				}
+				if (!err_found) {
+					ImGui::TextColored(line_num_col, QString("%1").arg(line).toLocal8Bit().data());
+					ImGui::SameLine();
+					ImGui::SetCursorPosX(number_width);
+					ImGui::TextUnformatted(lines[line].data());
+				}
 			}
 		} else {
 
@@ -830,7 +854,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 					ImGui::Separator();
 				}
 				auto line_num_str = QString("%1").arg(line).toLocal8Bit();
-				ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.data());
+				ImGui::TextColored(line_num_col, line_num_str.data());
 				ImGui::SameLine();
 				ImGui::SetCursorPosX(number_width);
 				ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), lines[line].data());

@@ -20,13 +20,30 @@ public:
 
 #if defined(NESHNY_WEBGPU)
 	class Prepared {
-		WebGPUPipeline*		p_Pipeline = nullptr;
+		RunType				m_RunType;
+		WebGPUPipeline*		m_Pipeline = nullptr;
+		WebGPUBuffer*		m_CountBuffer = nullptr;
+
+		SSBO*				m_ControlSSBO = nullptr; // not owned, do not delete
+		GPUEntity*			m_Entity = nullptr; // not owned, do not delete
+		RenderableBuffer*	m_Buffer = nullptr; // not owned, do not delete
+
 		friend class PipelineStage;
 	public:
 							~Prepared	( void );
 		void				Run			( int iterations = 1 );
 	};
 #endif
+
+	struct AddedSSBO {
+		SSBO& p_Buffer;
+		QString					p_Name;
+		MemberSpec::Type		p_Type;
+#if defined(NESHNY_WEBGPU)
+		WGPUShaderStageFlags	p_Flags;
+#endif
+		bool					p_ReadOnly = true;
+	};
 
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
@@ -49,13 +66,15 @@ public:
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out );
-	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true );
 	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
 #if defined(NESHNY_GL)
+	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, read_only }); return *this; }
 	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	void						Run					( std::optional<std::function<void(Shader* program)>> pre_execute = std::nullopt );
 #elif defined(NESHNY_WEBGPU)
+	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, WGPUShaderStageFlags flags, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, flags, read_only }); return *this; }
 	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
+	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 	std::shared_ptr<Prepared>	Prepare				( void );
 #endif
 
@@ -67,13 +86,6 @@ public:
 
 	inline iVec3				GetLocalSize(void) const { return m_LocalSize; }
 	inline void					SetLocalSize(int x, int y, int z) { m_LocalSize = iVec3(x, y, z); }
-
-	struct AddedSSBO {
-		SSBO& p_Buffer;
-		QString					p_Name;
-		MemberSpec::Type		p_Type;
-		bool					p_ReadOnly = true;
-	};
 
 protected:
 
@@ -97,14 +109,21 @@ protected:
 		int*		p_Ptr;
 	};
 
+#if defined(NESHNY_GL)
 	struct AddedTexture {
 		QString				p_Name;
-#if defined(NESHNY_GL)
 		GLuint				p_Tex;
-#elif defined(NESHNY_WEBGPU)
-		WebGPUTexture*		p_Tex;
-#endif
 	};
+#elif defined(NESHNY_WEBGPU)
+	struct AddedTexture {
+		QString				p_Name;
+		WebGPUTexture*		p_Tex;
+	};
+	struct AddedSampler {
+		QString				p_Name;
+		WebGPUSampler*		p_Sampler;
+	};
+#endif
 
 	template <class T>
 	void						AddDataVectorBase(QString name, const std::vector<T>& items) {
@@ -145,6 +164,10 @@ protected:
 	std::vector<AddedSSBO>		m_SSBOs;
 	std::vector<AddedInOut>		m_Vars;
 	std::vector<AddedTexture>	m_Textures;
+#if defined(NESHNY_WEBGPU)
+	std::vector<AddedSampler>	m_Samplers;
+#endif
+
 
 	std::vector<AddedDataVector>		m_DataVectors;
 };

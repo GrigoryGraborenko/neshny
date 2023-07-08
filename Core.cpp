@@ -1186,8 +1186,7 @@ WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 	m_Shaders.insert_or_assign(lookup_name, new_shader);
 	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, insertion)) {
 		for (auto err : new_shader->GetErrors()) {
-			qDebug() << err.m_Message;
-			printf("COMPILE ERROR: %s\n", (char*)err.m_Message.data());
+			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
 		}
 		m_Interface.p_ShaderView.p_Visible = true;
 	}

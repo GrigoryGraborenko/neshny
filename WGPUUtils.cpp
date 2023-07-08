@@ -23,8 +23,8 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 		shader->m_Errors.push_back({
 			msg.type,
 			QByteArray(msg.message),
-			msg.lineNum,
-			msg.linePos
+			msg.lineNum - 1, // device outputs line numbers starting with 1
+			msg.linePos - 2 // device outputs line pos starting with 2 for some reason
 		});
 	}
 }
@@ -47,11 +47,21 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 		});
 		return false;
 	}
-	m_Source = arr;
+	m_SourcePrePreProcessor = insertion.toLocal8Bit() + arr;
+	m_Source = Preprocess(m_SourcePrePreProcessor, loader, err_msg);
+	if (!err_msg.isEmpty()) {
+		m_Errors.push_back({
+			WGPUCompilationMessageType_Error,
+			("Preprocessor error - " + err_msg).toLocal8Bit(),
+			-1u,
+			-1u
+		});
+		return false;
+	}
 
 	WGPUShaderModuleWGSLDescriptor wgsl = {};
 	wgsl.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-	wgsl.source = arr.data();
+	wgsl.source = m_Source.data();
 	WGPUShaderModuleDescriptor desc = {};
 	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
 	auto fname_bytes = filename.toLocal8Bit();
@@ -535,10 +545,6 @@ void WebGPUPipeline::Reset(void) {
 		wgpuBindGroupLayoutRelease(m_BindGroupLayout);
 		m_BindGroupLayout = nullptr;
 	}
-	if (m_UniformBuffer) {
-		delete m_UniformBuffer;
-		m_UniformBuffer = nullptr;
-	}
 	m_Type = Type::UNKNOWN;
 
 	m_RenderBuffer = nullptr;
@@ -722,7 +728,6 @@ void WebGPUPipeline::FinalizeCompute(QString shader_name, QString insertion) {
 	if (m_Type != Type::UNKNOWN) {
 		throw std::logic_error("Cannot finalize more than once");
 	}
-	SetCount(0);
 	m_Type = Type::COMPUTE;
 	m_RenderBuffer = nullptr;
 
@@ -804,19 +809,6 @@ void WebGPUPipeline::RefreshBindings(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUPipeline& WebGPUPipeline::SetCount(unsigned int count) {
-	if (!m_UniformBuffer) {
-		if (m_Type != Type::UNKNOWN) {
-			throw std::logic_error("Count was not set before finalization of pipeline");
-		}
-		m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
-		AddBuffer(*m_UniformBuffer, WGPUShaderStage_Compute, true);
-	}
-	m_UniformBuffer->SetSingleValue(0, count);
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (instances <= 0) {
 		return;
@@ -853,7 +845,6 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 	if (workgroups > limits.maxComputeWorkgroupsPerDimension) {
 		throw std::invalid_argument("Exceeded maxComputeWorkgroupsPerDimension");
 	}
-	SetCount(calls);
 
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	WGPUComputePassDescriptor pass_desc;

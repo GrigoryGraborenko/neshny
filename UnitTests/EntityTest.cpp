@@ -250,7 +250,6 @@ namespace Test {
 
 #if defined(NESHNY_WEBGPU)
 		Neshny::WebGPUPipeline pipe;
-
 		Neshny::WebGPUBuffer buffer(WGPUBufferUsage_Storage);
 		const int num = 1024;
 		const int first_pass = 13;
@@ -262,10 +261,14 @@ namespace Test {
 		buffer.EnsureSizeBytes(num * sizeof(float));
 		buffer.SetValues(values);
 
+		Neshny::WebGPUBuffer uniform_buffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
+
 		pipe
 			.AddBuffer(buffer, WGPUShaderStage_Compute, false)
+			.AddBuffer(uniform_buffer, WGPUShaderStage_Compute, false)
 			.FinalizeCompute("UnitTest");
 
+		uniform_buffer.SetSingleValue(0, first_pass);
 		pipe.Compute(first_pass, Neshny::iVec3(256, 1, 1));
 
 		std::vector<float> out_values;
@@ -280,6 +283,7 @@ namespace Test {
 			Expect("Value mismatch", expected == actual);
 		}
 
+		uniform_buffer.SetSingleValue(0, second_pass);
 		pipe.Compute(second_pass, Neshny::iVec3(256, 1, 1));
 
 		out_values.clear();
