@@ -154,14 +154,14 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
 		functions += QString("fn Get%3%2(index: i32) -> %1 {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		if (member.p_Type == MemberSpec::Type::T_INT) {
-			//functions += QString("#define Access%3%1(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+			functions += QString("#define Access%3%1(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
-			//functions += QString("#define Access%3%1_X(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
-			//functions += QString("#define Access%3%1_Y(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
+			functions += QString("#define Access%3%1_X(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+			functions += QString("#define Access%3%1_Y(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
 			if (member.p_Type != MemberSpec::Type::T_IVEC2) {
-				//functions += QString("#define Access%3%1_Z(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 2).arg("%1");
+				functions += QString("#define Access%3%1_Z(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 2).arg("%1");
 				if (member.p_Type == MemberSpec::Type::T_IVEC4) {
-					//functions += QString("#define Access%3%1_W(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 3).arg("%1");
+					functions += QString("#define Access%3%1_W(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 3).arg("%1");
 				}
 			}
 		}
@@ -257,12 +257,11 @@ public:
 		SerializeStructInfo<T>(m_Specs, get_base_str);
 
 		QStringList insertion;
-		insertion += QString("var<private> FLOATS_PER_%1: i32 = %2;").arg(m_Name).arg(m_NumDataFloats);
-		insertion += QString("fn %1_LOOKUP(base: i32, index: i32)-> i32 { return b_%1[base + index]; }").arg(m_Name);
+		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
+		insertion += QString("#define %1_LOOKUP(base, index) (b_%1[(base) + (index)])").arg(m_Name);
 		QStringList insertion_double_buffer = insertion;
-
-		insertion += QString("fn %1_SET(base: i32, index: i32, value: i32) { b_%1[base + index] = value; }").arg(m_Name);
-		insertion_double_buffer += QString("fn %1_SET(base: i32, index: i32, value: i32) { b_Output%1[base + index] = value; }").arg(m_Name);
+		insertion += QString("#define %1_SET(base, index, value) b_%1[(base) + (index)] = (value)").arg(m_Name);
+		insertion_double_buffer += QString("#define %1_SET(base, index, value) b_Output%1[(base) + (index)] = (value)").arg(m_Name);
 
 #endif
 
