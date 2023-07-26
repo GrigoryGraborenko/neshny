@@ -42,12 +42,6 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddInputOutputVar(QString name, int* in_out) {
-	m_Vars.push_back({ name, in_out });
-	return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
 
 	QStringList insertion;
@@ -460,14 +454,12 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 	result->m_Pipeline = new WebGPUPipeline();
 
 	QStringList insertion;
-	int entity_deaths = 0;
-	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
+	QStringList end_insertion;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
 	QStringList insertion_buffers;
-	std::vector<std::pair<int, int*>> var_vals;
 
 	std::shared_ptr<SSBO> replace = nullptr;
 	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
@@ -476,9 +468,6 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 		if (time_slider > 0) {
 			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
 		}
-	}
-	if (m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
-		result->m_CountBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
 	}
 
 	for (auto str : m_ShaderDefines) {
@@ -491,18 +480,27 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, false);
 	}
 
+	insertion_buffers += QString("@group(0) @binding(%1) var<uniform> Uniform: u32;").arg(insertion_buffers.size());
+	result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
+	result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
+
+//TODO: add all the buffers here, and setup structs and various ways to access them
+
 	if(entity_processing) {
+		m_Vars.push_back({ "ioCount" });
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
+			m_Vars.push_back({ "ioEntityDeaths" });
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
-			m_Vars.push_back({ "ioEntityFreeCount", &entity_free_count });
+			m_Vars.push_back({ "ioEntityDeaths" });
+			m_Vars.push_back({ "ioEntityFreeCount" });
 		}
 	}
 	
-	for (const auto& var : m_Vars) {
-		insertion += QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg((int)var_vals.size());
-		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
+	for (int i = 0; i < m_Vars.size(); i++) {
+		const auto& var = m_Vars[i];
+		insertion += QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg(i);
+		insertion += QString("#define Get_%1 (atomicLoad(&b_Control[%2]))").arg(var.p_Name).arg(i);
+		result->m_VarNames += var.p_Name;
 	}
 
 	if(m_Entity) {
@@ -549,14 +547,120 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 		insertion += "}";
 	}
 
-	if (!is_render) {
-		insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
+
+	/*
+	for (int b = 0; b < m_SSBOs.size(); b++) {
+		int buffer_index = insertion_buffers.size();
+		auto& ssbo = m_SSBOs[b];
+		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
+		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name).arg(ssbo.p_ReadOnly ? "readonly " : "");
+	}
+	for (const auto& tex : m_Textures) {
+		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
+	}
+	
+	struct EntityControl {
+		int		p_MaxIndex;
+		int		p_NextId;
+		int		p_FreeCount;
+	};
+	std::vector<EntityControl> entity_controls;
+	entity_controls.reserve(m_Entities.size()); // reserve to avoid reallocations, so you can have pointers to it
+	for (int e = 0; e < m_Entities.size(); e++) {
+		GPUEntity& entity = m_Entities[e].p_Entity;
+		QString name = entity.GetName();
+		insertion += QString("//////////////// Entity %1").arg(name);
+		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
+		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
+		{
+			int buffer_index = insertion_buffers.size();
+			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
+			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
+		}
+
+		insertion += entity.GetGPUInsertion();
+		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
+
+		entity_controls.push_back({ entity.GetMaxIndex(), entity.GetNextId(), entity.GetFreeCount() });
+		if (m_Entities[e].p_Creatable) {
+			int control_index = (int)var_vals.size();
+			auto& curr = entity_controls.back();
+			var_vals.push_back({ curr.p_NextId, &curr.p_NextId });
+			var_vals.push_back({ curr.p_MaxIndex, &curr.p_MaxIndex });
+
+			insertion += QString("void Create%1(%1 item) {").arg(name);
+			insertion += QString("\tint item_id = atomicAdd(b_Control.i[%1], 1);").arg(control_index);
+			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+				int buffer_index = insertion_buffers.size();
+				insertion_buffers += QString("layout(std430, binding = %1) buffer FreeEntityBuffer%1 { int i[]; } b_Free%2;").arg(buffer_index).arg(entity.GetName());
+				ssbo_binds.push_back({ entity.GetFreeListSSBO(), buffer_index });
+				var_vals.push_back({ curr.p_FreeCount, &curr.p_FreeCount });
+				insertion += "\tint item_pos = 0;";
+				insertion += QString("\tint free_count = atomicAdd(b_Control.i[%1], -1);").arg(control_index + 2);
+				insertion += "\tif(free_count > 0) {";
+					insertion += QString("\t\titem_pos = b_Free%1.i[free_count - 1];").arg(entity.GetName());
+				insertion += "\t} else {";
+					insertion += QString("\t\titem_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
+				insertion += "\t}";
+			} else {
+				insertion += QString("\tint item_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
+			}
+			insertion += QString("\titem.%1 = item_id;").arg(entity.GetIDName());
+			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
+		}
+	}
+	
+	insertion += "////////////////";
+	*/
+
+	if (entity_processing && m_ReplaceMain) {
+		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
+		end_insertion +=
+			"fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+			"\tlet item_index = i32(global_id.x);\n"
+			"\tif (item_index >= Get_ioCount) { return; }\n"
+			"\tlet item: %1 = Get%1(item_index);";
+		if (m_Entity->IsDoubleBuffering()) {
+			end_insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg("%1");
+		} else {
+			end_insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
+		}
+		end_insertion +=
+			"\tvar new_item: %1 = item;\n"
+			"\tlet should_destroy: bool = %1Main(item_index, item, &new_item);\n"
+			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
+			"\tSet%1(new_item, item_index);\n"
+			"}";
+	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
+
+	} else if (m_Entity && m_ReplaceMain) {
+		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
+		end_insertion +=
+			"fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+			"\tlet item_index = global_id.x;\n"
+			"\tif (item_index >= ioCount) return;\n"
+			"\tlet item: %1 = Get%1(item_index);";
+		end_insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
+		end_insertion +=
+			"\t%1Main(item_index, item);\n"
+			"}\n////////////////";
+	}
 	}
 
-	insertion.push_front(insertion_buffers.join("\n"));
-	QString insertion_str = m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n");
 
-	result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str);
+	insertion.push_front(insertion_buffers.join("\n"));
+	//insertion.push_front(insertion_uniforms.join("\n"));
+
+	//DebugGPU::Checkpoint("PreRun", m_Entity);
+
+	QByteArray insertion_str = (m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n")).toLocal8Bit();
+	QByteArray end_insertion_str = "\n//////////\n" + (m_Entity ? QString(end_insertion.join("\n")).arg(m_Entity->GetName()) : end_insertion.join("\n")).toLocal8Bit();
+
+	if (is_render) {
+		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, insertion_str, end_insertion_str);
+	} else {
+		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
+	}
 
 	return result;
 }
@@ -564,14 +668,90 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage::Prepared::~Prepared(void) {
 	delete m_Pipeline;
-	delete m_CountBuffer;
+	delete m_UniformBuffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Prepared::Run(int iterations) {
+void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variables, int iterations) {
 
-	//m_ControlSSBO
+	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
+	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 
+	int entity_deaths = 0;
+	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
+	std::vector<std::pair<int, int*>> var_vals;
+
+	int run_count = entity_processing ? m_Entity->GetCount() : iterations;
+
+	if (entity_processing) {
+		variables.push_back({ "ioCount", &run_count });
+		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
+			variables.push_back({ "ioEntityDeaths", &entity_deaths });
+		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			variables.push_back({ "ioEntityDeaths", &entity_deaths });
+			variables.push_back({ "ioEntityFreeCount", &entity_free_count });
+		}
+	}
+
+	for (const auto& name : m_VarNames) {
+		for (const auto& var : variables) {
+			if (var.first == name) {
+				var_vals.push_back({ var.second ? *var.second : 0, var.second });
+			}
+		}
+	}
+
+	if (m_ControlSSBO && !var_vals.empty()) {
+
+		std::vector<int> values;
+		for (auto var : var_vals) {
+			values.push_back(var.first);
+		}
+		int control_size = (int)var_vals.size();
+		*/
+
+		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int));
+		m_ControlSSBO->SetValues(values);
+	}
+
+
+	// TODO: why is RefreshBindings required for control SSBO? should the flag not pick it up automatically?
+	m_Pipeline->RefreshBindings();
+
+	if (entity_processing) {
+		m_Pipeline->Compute(run_count);
+	} else {
+		if (!m_Buffer) {
+			throw std::invalid_argument("Render buffer not found");
+		}
+	}
+
+	if (entity_processing && m_Entity->IsDoubleBuffering()) {
+		m_Entity->SwapInputOutputSSBOs();
+	}
+
+
+	if (m_ControlSSBO) {
+		std::vector<int> control_values;
+		m_ControlSSBO->GetValues<int>(control_values, (int)var_vals.size());
+		for (int v = 0; v < var_vals.size(); v++) {
+			if (var_vals[v].second) {
+				*var_vals[v].second = control_values[v];
+			}
+		}
+	}
+
+
+	if (entity_processing) {
+		if ((m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && (entity_deaths > 0)) {
+			m_Entity->ProcessMoveDeaths(entity_deaths);
+			//if (true) {
+			//	BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity->GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
+			//}
+		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			m_Entity->ProcessStableDeaths(entity_deaths);
+		}
+	}
 }
 
 #endif

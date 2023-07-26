@@ -22,7 +22,7 @@ public:
 													WebGPUShader			( void );
 													~WebGPUShader			( void );
 
-	bool											Init					( const std::function<QByteArray(QString, QString&)>& loader, QString filename, QString insertion );
+	bool											Init					( const std::function<QByteArray(QString, QString&)>& loader, QString filename, QByteArray start_insert, QByteArray end_insert );
 
 	inline WGPUShaderModule							Get						( void ) const { return m_Shader; }
 	inline bool										IsValid					( void ) const { return m_Shader != nullptr; }
@@ -282,8 +282,8 @@ public:
 	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QString insertion = QString() );
-	void						FinalizeCompute			( QString shader_name, QString insertion = QString() );
+	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
+	void						FinalizeCompute			( QString shader_name, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						RefreshBindings			( void );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
 	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1) );

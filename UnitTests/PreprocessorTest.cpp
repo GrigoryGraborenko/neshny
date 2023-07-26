@@ -4,6 +4,7 @@ namespace Test {
 
     void UnitTest_Preprocessor(void) {
 
+#ifdef NESHNY_PREPROCESS
         std::vector<std::pair<QByteArrayList, QByteArrayList>> scenarios = {
             {{
                 "int thing = THING;"
@@ -51,5 +52,6 @@ namespace Test {
             auto output = Neshny::Preprocess(scenarios[i].first.join("\n"), loader, err_msg);
             Expect(QString("Scenario %1 did not match expected output").arg(i), expected == output);
         }
+#endif
     }
 }

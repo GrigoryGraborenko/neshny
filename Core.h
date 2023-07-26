@@ -491,7 +491,7 @@ public:
 	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
 	WGPULimits							GetDefaultLimits			( void );
 	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
-	static WebGPUShader*				GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static WebGPUShader*				GetShader					( QString name, QByteArray start_insert = QByteArray(), QByteArray end_insert = QByteArray()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							CopyBufferToBuffer			( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size );
@@ -614,7 +614,7 @@ private:
 	GLBuffer*							IGetBuffer					( QString name );
 	GLShader*							IGetComputeShader			( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
-	WebGPUShader*						IGetShader					( QString name, QString insertion );
+	WebGPUShader*						IGetShader					( QString name, QByteArray start_insert, QByteArray end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( QString name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }

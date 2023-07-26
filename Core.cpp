@@ -1162,15 +1162,15 @@ GLBuffer* Core::IGetBuffer(QString name) {
 }
 #elif defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUShader* Core::IGetShader(QString name, QString insertion) {
+WebGPUShader* Core::IGetShader(QString name, QByteArray start_insert, QByteArray end_insert) {
 
 	if (!m_EmbeddableLoader.has_value()) {
 		return nullptr;
 	}
 
 	QString lookup_name = name;
-	if (!insertion.isNull()) {
-		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0);; // security is no concern, only speed and lack of collisions
+	if ((!start_insert.isNull()) || (!end_insert.isNull())) {
+		auto hash_val = QCryptographicHash::hash(start_insert + "###" + end_insert, QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
 		lookup_name += "_" + hash_val;
 	}
 
@@ -1184,7 +1184,7 @@ WebGPUShader* Core::IGetShader(QString name, QString insertion) {
 
 	WebGPUShader* new_shader = new WebGPUShader();
 	m_Shaders.insert_or_assign(lookup_name, new_shader);
-	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, insertion)) {
+	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert, end_insert)) {
 		for (auto err : new_shader->GetErrors()) {
 			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
 		}

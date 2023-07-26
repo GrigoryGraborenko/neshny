@@ -30,7 +30,7 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& loader, QString filename, QString insertion) {
+bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& loader, QString filename, QByteArray start_insert, QByteArray end_insert) {
 
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPUShader::Init");
@@ -47,7 +47,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 		});
 		return false;
 	}
-	m_SourcePrePreProcessor = insertion.toLocal8Bit() + arr;
+	m_SourcePrePreProcessor = start_insert + arr + end_insert;
 	m_Source = Preprocess(m_SourcePrePreProcessor, loader, err_msg);
 	if (!err_msg.isEmpty()) {
 		m_Errors.push_back({
@@ -618,7 +618,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, QString insertion) {
+void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, QByteArray insertion, QByteArray end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -628,7 +628,7 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	m_Type = Type::RENDER;
 	m_RenderBuffer = &render_buffer;
 
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
 	CreateBindGroupLayout();
 
 	// pipeline layout (used by the render pipeline, released after its creation)
@@ -721,7 +721,7 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeCompute(QString shader_name, QString insertion) {
+void WebGPUPipeline::FinalizeCompute(QString shader_name, QByteArray insertion, QByteArray end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeCompute");
 #endif
@@ -732,7 +732,7 @@ void WebGPUPipeline::FinalizeCompute(QString shader_name, QString insertion) {
 	m_RenderBuffer = nullptr;
 
 	CreateBindGroupLayout();
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
 
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
