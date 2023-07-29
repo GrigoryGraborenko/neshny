@@ -260,7 +260,7 @@ protected:
 class WebGPUPipeline {
 
 	struct Buffer {
-		WebGPUBuffer&			p_Buffer;
+		WebGPUBuffer*			p_Buffer;
 		WGPUShaderStageFlags	p_VisibilityFlags;
 		bool					p_ReadOnly;
 		WGPUBuffer				p_LastSeenBuffer = nullptr;
@@ -278,13 +278,15 @@ public:
 								~WebGPUPipeline			( void );
 	void						Reset					( void );
 
-	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
+	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
 	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
 	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						FinalizeCompute			( QString shader_name, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						RefreshBindings			( void );
+	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );
+	void						ReplaceBuffer			( int index, WebGPUBuffer& replacement );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
 	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1) );
 
@@ -294,6 +296,7 @@ public:
 
 protected:
 
+	void						CheckBuffersUpToDate	( void );
 	void						CreateBindGroupLayout	( void );
 
 	Type						m_Type;

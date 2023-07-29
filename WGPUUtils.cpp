@@ -571,7 +571,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 		buffer_layout.nextInChain = nullptr;
 		buffer_layout.hasDynamicOffset = false;
 		buffer_layout.minBindingSize = 0;
-		if (buffer.p_Buffer.GetFlags() & WGPUBufferUsage_Uniform) {
+		if (buffer.p_Buffer->GetFlags() & WGPUBufferUsage_Uniform) {
 			buffer_layout.type = WGPUBufferBindingType_Uniform;
 		} else if(buffer.p_ReadOnly) {
 			buffer_layout.type = WGPUBufferBindingType_ReadOnlyStorage;
@@ -774,13 +774,13 @@ void WebGPUPipeline::RefreshBindings(void) {
 
 	int binding_num = 0;
 	for (auto& buffer : m_Buffers) {
-		buffer.p_LastSeenBuffer = buffer.p_Buffer.Get();
+		buffer.p_LastSeenBuffer = buffer.p_Buffer->Get();
 		WGPUBindGroupEntry& entry = entries[binding_num];
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
 		entry.offset = 0;
-		entry.size = buffer.p_Buffer.GetSizeBytes();
-		entry.buffer = buffer.p_Buffer.Get();
+		entry.size = buffer.p_Buffer->GetSizeBytes();
+		entry.buffer = buffer.p_Buffer->Get();
 		binding_num++;
 	}
 	for (auto tex : m_Textures) {
@@ -809,17 +809,37 @@ void WebGPUPipeline::RefreshBindings(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
-	if (instances <= 0) {
-		return;
-	}
+void WebGPUPipeline::CheckBuffersUpToDate(void) {
 	bool needs_refresh = false;
 	for (auto& buffer : m_Buffers) {
-		needs_refresh = needs_refresh || (buffer.p_LastSeenBuffer != buffer.p_Buffer.Get());
+		needs_refresh = needs_refresh || (buffer.p_LastSeenBuffer != buffer.p_Buffer->Get());
 	}
 	if (needs_refresh) {
 		RefreshBindings();
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::ReplaceBuffer(WebGPUBuffer& original, WebGPUBuffer& replacement) {
+	for (auto& buff : m_Buffers) {
+		if ((&original) == buff.p_Buffer) {
+			buff.p_Buffer = &replacement;
+			return;
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::ReplaceBuffer(int index, WebGPUBuffer& replacement) {
+	m_Buffers[index].p_Buffer = &replacement;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
+	if (instances <= 0) {
+		return;
+	}
+	CheckBuffersUpToDate();
 	wgpuRenderPassEncoderSetPipeline(pass, m_RenderPipeline);
 	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, nullptr);
 	wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_RenderBuffer->GetVertex(), 0, WGPU_WHOLE_SIZE);
@@ -834,6 +854,8 @@ void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
+
+	CheckBuffersUpToDate();
 
 	const auto& limits = Core::Singleton().GetLimits();
 	if ((workgroup_size.x < 1) || (workgroup_size.y < 1) || (workgroup_size.z < 1)) {

@@ -714,9 +714,7 @@ void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variab
 		m_ControlSSBO->SetValues(values);
 	}
 
-
-	// TODO: why is RefreshBindings required for control SSBO? should the flag not pick it up automatically?
-	m_Pipeline->RefreshBindings();
+	//m_UniformBuffer->SetSingleValue(0, 123);
 
 	if (entity_processing) {
 		m_Pipeline->Compute(run_count);
@@ -727,6 +725,8 @@ void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variab
 	}
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
+		m_Pipeline->ReplaceBuffer(*m_Entity->GetOuputSSBO(), *m_Entity->GetSSBO());
+		m_Pipeline->ReplaceBuffer(*m_Entity->GetSSBO(), *m_Entity->GetOuputSSBO());
 		m_Entity->SwapInputOutputSSBOs();
 	}
 

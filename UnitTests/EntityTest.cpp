@@ -111,7 +111,8 @@ namespace meta {
 
 namespace Test {
 
-	void CompareEntities(std::vector<GPUThing> expected, std::vector<GPUThing> actual) {
+	////////////////////////////////////////////////////////////////////////////////
+	void CompareEntities(QString msg_prefix, std::vector<GPUThing> expected, std::vector<GPUThing> actual) {
 		Expect("Size mismatch", expected.size() <= actual.size());
 
 		auto sort_func = [](const GPUThing& a, const GPUThing& b) { return a.p_Id > b.p_Id; };
@@ -122,16 +123,15 @@ namespace Test {
 			if (expected[i].p_Id < 0) {
 				break;
 			}
-			Expect("Item ID mismatch", expected[i].p_Id == actual[i].p_Id);
-			Expect("Item mismatch", expected[i].CloseEnough(actual[i]));
+			Expect(msg_prefix + " -> Item ID mismatch", expected[i].p_Id == actual[i].p_Id);
+			Expect(msg_prefix + " -> Item mismatch", expected[i].CloseEnough(actual[i]));
 		}
 	}
 
-    void UnitTest_GPUEntityStable(void) {
+	////////////////////////////////////////////////////////////////////////////////
+	void GPUEntityTest(Neshny::GPUEntity::DeleteMode mode) {
 
-#if defined(NESHNY_GL)
-
-		Neshny::GPUEntity entities("Thing", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
+		Neshny::GPUEntity entities("Thing", mode, &GPUThing::p_Id, "Id");
 		entities.Init(1000);
 
 		const int initial_count = 50;
@@ -142,186 +142,80 @@ namespace Test {
 			expected.push_back(thing);
 		}
 
-		// add in_value to most values
 		const float in_value = 123.4f;
 		const int div_val = 7;
+
+
+		// add in_value to most values
+#if defined(NESHNY_GL)
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
-
-		for (auto& item : expected) {
-			GPUThing::Add(item, in_value);
-		}
-
-		std::vector<GPUThing> gpu_values;
-		entities.GetSSBO()->GetValues(gpu_values, initial_count);
-
-		// delete every nth item
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([div_val](Neshny::GLShader* prog) {
-			glUniform1i(prog->GetUniform("uMode"), 1);
-			glUniform1f(prog->GetUniform("uValue"), div_val);
-		});
-
-		for (auto& item : expected) {
-			if (item.p_Int % div_val == 0) {
-				item.p_Id = -1;
-			}
-		}
-
-		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, initial_count);
-
-		CompareEntities(expected, gpu_values);
-
-		for (int i = 0; i < 10; i++) {
-			GPUThing thing = GPUThing::Init(i + 1000);
-			entities.AddInstance(&thing);
-
-			bool found = false;
-			for (auto& item : expected) {
-				if (item.p_Id < 0) {
-					item = thing;
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				expected.push_back(thing);
-			}
-		}
-
-		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, entities.GetCount());
-
-		CompareEntities(expected, gpu_values);
-
 #elif defined(NESHNY_WEBGPU)
-
-		Neshny::GPUEntity* entities_ptr = nullptr;
-		Neshny::GPUEntity entities("Thing", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
-		entities_ptr = &entities;
-		//entities_ptr = new Neshny::GPUEntity("Thing", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
-		entities_ptr->Init(1000);
-
-		const int initial_count = 50;
-		std::vector<GPUThing> expected;
-		for (int i = 0; i < initial_count; i++) {
-			GPUThing thing = GPUThing::Init(i);
-			entities_ptr->AddInstance(&thing);
-			expected.push_back(thing);
-		}
-
-		// add in_value to most values
-		const float in_value = 123.4f;
-		const int div_val = 7;
-		auto executable = Neshny::PipelineStage::ModifyEntity(*entities_ptr, "UnitTestEntity", true).AddInputOutputVar("uCheckVal").Prepare();
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).AddInputOutputVar("uCheckVal").Prepare();
 		int uCheckVal = 0;
-		executable->Run({{ "uCheckVal", &uCheckVal }});
 
-		for (auto& item : expected) {
-			GPUThing::Add(item, in_value);
-		}
-
-		std::vector<GPUThing> gpu_values;
-		entities_ptr->GetSSBO()->GetValues(gpu_values, initial_count);
-
-		CompareEntities(expected, gpu_values);
-
-		return;
-
-		// delete every nth item
-		executable->Run();
-
-		for (auto& item : expected) {
-			if (item.p_Int % div_val == 0) {
-				item.p_Id = -1;
-			}
-		}
-
-		gpu_values.clear();
-		entities_ptr->GetSSBO()->GetValues(gpu_values, initial_count);
-
-		for (int i = 0; i < 10; i++) {
-			GPUThing thing = GPUThing::Init(i + 1000);
-			entities_ptr->AddInstance(&thing);
-
-			bool found = false;
-			for (auto& item : expected) {
-				if (item.p_Id < 0) {
-					item = thing;
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				expected.push_back(thing);
-			}
-		}
-
-		gpu_values.clear();
-		entities_ptr->GetSSBO()->GetValues(gpu_values, entities_ptr->GetCount());
-
-		Expect("Size mismatch", expected.size() == gpu_values.size());
-		for (int i = 0; i < (int)gpu_values.size(); i++) {
-			const auto& a = expected[i];
-			const auto& b = gpu_values[i];
-			bool later_a = a.p_Int >= 1000;
-			bool later_b = b.p_Int >= 1000;
-			Expect("Batch mismatch", later_a == later_b);
-		}
-
+		executable->Run({ { "uCheckVal", &uCheckVal } });
 #endif
-    }
-
-    void UnitTest_GPUEntityMoving(void) {
-
-#if defined(NESHNY_GL)
-
-		Neshny::GPUEntity entities("Thing", Neshny::GPUEntity::DeleteMode::MOVING_COMPACT, &GPUThing::p_Id, "Id");
-		entities.Init(1000);
-
-		const int initial_count = 50;
-		std::vector<GPUThing> expected;
-		for (int i = 0; i < initial_count; i++) {
-			GPUThing thing = GPUThing::Init(i);
-			entities.AddInstance(&thing);
-			expected.push_back(thing);
-		}
-
-		// add in_value to most values
-		const float in_value = 123.4f;
-		const int div_val = 7;
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
-			glUniform1i(prog->GetUniform("uMode"), 0);
-			glUniform1f(prog->GetUniform("uValue"), in_value);
-		});
 
 		for (auto& item : expected) {
 			GPUThing::Add(item, in_value);
 		}
-
 		std::vector<GPUThing> gpu_values;
 		entities.GetSSBO()->GetValues(gpu_values, initial_count);
 
-		CompareEntities(expected, gpu_values);
+		CompareEntities("After first add", expected, gpu_values);
+
+		// add in_value to most values again to check double buffering works
+#if defined(NESHNY_GL)
+		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
+			glUniform1i(prog->GetUniform("uMode"), 0);
+			glUniform1f(prog->GetUniform("uValue"), in_value);
+			});
+#elif defined(NESHNY_WEBGPU)
+		executable->Run({ { "uCheckVal", &uCheckVal } });
+#endif
+
+		for (auto& item : expected) {
+			GPUThing::Add(item, in_value);
+		}
+		gpu_values.clear();
+		entities.GetSSBO()->GetValues(gpu_values, initial_count);
+
+		CompareEntities("After second add", expected, gpu_values);
 
 		// delete every nth item
+#if defined(NESHNY_GL)
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([div_val](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 1);
 			glUniform1f(prog->GetUniform("uValue"), div_val);
 		});
+#elif defined(NESHNY_WEBGPU)
+		return;
+		executable->Run({ { "uCheckVal", &uCheckVal } });
+#endif
 
-		for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
-			for (auto iter = expected.begin(); iter != expected.end(); iter++) {
-				if (iter->p_Int % div_val == 0) {
-					RemoveUnordered(expected, iter);
+		if(mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			for (auto& item : expected) {
+				if (item.p_Int % div_val == 0) {
+					item.p_Id = -1;
+				}
+			}
+		} else {
+			for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
+				for (auto iter = expected.begin(); iter != expected.end(); iter++) {
+					if (iter->p_Int % div_val == 0) {
+						RemoveUnordered(expected, iter);
+					}
 				}
 			}
 		}
 
 		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, entities.GetCount());
+		entities.GetSSBO()->GetValues(gpu_values, mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS ? initial_count : entities.GetCount());
+
+		CompareEntities("After deletion", expected, gpu_values);
 
 		for (int i = 0; i < 10; i++) {
 			GPUThing thing = GPUThing::Init(i + 1000);
@@ -343,39 +237,20 @@ namespace Test {
 		gpu_values.clear();
 		entities.GetSSBO()->GetValues(gpu_values, entities.GetCount());
 
-		CompareEntities(expected, gpu_values);
+		CompareEntities("After adding in new values", expected, gpu_values);
+	}
 
-#elif defined(NESHNY_WEBGPU)
-
-		return; // TODO: bring test back
-		Neshny::GPUEntity entities("Thing", Neshny::GPUEntity::DeleteMode::MOVING_COMPACT, &GPUThing::p_Id, "Id");
-		entities.Init(1000);
-
-		const int initial_count = 50;
-		std::vector<GPUThing> expected;
-		for (int i = 0; i < initial_count; i++) {
-			GPUThing thing = GPUThing::Init(i);
-			entities.AddInstance(&thing);
-			expected.push_back(thing);
-		}
-
-		// add in_value to most values
-		const float in_value = 123.4f;
-		const int div_val = 7;
-		
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Prepare();
-		executable->Run();
-
-		for (auto& item : expected) {
-			GPUThing::Add(item, in_value);
-		}
-
-		std::vector<GPUThing> gpu_values;
-		entities.GetSSBO()->GetValues(gpu_values, initial_count);
-
-#endif
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityStable(void) {
+		GPUEntityTest(Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS);
     }
 
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityMoving(void) {
+		GPUEntityTest(Neshny::GPUEntity::DeleteMode::MOVING_COMPACT);
+    }
+
+	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_Compute(void) {
 
 #if defined(NESHNY_WEBGPU)
