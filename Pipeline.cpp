@@ -656,8 +656,41 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			"\t%1Main(item_index, item);\n"
 			"}\n////////////////";
 	}
+	/*
+	// WARNING: do NOT add to control buffer beyond this point
+
+	GLSSBO* control_ssbo = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
+	if (control_ssbo && !var_vals.empty()) {
+
+		std::vector<int> values;
+		for (auto var : var_vals) {
+			values.push_back(var.first);
+		}
+		int control_size = (int)var_vals.size();
+
+		// allocate some space for vectors on the control buffer and copy data over
+		if (!m_DataVectors.empty()) {
+			insertion += "//////////////// Data vector helpers";
+		}
+		for (const auto& data_vect : m_DataVectors) {
+			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
+			int offset = control_size;
+			control_size += data_size;
+			values.resize(control_size);
+			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
+			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
+		}
+
+		control_ssbo->EnsureSizeBytes(control_size * sizeof(int));
+		control_ssbo->Bind(0); // you can assume this is at index zero
+		control_ssbo->SetValues(values);
 	}
 
+	if (!m_ExtraCode.isNull()) {
+		insertion += "////////////////";
+		insertion += m_ExtraCode;
+	}
+	*/
 
 	insertion.push_front(insertion_buffers.join("\n"));
 	insertion.push_front(immediate_insertion.join("\n"));
@@ -684,7 +717,6 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variables, int iterations) {
 void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
@@ -721,6 +753,20 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 			values.push_back(var.first);
 		}
 		int control_size = (int)var_vals.size();
+
+		/*
+		// allocate some space for vectors on the control buffer and copy data over
+		if (!m_DataVectors.empty()) {
+			insertion += "//////////////// Data vector helpers";
+		}
+		for (const auto& data_vect : m_DataVectors) {
+			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
+			int offset = control_size;
+			control_size += data_size;
+			values.resize(control_size);
+			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
+			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
+		}
 		*/
 
 		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int));
