@@ -33,10 +33,14 @@ public:
 	public:
 
 							~Prepared	( void );
-		void				Run			( void ) { Run({}, 1); }
-		void				Run			( int iterations ) { Run({}, iterations); }
-		void				Run			( std::vector<std::pair<QString, int*>>&& variables ) { Run(std::forward<std::vector<std::pair<QString, int*>>>(variables), 1); }
-		void				Run			( std::vector<std::pair<QString, int*>>&& variables, int iterations );
+
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1); }
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations); }
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1); }
+		void				Run			( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations );
 	};
 #endif
 
@@ -81,7 +85,15 @@ public:
 	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, WGPUShaderStageFlags flags, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, flags, read_only }); return *this; }
 	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
-	std::shared_ptr<Prepared>	Prepare				( void );
+
+	template <class UniformSpec>
+	std::shared_ptr<Prepared>	Prepare				( void ) {
+		std::vector<MemberSpec> uniform_members;
+		Serialiser<UniformSpec> serializeFunc(uniform_members);
+		meta::doForAllMembers<UniformSpec>(serializeFunc);
+		return PrepareWithUniform(uniform_members);
+	}
+
 #endif
 
 	template <class T>
@@ -96,6 +108,8 @@ public:
 protected:
 
 								PipelineStage		( RunType type, GPUEntity* entity, RenderableBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo = nullptr, int iterations = 0);
+
+	std::shared_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
 
 	struct AddedDataVector {
 		QString					p_Name;

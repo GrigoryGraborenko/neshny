@@ -90,6 +90,12 @@ namespace Test {
 		Neshny::iVec4	p_IntFourDim;
 	};
 
+	struct Uniform {
+		int				p_Mode;
+		float			p_Value;
+	};
+
+
 #pragma pack(pop)
 }
 
@@ -105,6 +111,12 @@ namespace meta {
 			,member("IntTwoDim", &Test::GPUThing::p_IntTwoDim)
 			,member("IntThreeDim", &Test::GPUThing::p_IntThreeDim)
 			,member("IntFourDim", &Test::GPUThing::p_IntFourDim)
+		);
+	}
+	template<> inline auto registerMembers<Test::Uniform>() {
+		return members(
+			member("Mode", &Test::Uniform::p_Mode)
+			,member("Value", &Test::Uniform::p_Value)
 		);
 	}
 }
@@ -153,10 +165,10 @@ namespace Test {
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).AddInputOutputVar("uCheckVal").Prepare();
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).AddInputOutputVar("uCheckVal").Prepare<Uniform>();
 		int uCheckVal = 0;
-
-		executable->Run({ { "uCheckVal", &uCheckVal } });
+		Uniform uniform{ 0, in_value };
+		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		for (auto& item : expected) {
@@ -172,9 +184,9 @@ namespace Test {
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
-			});
+		});
 #elif defined(NESHNY_WEBGPU)
-		executable->Run({ { "uCheckVal", &uCheckVal } });
+		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		for (auto& item : expected) {
@@ -193,7 +205,8 @@ namespace Test {
 		});
 #elif defined(NESHNY_WEBGPU)
 		return;
-		executable->Run({ { "uCheckVal", &uCheckVal } });
+		uniform.p_Mode = 1;
+		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		if(mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS) {

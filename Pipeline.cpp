@@ -444,7 +444,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 #elif defined(NESHNY_WEBGPU)
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
+std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
 
 	std::shared_ptr<PipelineStage::Prepared> result = std::make_shared<Prepared>();
 	result->m_RunType = m_RunType;
@@ -453,6 +453,7 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 
 	result->m_Pipeline = new WebGPUPipeline();
 
+	QStringList immediate_insertion;
 	QStringList insertion;
 	QStringList end_insertion;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
@@ -480,9 +481,19 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, false);
 	}
 
-	insertion_buffers += QString("@group(0) @binding(%1) var<uniform> Uniform: u32;").arg(insertion_buffers.size());
-	result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, sizeof(unsigned int));
-	result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
+	if(!unform_members.empty()) { // uniform
+		QStringList members;
+		for (const auto& member : unform_members) {
+			members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+		}
+		immediate_insertion += "struct UniformStruct {";
+		immediate_insertion += members.join(",\n");
+		immediate_insertion += "};";
+
+		insertion_buffers += QString("@group(0) @binding(%1) var<uniform> Uniform: UniformStruct;").arg(insertion_buffers.size());
+		result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform);
+		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
+	}
 
 //TODO: add all the buffers here, and setup structs and various ways to access them
 
@@ -649,6 +660,7 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::Prepare(void) {
 
 
 	insertion.push_front(insertion_buffers.join("\n"));
+	insertion.push_front(immediate_insertion.join("\n"));
 	//insertion.push_front(insertion_uniforms.join("\n"));
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
@@ -673,6 +685,7 @@ PipelineStage::Prepared::~Prepared(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variables, int iterations) {
+void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
@@ -714,7 +727,10 @@ void PipelineStage::Prepared::Run(std::vector<std::pair<QString, int*>>&& variab
 		m_ControlSSBO->SetValues(values);
 	}
 
-	//m_UniformBuffer->SetSingleValue(0, 123);
+	if (m_UniformBuffer && uniform && uniform_bytes) {
+		m_UniformBuffer->EnsureSizeBytes(uniform_bytes, false);
+		m_UniformBuffer->Write(uniform, 0, uniform_bytes);
+	}
 
 	if (entity_processing) {
 		m_Pipeline->Compute(run_count);
