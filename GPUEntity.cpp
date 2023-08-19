@@ -146,7 +146,44 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 #elif defined(NESHNY_WEBGPU)
-#pragma msg("finish this - who owns the pipeline? makes sense for it to be global?")
+
+	struct Uniform {
+		int p_Count;
+		int p_LifeCount;
+		int p_IntsPer;
+	};
+
+	struct DeathPipeObjects {
+		DeathPipeObjects() : p_Uniform(WGPUBufferUsage_Uniform, sizeof(Uniform)) {}
+		WebGPUPipeline	p_Pipe;
+		WebGPUBuffer	p_Uniform;
+	};
+	
+	// global per-thread object since this will get reused many times
+	static thread_local DeathPipeObjects* death_obj = nullptr; // leaks at end of run, not important
+	if (!death_obj) {
+		death_obj = new DeathPipeObjects();
+		death_obj->p_Pipe
+			.AddBuffer(death_obj->p_Uniform, WGPUShaderStage_Compute, true)
+			.AddBuffer(*m_ControlSSBO, WGPUShaderStage_Compute, false)
+			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
+			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
+			.FinalizeCompute("Death");
+	}
+	Uniform uniform{
+		death_count
+		,m_MaxIndex
+		,m_NumDataFloats
+	};
+
+	death_obj->p_Uniform.Write((unsigned char*)&uniform, 0, sizeof(Uniform));
+
+	death_obj->p_Pipe.ReplaceBuffer(1, *m_ControlSSBO);
+	death_obj->p_Pipe.ReplaceBuffer(2, *m_FreeList);
+	death_obj->p_Pipe.ReplaceBuffer(3, *m_SSBO);
+
+	death_obj->p_Pipe.Compute(death_count, iVec3(256, 1, 1));
+
 #endif
 
 	m_MaxIndex -= death_count;

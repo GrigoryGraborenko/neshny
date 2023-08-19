@@ -204,8 +204,8 @@ namespace Test {
 			glUniform1f(prog->GetUniform("uValue"), div_val);
 		});
 #elif defined(NESHNY_WEBGPU)
-		return;
 		uniform.p_Mode = 1;
+		uniform.p_Value = div_val;
 		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 

@@ -640,7 +640,6 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			"\tvar new_item: %1 = item;\n"
 			"\tlet should_destroy: bool = %1Main(item_index, item, &new_item);\n"
 			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
-			"\tSet%1(new_item, item_index);\n"
 			"}";
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 
