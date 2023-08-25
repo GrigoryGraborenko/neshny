@@ -18,6 +18,17 @@ bool ThingMain(int item_index, Thing thing, inout Thing new_thing) {
         new_thing.IntThreeDim += ivec3(int_value);
         new_thing.IntFourDim += ivec4(int_value);
     } else if(uMode == 1) {
+
+        DataItem data = GetDataItem(new_thing.Int % int_value);
+        new_thing.Float += data.Float;
+        new_thing.TwoDim += data.TwoDim;
+        new_thing.ThreeDim += data.ThreeDim;
+        new_thing.FourDim += data.FourDim;
+        new_thing.IntTwoDim += data.IntTwoDim;
+        new_thing.IntThreeDim += data.IntThreeDim;
+        new_thing.IntFourDim += data.IntFourDim;
+
+    } else if(uMode == 2) {
         if((new_thing.Int % int_value == 0)) {
             return true;
         }

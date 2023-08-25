@@ -5,6 +5,22 @@ namespace Test {
 #pragma pack(push)
 #pragma pack (1)
 
+	struct Uniform {
+		int				p_Mode;
+		float			p_Value;
+	};
+
+	struct DataItem {
+		int				p_Int;
+		float			p_Float;
+		Neshny::fVec2	p_TwoDim;
+		Neshny::fVec3	p_ThreeDim;
+		Neshny::fVec4	p_FourDim;
+		Neshny::iVec2	p_IntTwoDim;
+		Neshny::iVec3	p_IntThreeDim;
+		Neshny::iVec4	p_IntFourDim;
+	};
+
 	struct GPUThing {
 		static GPUThing Init(int i) {
 			return GPUThing{
@@ -29,6 +45,16 @@ namespace Test {
 			item.p_IntThreeDim += Neshny::iVec3(int_val, int_val, int_val);
 			item.p_IntFourDim += Neshny::iVec4(int_val, int_val, int_val, int_val);
 		}
+		static void Add(GPUThing& item, DataItem& v) {
+			item.p_Float += v.p_Float;
+			item.p_TwoDim += v.p_TwoDim;
+			item.p_ThreeDim += v.p_ThreeDim;
+			item.p_FourDim += v.p_FourDim;
+			item.p_IntTwoDim += v.p_IntTwoDim;
+			item.p_IntThreeDim += v.p_IntThreeDim;
+			item.p_IntFourDim += v.p_IntFourDim;
+		}
+
 		bool CloseEnough(const GPUThing& other) {
 			double delta = 0.0001;
 
@@ -90,12 +116,6 @@ namespace Test {
 		Neshny::iVec4	p_IntFourDim;
 	};
 
-	struct Uniform {
-		int				p_Mode;
-		float			p_Value;
-	};
-
-
 #pragma pack(pop)
 }
 
@@ -117,6 +137,18 @@ namespace meta {
 		return members(
 			member("Mode", &Test::Uniform::p_Mode)
 			,member("Value", &Test::Uniform::p_Value)
+		);
+	}
+	template<> inline auto registerMembers<Test::DataItem>() {
+		return members(
+			member("Int", &Test::DataItem::p_Int)
+			,member("Float", &Test::DataItem::p_Float)
+			,member("TwoDim", &Test::DataItem::p_TwoDim)
+			,member("ThreeDim", &Test::DataItem::p_ThreeDim)
+			,member("FourDim", &Test::DataItem::p_FourDim)
+			,member("IntTwoDim", &Test::DataItem::p_IntTwoDim)
+			,member("IntThreeDim", &Test::DataItem::p_IntThreeDim)
+			,member("IntFourDim", &Test::DataItem::p_IntFourDim)
 		);
 	}
 }
@@ -157,18 +189,38 @@ namespace Test {
 		const float in_value = 123.4f;
 		const int div_val = 7;
 
+		std::vector<DataItem> data_items;
+		for (int i = 0; i < 5; i++) {
+			data_items.push_back({
+				RandomInt(-10, 10)
+				,float(Random(-10, 10))
+				,Neshny::fVec2(Random(-10, 10), Random(-10, 10))
+				,Neshny::fVec3(Random(-10, 10), Random(-10, 10), Random(-10, 10))
+				,Neshny::fVec4(Random(-10, 10), Random(-10, 10), Random(-10, 10), Random(-10, 10))
+				,Neshny::iVec2(RandomInt(-10, 10), RandomInt(-10, 10))
+				,Neshny::iVec3(RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10))
+				,Neshny::iVec4(RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10))
+			});
+		}
 
 		// add in_value to most values
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
+		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		.AddDataVector("DataItem", data_items)
+		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).AddInputOutputVar("uCheckVal").Prepare<Uniform>();
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+			.AddInputOutputVar("uCheckVal")
+			.AddDataVector<DataItem>("DataItem")
+			.Prepare<Uniform>();
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
-		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
+		executable
+			->WithDataVector("DataItem", data_items)
+			.Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		for (auto& item : expected) {
@@ -181,16 +233,22 @@ namespace Test {
 
 		// add in_value to most values again to check double buffering works
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([in_value](Neshny::GLShader* prog) {
-			glUniform1i(prog->GetUniform("uMode"), 0);
-			glUniform1f(prog->GetUniform("uValue"), in_value);
+		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		.AddDataVector("DataItem", data_items)
+		.Run([float_val = float(data_items.size())](Neshny::GLShader* prog) {
+			glUniform1i(prog->GetUniform("uMode"), 1);
+			glUniform1f(prog->GetUniform("uValue"), float_val);
 		});
 #elif defined(NESHNY_WEBGPU)
-		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
+		uniform.p_Mode = 1;
+		uniform.p_Value = float(data_items.size());
+		executable
+			->WithDataVector("DataItem", data_items)
+			.Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		for (auto& item : expected) {
-			GPUThing::Add(item, in_value);
+			GPUThing::Add(item, data_items[item.p_Int % data_items.size()]);
 		}
 		gpu_values.clear();
 		entities.GetSSBO()->GetValues(gpu_values, initial_count);
@@ -199,14 +257,18 @@ namespace Test {
 
 		// delete every nth item
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true).Run([div_val](Neshny::GLShader* prog) {
-			glUniform1i(prog->GetUniform("uMode"), 1);
+		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		.AddDataVector("DataItem", data_items)
+		.Run([div_val](Neshny::GLShader* prog) {
+			glUniform1i(prog->GetUniform("uMode"), 2);
 			glUniform1f(prog->GetUniform("uValue"), div_val);
 		});
 #elif defined(NESHNY_WEBGPU)
-		uniform.p_Mode = 1;
+		uniform.p_Mode = 2;
 		uniform.p_Value = div_val;
-		executable->Run(uniform, { { "uCheckVal", &uCheckVal } });
+		executable
+			->WithDataVector("DataItem", data_items)
+			.Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
 		if(mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS) {

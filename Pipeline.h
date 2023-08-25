@@ -29,10 +29,31 @@ public:
 		RenderableBuffer*	m_Buffer = nullptr; // not owned, do not delete
 		QStringList			m_VarNames;
 
+		struct DataVectorInfo {
+			QString			m_Name;
+			QString			m_CountVar;
+			QString			m_OffsetVar;
+			unsigned char*	m_Data = nullptr;
+			int				m_SizeInts = 0;
+		};
+		std::vector<DataVectorInfo>	m_DataVectors;
+
 		friend class PipelineStage;
 	public:
 
 							~Prepared	( void );
+
+		template <class T>
+		Prepared&			WithDataVector	( QString name, const std::vector<T>& items ) {
+			for (auto& vect : m_DataVectors) {
+				if (vect.m_Name == name) {
+					vect.m_Data = (unsigned char*)items.data();
+					vect.m_SizeInts = ((int)items.size() * sizeof(T)) / sizeof(int);
+					break;
+				}
+			}
+			return *this;
+		}
 
 		template <class UniformSpec>
 		void				Run			( const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1); }
@@ -80,6 +101,13 @@ public:
 	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, read_only }); return *this; }
 	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	void						Run					( std::optional<std::function<void(Shader* program)>> pre_execute = std::nullopt );
+
+	template <class T>
+	PipelineStage& AddDataVector(QString name, const std::vector<T>& items) {
+		AddDataVectorBase(name, items);
+		return *this;
+	}
+
 #elif defined(NESHNY_WEBGPU)
 	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name }); return *this; }
 	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, WGPUShaderStageFlags flags, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, flags, read_only }); return *this; }
@@ -94,13 +122,18 @@ public:
 		return PrepareWithUniform(uniform_members);
 	}
 
-#endif
-
 	template <class T>
-	PipelineStage&				AddDataVector		( QString name, const std::vector<T>& items ) {
-		AddDataVectorBase(name, items);
+	PipelineStage& AddDataVector(QString name) {
+		int ints_per = sizeof(T) / sizeof(int);
+		m_DataVectors.push_back({ name, ints_per });
+		AddedDataVector& ref = m_DataVectors.back();
+		Serialiser<T> serializeFunc(ref.p_Members);
+		meta::doForAllMembers<T>(serializeFunc);
 		return *this;
 	}
+
+#endif
+
 
 	inline iVec3				GetLocalSize		( void ) const { return m_LocalSize; }
 	inline void					SetLocalSize		( int x, int y, int z ) { m_LocalSize = iVec3(x, y, z); }
@@ -109,8 +142,7 @@ protected:
 
 								PipelineStage		( RunType type, GPUEntity* entity, RenderableBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo = nullptr, int iterations = 0);
 
-	std::shared_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
-
+#if defined(NESHNY_GL)
 	struct AddedDataVector {
 		QString					p_Name;
 		int						p_NumItems;
@@ -118,6 +150,15 @@ protected:
 		std::vector<MemberSpec> p_Members;
 		std::vector<int>		p_Data;
 	};
+#elif defined(NESHNY_WEBGPU)
+	struct AddedDataVector {
+		QString					p_Name;
+		int						p_NumIntsPerItem;
+		std::vector<MemberSpec> p_Members;
+	};
+	std::shared_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
+#endif
+
 
 	struct AddedEntity {
 		GPUEntity&	p_Entity;
@@ -147,6 +188,7 @@ protected:
 	};
 #endif
 
+#if defined(NESHNY_GL)
 	template <class T>
 	void						AddDataVectorBase(QString name, const std::vector<T>& items) {
 		if (items.empty()) {
@@ -165,12 +207,14 @@ protected:
 	}
 
 	static QString				GetDataVectorStructCode(
-		const AddedDataVector& uniform
+		const AddedDataVector& data_vect
 		,QStringList& insertion_uniforms
 		,std::vector<std::pair<QString, int>>& integer_vars
 		,int offset
 	);
-
+#elif defined(NESHNY_WEBGPU)
+	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, QString& count_var, QString& offset_var );
+#endif
 	RunType						m_RunType;
 	GPUEntity*					m_Entity = nullptr;
 	RenderableBuffer*			m_Buffer = nullptr;

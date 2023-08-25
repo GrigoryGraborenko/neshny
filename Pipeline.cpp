@@ -41,18 +41,18 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 	return *this;
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
+QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
 
 	QStringList insertion;
+	insertion += QString("struct %1 {").arg(data_vect.p_Name);
 
-	insertion += QString("struct %1 {").arg(uniform.p_Name);
-
-	QStringList function(QString("%1 Get%1(int index) {\n\t%1 item;").arg(uniform.p_Name));
-	function += QString("\tindex = u%1Offset + (index * %2);").arg(uniform.p_Name).arg(uniform.p_NumIntsPerItem);
+	QStringList function(QString("%1 Get%1(int index) {\n\t%1 item;").arg(data_vect.p_Name));
+	function += QString("\tindex = u%1Offset + (index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
 
 	int pos_index = 0;
-	for (const auto& member : uniform.p_Members) {
+	for (const auto& member : data_vect.p_Members) {
 		insertion += QString("\t%1 %2;").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name);
 
 		QString name = member.p_Name;
@@ -80,16 +80,14 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& uniform, Q
 	insertion += "};";
 	insertion += function.join("\n");
 
-	insertion_uniforms += QString("uniform int u%1Count;").arg(uniform.p_Name);
-	integer_vars.emplace_back(QString("u%1Count").arg(uniform.p_Name), uniform.p_NumItems);
+	insertion_uniforms += QString("uniform int u%1Count;").arg(data_vect.p_Name);
+	integer_vars.emplace_back(QString("u%1Count").arg(data_vect.p_Name), data_vect.p_NumItems);
 
-	insertion_uniforms += QString("uniform int u%1Offset;").arg(uniform.p_Name);
-	integer_vars.emplace_back(QString("u%1Offset").arg(uniform.p_Name), offset);
-
+	insertion_uniforms += QString("uniform int u%1Offset;").arg(data_vect.p_Name);
+	integer_vars.emplace_back(QString("u%1Offset").arg(data_vect.p_Name), offset);
 	return insertion.join("\n");
 }
 
-#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_execute) {
 
@@ -442,6 +440,50 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	}
 }
 #elif defined(NESHNY_WEBGPU)
+////////////////////////////////////////////////////////////////////////////////
+QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QString& count_var, QString& offset_var) {
+
+	QStringList insertion;
+	insertion += QString("struct %1 {").arg(data_vect.p_Name);
+
+	QStringList function(QString("fn Get%1(base_index: i32) -> %1 {\n\tvar item: %1;").arg(data_vect.p_Name));
+	QStringList members;
+	function += QString("\tlet index = Get_io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+
+	int pos_index = 0;
+	for (const auto& member : data_vect.p_Members) {
+		members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+
+		QString name = member.p_Name;
+		if (member.p_Type == MemberSpec::T_INT) {
+			function += QString("\titem.%1 = atomicLoad(&b_Control[index + %2]);").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_FLOAT) {
+			function += QString("\titem.%1 = bitcast<f32>(atomicLoad(&b_Control[index + %2]));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_VEC2) {
+			function += QString("\titem.%1 = vec2f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_VEC3) {
+			function += QString("\titem.%1 = vec3f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_VEC4) {
+			function += QString("\titem.%1 = vec4f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 3])));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC2) {
+			function += QString("\titem.%1 = vec2i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC3) {
+			function += QString("\titem.%1 = vec3i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
+		} else if (member.p_Type == MemberSpec::T_IVEC4) {
+			function += QString("\titem.%1 = vec4i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]), atomicLoad(&b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+		}
+		pos_index += member.p_Size / sizeof(int);
+	}
+	function += "\treturn item;\n};";
+
+	insertion += members.join(",\n");
+	insertion += "};";
+	insertion += function.join("\n");
+
+	count_var = QString("io%1Count").arg(data_vect.p_Name);
+	offset_var = QString("io%1Offset").arg(data_vect.p_Name);
+	return insertion.join("\n");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
@@ -507,6 +549,18 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 	}
 	
+	if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
+		end_insertion += "//////////////// Data vector helpers";
+		for (const auto& data_vect : m_DataVectors) {
+			QString count_var;
+			QString offset_var;
+			end_insertion += GetDataVectorStructCode(data_vect, count_var, offset_var);
+			m_Vars.push_back({ count_var });
+			m_Vars.push_back({ offset_var });
+			result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, nullptr, 0 });
+		}
+	}
+
 	for (int i = 0; i < m_Vars.size(); i++) {
 		const auto& var = m_Vars[i];
 		insertion += QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg(i);
@@ -666,7 +720,6 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			values.push_back(var.first);
 		}
 		int control_size = (int)var_vals.size();
-
 		// allocate some space for vectors on the control buffer and copy data over
 		if (!m_DataVectors.empty()) {
 			insertion += "//////////////// Data vector helpers";
@@ -693,7 +746,6 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	insertion.push_front(insertion_buffers.join("\n"));
 	insertion.push_front(immediate_insertion.join("\n"));
-	//insertion.push_front(insertion_uniforms.join("\n"));
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
@@ -723,7 +775,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
-	std::vector<std::pair<int, int*>> var_vals;
 
 	int run_count = entity_processing ? m_Entity->GetCount() : iterations;
 
@@ -737,11 +788,25 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 
-	for (const auto& name : m_VarNames) {
+	std::vector<std::pair<int, int*>> var_vals(m_VarNames.size(), { 0, nullptr });
+	for (int i = 0; i < m_VarNames.size(); i++) {
 		for (const auto& var : variables) {
-			if (var.first == name) {
-				var_vals.push_back({ var.second ? *var.second : 0, var.second });
+			if (var.first == m_VarNames[i]) {
+				var_vals[i] = { var.second ? *var.second : 0, var.second };
+				break;
 			}
+		}
+		int offset = m_VarNames.size();
+		for (const auto& vect : m_DataVectors) {
+			if (vect.m_CountVar == m_VarNames[i]) {
+				var_vals[i].first = vect.m_SizeInts;
+				break;
+			}
+			if (vect.m_OffsetVar == m_VarNames[i]) {
+				var_vals[i].first = offset;
+				break;
+			}
+			offset += vect.m_SizeInts;
 		}
 	}
 
@@ -753,20 +818,14 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 		int control_size = (int)var_vals.size();
 
-		/*
 		// allocate some space for vectors on the control buffer and copy data over
-		if (!m_DataVectors.empty()) {
-			insertion += "//////////////// Data vector helpers";
-		}
 		for (const auto& data_vect : m_DataVectors) {
-			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
+			int data_size = data_vect.m_SizeInts;
 			int offset = control_size;
 			control_size += data_size;
 			values.resize(control_size);
-			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
-			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
+			memcpy((unsigned char*)&(values[offset]), data_vect.m_Data, sizeof(int) * data_size);
 		}
-		*/
 
 		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int));
 		m_ControlSSBO->SetValues(values);
@@ -812,6 +871,13 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			m_Entity->ProcessStableDeaths(entity_deaths);
 		}
+
+		//BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
+
+		//BufferViewer::Checkpoint("PostRun", m_Entity);
+		//if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			//BufferViewer::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
+		//}
 	}
 }
 
