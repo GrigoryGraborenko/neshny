@@ -492,6 +492,12 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	result->m_RunType = m_RunType;
 	result->m_Entity = m_Entity;
 	result->m_Buffer = m_Buffer;
+	result->m_Entities = {};
+	for (auto& entity : m_Entities) {
+		if (entity.p_Creatable) {
+			result->m_Entities.push_back(&entity.p_Entity);
+		}
+	}
 
 	result->m_Pipeline = new WebGPUPipeline();
 
@@ -561,12 +567,18 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 	}
 
-	for (int i = 0; i < m_Vars.size(); i++) {
-		const auto& var = m_Vars[i];
-		insertion += QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg(i);
-		insertion += QString("#define Get_%1 (atomicLoad(&b_Control[%2]))").arg(var.p_Name).arg(i);
-		result->m_VarNames += var.p_Name;
+	/*
+	const bool rand_gen = true; // add by default, why not
+	if (rand_gen) {
+
+		int control_ind = (int)var_vals.size();
+		int seed = rand();
+		var_vals.push_back({ seed, nullptr });
+
+		insertion += "#include \"Random.glsl\"\n";
+		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, atomicAdd(b_Control.i[%1], 1)); }").arg(control_ind);
 	}
+	*/
 
 	if(m_Entity) {
 		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
@@ -612,7 +624,6 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		insertion += "}";
 	}
 
-
 	/*
 	for (int b = 0; b < m_SSBOs.size(); b++) {
 		int buffer_index = insertion_buffers.size();
@@ -623,60 +634,51 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	for (const auto& tex : m_Textures) {
 		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
 	}
+	*/
 	
-	struct EntityControl {
-		int		p_MaxIndex;
-		int		p_NextId;
-		int		p_FreeCount;
-	};
-	std::vector<EntityControl> entity_controls;
-	entity_controls.reserve(m_Entities.size()); // reserve to avoid reallocations, so you can have pointers to it
 	for (int e = 0; e < m_Entities.size(); e++) {
 		GPUEntity& entity = m_Entities[e].p_Entity;
 		QString name = entity.GetName();
 		insertion += QString("//////////////// Entity %1").arg(name);
-		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
-		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
-		{
-			int buffer_index = insertion_buffers.size();
-			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
-			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetName());
-		}
+
+		m_Vars.push_back({ QString("io%1Count").arg(name) });
+
+		insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+		result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
 
 		insertion += entity.GetGPUInsertion();
 		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
 
-		entity_controls.push_back({ entity.GetMaxIndex(), entity.GetNextId(), entity.GetFreeCount() });
 		if (m_Entities[e].p_Creatable) {
-			int control_index = (int)var_vals.size();
-			auto& curr = entity_controls.back();
-			var_vals.push_back({ curr.p_NextId, &curr.p_NextId });
-			var_vals.push_back({ curr.p_MaxIndex, &curr.p_MaxIndex });
 
-			insertion += QString("void Create%1(%1 item) {").arg(name);
-			insertion += QString("\tint item_id = atomicAdd(b_Control.i[%1], 1);").arg(control_index);
+			QString next_id = QString("io%1NextId").arg(name);
+			QString max_index = QString("io%1MaxIndex").arg(name);
+			m_Vars.push_back({ next_id });
+			m_Vars.push_back({ max_index });
+
+			insertion += QString("fn Create%1(input_item: %1) {").arg(name);
+			insertion += "\tvar item = input_item;";
+			insertion += QString("\tlet item_id: i32 = atomicAdd(&%1, 1);").arg(next_id);
+			
 			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-				int buffer_index = insertion_buffers.size();
-				insertion_buffers += QString("layout(std430, binding = %1) buffer FreeEntityBuffer%1 { int i[]; } b_Free%2;").arg(buffer_index).arg(entity.GetName());
-				ssbo_binds.push_back({ entity.GetFreeListSSBO(), buffer_index });
-				var_vals.push_back({ curr.p_FreeCount, &curr.p_FreeCount });
-				insertion += "\tint item_pos = 0;";
-				insertion += QString("\tint free_count = atomicAdd(b_Control.i[%1], -1);").arg(control_index + 2);
-				insertion += "\tif(free_count > 0) {";
-					insertion += QString("\t\titem_pos = b_Free%1.i[free_count - 1];").arg(entity.GetName());
-				insertion += "\t} else {";
-					insertion += QString("\t\titem_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
-				insertion += "\t}";
+				QString free_count = QString("io%1FreeCount").arg(name);
+				m_Vars.push_back({ free_count });
 			} else {
-				insertion += QString("\tint item_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
+				insertion += QString("\tlet item_pos: i32 = atomicAdd(&%1, 1);").arg(max_index);
 			}
 			insertion += QString("\titem.%1 = item_id;").arg(entity.GetIDName());
 			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
 		}
 	}
 	
+	for (int i = 0; i < m_Vars.size(); i++) {
+		const auto& var = m_Vars[i];
+		insertion.push_front(QString("#define Get_%1 (atomicLoad(&b_Control[%2]))").arg(var.p_Name).arg(i));
+		insertion.push_front(QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg(i));
+		result->m_VarNames += var.p_Name;
+	}
+
 	insertion += "////////////////";
-	*/
 
 	if (entity_processing && m_ReplaceMain) {
 		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
@@ -697,6 +699,17 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			"}";
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 
+		/*
+		end_insertion +=
+			"@vertex\n"
+			"void %1Main(int item_index, %1 item); // forward declaration\n"
+			"void main() {\n"
+			"\t%1 item = Get%1(gl_InstanceID);";
+		end_insertion += QString("\tif (item.%1 < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }").arg(m_Entity->GetIDName());
+		end_insertion +=
+			"\t%1Main(gl_InstanceID, item);\n"
+			"}\n#endif\n////////////////";
+			*/
 	} else if (m_Entity && m_ReplaceMain) {
 		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
 		end_insertion +=
@@ -709,40 +722,13 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			"\t%1Main(item_index, item);\n"
 			"}\n////////////////";
 	}
-	/*
+
 	// WARNING: do NOT add to control buffer beyond this point
-
-	GLSSBO* control_ssbo = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
-	if (control_ssbo && !var_vals.empty()) {
-
-		std::vector<int> values;
-		for (auto var : var_vals) {
-			values.push_back(var.first);
-		}
-		int control_size = (int)var_vals.size();
-		// allocate some space for vectors on the control buffer and copy data over
-		if (!m_DataVectors.empty()) {
-			insertion += "//////////////// Data vector helpers";
-		}
-		for (const auto& data_vect : m_DataVectors) {
-			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
-			int offset = control_size;
-			control_size += data_size;
-			values.resize(control_size);
-			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
-			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
-		}
-
-		control_ssbo->EnsureSizeBytes(control_size * sizeof(int));
-		control_ssbo->Bind(0); // you can assume this is at index zero
-		control_ssbo->SetValues(values);
-	}
 
 	if (!m_ExtraCode.isNull()) {
 		insertion += "////////////////";
 		insertion += m_ExtraCode;
 	}
-	*/
 
 	insertion.push_front(insertion_buffers.join("\n"));
 	insertion.push_front(immediate_insertion.join("\n"));
@@ -788,8 +774,53 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 
+	struct EntityControl {
+		int		p_MaxIndex = 0;
+		int		p_NextId = 0;
+		int		p_FreeCount = 0;
+	};
+	std::vector<EntityControl> entity_controls;
+	entity_controls.resize(m_Entities.size()); // resize to avoid reallocations, so you can have pointers to it
+
+	for (int e = 0; e < m_Entities.size(); e++) {
+		GPUEntity* entity = m_Entities[e];
+		QString name = entity->GetName();
+		entity_controls[e] = { entity->GetMaxIndex(), entity->GetNextId(), entity->GetFreeCount() };
+
+		variables.push_back({ QString("io%1NextId").arg(name), &entity_controls[e].p_NextId });
+		variables.push_back({ QString("io%1MaxIndex").arg(name), &entity_controls[e].p_MaxIndex });
+		if (entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			variables.push_back({ QString("io%1FreeCount").arg(name), &entity_controls[e].p_FreeCount });
+		}
+	}
+	
+	auto fill_var_data = [this, &variables] (QString name, std::pair<int, int*>& pair) {
+
+		for (const auto& var: variables) {
+			if (var.first == name) {
+				pair = { var.second ? *var.second : 0, var.second };
+				return;
+			}
+		}
+		int offset = m_VarNames.size();
+		for (const auto& vect : m_DataVectors) {
+			if (vect.m_CountVar == name) {
+				pair.first = vect.m_SizeInts;
+				return;
+			}
+			if (vect.m_OffsetVar == name) {
+				pair.first = offset;
+				return;
+			}
+			offset += vect.m_SizeInts;
+		}
+	};
+
 	std::vector<std::pair<int, int*>> var_vals(m_VarNames.size(), { 0, nullptr });
 	for (int i = 0; i < m_VarNames.size(); i++) {
+
+		fill_var_data(m_VarNames[i], var_vals[i]);
+		/*
 		for (const auto& var : variables) {
 			if (var.first == m_VarNames[i]) {
 				var_vals[i] = { var.second ? *var.second : 0, var.second };
@@ -808,6 +839,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 			}
 			offset += vect.m_SizeInts;
 		}
+		*/
 	}
 
 	if (m_ControlSSBO && !var_vals.empty()) {
@@ -842,6 +874,14 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		if (!m_Buffer) {
 			throw std::invalid_argument("Render buffer not found");
 		}
+		//m_Pipeline->Render();
+		/*
+		if (m_Entity) {
+			m_Buffer->DrawInstanced(num_entities);
+		} else {
+			m_Buffer->Draw();
+		}
+		*/
 	}
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
@@ -850,6 +890,12 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		m_Entity->SwapInputOutputSSBOs();
 	}
 
+	/*
+	////////////////////////////////////////////////////
+	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
+		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT);
+	}
+	*/
 
 	if (m_ControlSSBO) {
 		std::vector<int> control_values;
@@ -861,6 +907,14 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 
+	for (int e = 0; e < m_Entities.size(); e++) {
+		auto entity = m_Entities[e];
+		if (entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+			entity->ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
+		} else {
+			entity->ProcessMoveCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId);
+		}
+	}
 
 	if (entity_processing) {
 		if ((m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && (entity_deaths > 0)) {

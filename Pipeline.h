@@ -20,14 +20,15 @@ public:
 
 #if defined(NESHNY_WEBGPU)
 	class Prepared {
-		RunType				m_RunType;
-		WebGPUPipeline*		m_Pipeline = nullptr;
-		WebGPUBuffer*		m_UniformBuffer = nullptr;
+		RunType						m_RunType;
+		WebGPUPipeline*				m_Pipeline = nullptr;
+		WebGPUBuffer*				m_UniformBuffer = nullptr;
 
-		SSBO*				m_ControlSSBO = nullptr; // not owned, do not delete
-		GPUEntity*			m_Entity = nullptr; // not owned, do not delete
-		RenderableBuffer*	m_Buffer = nullptr; // not owned, do not delete
-		QStringList			m_VarNames;
+		SSBO*						m_ControlSSBO = nullptr; // not owned, do not delete
+		GPUEntity*					m_Entity = nullptr; // not owned, do not delete
+		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
+		QStringList					m_VarNames;
+		std::vector<GPUEntity*>		m_Entities;
 
 		struct DataVectorInfo {
 			QString			m_Name;
@@ -158,7 +159,6 @@ protected:
 	};
 	std::shared_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
 #endif
-
 
 	struct AddedEntity {
 		GPUEntity&	p_Entity;

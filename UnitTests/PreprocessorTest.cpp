@@ -19,6 +19,12 @@ namespace Test {
                 ,"int last = 99 + THING + 555;"
             }}
             ,{{
+                "#define SOME_NAME 7"
+                ,"int other = SOME_NAME + 456;"
+            },{
+                "int other = 7 + 456;"
+            }}
+            ,{{
                 "#define THING(x) ((x)*(x))"
                 ,"#define FUNC( name ,size, thing) ((name) + (sizesize) + name)"
                 ,"#define BLEG 555"

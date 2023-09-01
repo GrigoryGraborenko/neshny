@@ -445,7 +445,7 @@ void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
 	if (WGPUErrorType_NoError == type) {
 		return;
 	}
-	int brk = 0;
+	qCritical() << "WebGPU validation error: " << message;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

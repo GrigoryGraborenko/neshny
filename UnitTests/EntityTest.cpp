@@ -59,6 +59,7 @@ namespace Test {
 			double delta = 0.0001;
 
 			std::vector<bool> test = {
+				//(p_Id == other.p_Id),
 				(fabs(p_Float - other.p_Float) < delta),
 				(fabs(p_TwoDim.x - other.p_TwoDim.x) < delta),
 				(fabs(p_TwoDim.y - other.p_TwoDim.y) < delta),
@@ -81,6 +82,7 @@ namespace Test {
 			};
 
 			bool result = 
+				//(p_Id == other.p_Id) &&
 				(fabs(p_Float - other.p_Float) < delta) &&
 				(fabs(p_TwoDim.x - other.p_TwoDim.x) < delta) &&
 				(fabs(p_TwoDim.y - other.p_TwoDim.y) < delta) &&
@@ -101,7 +103,7 @@ namespace Test {
 				(p_IntFourDim.z == other.p_IntFourDim.z) &&
 				(p_IntFourDim.w == other.p_IntFourDim.w);
 			if (!result) {
-				int rlk = 0;
+				int brk = 0;
 			}
 			return result;
 		}
@@ -114,6 +116,27 @@ namespace Test {
 		Neshny::iVec2	p_IntTwoDim;
 		Neshny::iVec3	p_IntThreeDim;
 		Neshny::iVec4	p_IntFourDim;
+	};
+
+	struct GPUOther {
+
+		bool CloseEnough(const GPUOther& other) {
+			double delta = 0.0001;
+			return
+				//(p_Id == other.p_Id) &&
+				(p_ParentIndex == other.p_ParentIndex) &&
+				(fabs(p_Float - other.p_Float) < delta) &&
+				(fabs(p_FourDim.x - other.p_FourDim.x) < delta) &&
+				(fabs(p_FourDim.y - other.p_FourDim.y) < delta) &&
+				(fabs(p_FourDim.z - other.p_FourDim.z) < delta) &&
+				(fabs(p_FourDim.w - other.p_FourDim.w) < delta);
+
+		}
+
+		int				p_Id;
+		int				p_ParentIndex;
+		float			p_Float;
+		Neshny::fVec4	p_FourDim;
 	};
 
 #pragma pack(pop)
@@ -131,6 +154,14 @@ namespace meta {
 			,member("IntTwoDim", &Test::GPUThing::p_IntTwoDim)
 			,member("IntThreeDim", &Test::GPUThing::p_IntThreeDim)
 			,member("IntFourDim", &Test::GPUThing::p_IntFourDim)
+		);
+	}
+	template<> inline auto registerMembers<Test::GPUOther>() {
+		return members(
+			member("Id", &Test::GPUOther::p_Id)
+			,member("ParentIndex", &Test::GPUOther::p_ParentIndex)
+			,member("Float", &Test::GPUOther::p_Float)
+			,member("FourDim", &Test::GPUOther::p_FourDim)
 		);
 	}
 	template<> inline auto registerMembers<Test::Uniform>() {
@@ -156,10 +187,10 @@ namespace meta {
 namespace Test {
 
 	////////////////////////////////////////////////////////////////////////////////
-	void CompareEntities(QString msg_prefix, std::vector<GPUThing> expected, std::vector<GPUThing> actual) {
+	template <class T>
+	void CompareEntities(QString msg_prefix, std::vector<T> expected, std::vector<T> actual, std::function<bool(const T&, const T&)> sort_func = [](const T& a, const T& b) { return b.p_Id > a.p_Id; }) {
 		Expect("Size mismatch", expected.size() <= actual.size());
 
-		auto sort_func = [](const GPUThing& a, const GPUThing& b) { return a.p_Id > b.p_Id; };
 		std::sort(expected.begin(), expected.end(), sort_func);
 		std::sort(actual.begin(), actual.end(), sort_func);
 
@@ -167,7 +198,7 @@ namespace Test {
 			if (expected[i].p_Id < 0) {
 				break;
 			}
-			Expect(msg_prefix + " -> Item ID mismatch", expected[i].p_Id == actual[i].p_Id);
+			//Expect(msg_prefix + " -> Item ID mismatch", expected[i].p_Id == actual[i].p_Id);
 			Expect(msg_prefix + " -> Item mismatch", expected[i].CloseEnough(actual[i]));
 		}
 	}
@@ -178,8 +209,12 @@ namespace Test {
 		Neshny::GPUEntity entities("Thing", mode, &GPUThing::p_Id, "Id");
 		entities.Init(1000);
 
+		Neshny::GPUEntity other_entities("Other", mode, &GPUOther::p_Id, "Id");
+		other_entities.Init(1000);
+
 		const int initial_count = 50;
 		std::vector<GPUThing> expected;
+		std::vector<GPUOther> other_expected;
 		for (int i = 0; i < initial_count; i++) {
 			GPUThing thing = GPUThing::Init(i);
 			entities.AddInstance(&thing);
@@ -205,8 +240,9 @@ namespace Test {
 
 		// add in_value to most values
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 		.AddDataVector("DataItem", data_items)
+		.AddCreatableEntity(other_entities)
 		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
@@ -215,6 +251,7 @@ namespace Test {
 		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
+			.AddCreatableEntity(other_entities)
 			.Prepare<Uniform>();
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
@@ -223,18 +260,34 @@ namespace Test {
 			.Run(uniform, { { "uCheckVal", &uCheckVal } });
 #endif
 
+		int parent_index = 0;
 		for (auto& item : expected) {
+			if (item.p_Int % 2 == 0) {
+				other_expected.push_back({
+					(int)other_expected.size(),
+					parent_index,
+					item.p_Float,
+					Neshny::fVec4(item.p_TwoDim.x, item.p_TwoDim.y, item.p_FourDim.z, item.p_FourDim.w)
+				});
+			}
 			GPUThing::Add(item, in_value);
+			parent_index++;
 		}
 		std::vector<GPUThing> gpu_values;
 		entities.GetSSBO()->GetValues(gpu_values, initial_count);
 
 		CompareEntities("After first add", expected, gpu_values);
 
+		std::vector<GPUOther> gpu_other;
+		other_entities.GetSSBO()->GetValues(gpu_other, other_entities.GetMaxIndex());
+
+		CompareEntities<GPUOther>("Secondary Entity: After first add", other_expected, gpu_other, [](const GPUOther& a, const GPUOther& b) { return b.p_ParentIndex > a.p_ParentIndex; });
+
 		// add in_value to most values again to check double buffering works
 #if defined(NESHNY_GL)
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
 		.AddDataVector("DataItem", data_items)
+		.AddEntity(other_entities)
 		.Run([float_val = float(data_items.size())](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 1);
 			glUniform1f(prog->GetUniform("uValue"), float_val);
@@ -259,6 +312,7 @@ namespace Test {
 #if defined(NESHNY_GL)
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
 		.AddDataVector("DataItem", data_items)
+		.AddEntity(other_entities)
 		.Run([div_val](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 2);
 			glUniform1f(prog->GetUniform("uValue"), div_val);

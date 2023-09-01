@@ -59,7 +59,6 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
             int remaining = input.size() - c;
             // #define
             if ((remaining > 7) && (input[c + 1] == 'd') && (input[c + 2] == 'e') && (input[c + 3] == 'f') && (input[c + 4] == 'i') && (input[c + 5] == 'n') && (input[c + 6] == 'e')) {
-                
                 int name_start = -1;
                 int name_end = -1;
                 int def_start = -1;
@@ -70,6 +69,9 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     bool newline = curr == '\n';
                     bool whitespace = (curr == ' ') || newline;
                     if (newline) {
+                        if ((def_end < 0) && (def_start >= 0)) {
+                            def_end = cc;
+                        }
                         break;
                     } else if ((def_start >= 0) && (!whitespace)) {
                         def_end = cc + 1;

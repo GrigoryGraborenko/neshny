@@ -17,6 +17,13 @@ fn ThingMain(item_index: i32, thing: Thing, new_thing: ptr<function, Thing>) -> 
         (*new_thing).IntThreeDim += vec3i(int_value);
         (*new_thing).IntFourDim += vec4i(int_value);
 
+        if (((*new_thing).Int % 2) == 0) {
+            var other: Other;
+            other.ParentIndex = item_index;
+            other.Float = thing.Float;
+            other.FourDim = vec4f(thing.TwoDim, thing.FourDim.zw);
+            CreateOther(other);
+        }
     } else if(Uniform.Mode == 1) {
         let data: DataItem = GetDataItem(thing.Int % int_value);
         (*new_thing).Float += data.Float;
