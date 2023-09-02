@@ -175,12 +175,12 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 			int buffer_index = insertion_buffers.size();
-			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int));
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int));
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
 			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
 		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			int buffer_index = insertion_buffers.size();
-			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int), false);
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int), false);
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
 			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
 		}
@@ -531,7 +531,9 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	if(!unform_members.empty()) { // uniform
 		QStringList members;
+		int size = 0;
 		for (const auto& member : unform_members) {
+			size += member.p_Size;
 			members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
 		}
 		immediate_insertion += "struct UniformStruct {";
@@ -539,7 +541,7 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		immediate_insertion += "};";
 
 		insertion_buffers += QString("@group(0) @binding(%1) var<uniform> Uniform: UniformStruct;").arg(insertion_buffers.size());
-		result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform);
+		result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, size);
 		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
 	}
 
@@ -601,11 +603,11 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int));
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int));
 			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
 			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Death: array<i32>;").arg(insertion_buffers.size());
 		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			m_Entity->GetFreeListSSBO()->EnsureSizeBytes(num_entities * sizeof(int), false);
+			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int), false);
 			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
 			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
 		}
@@ -663,6 +665,18 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 				QString free_count = QString("io%1FreeCount").arg(name);
 				m_Vars.push_back({ free_count });
+
+				insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Free%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+				entity.GetFreeListSSBO()->EnsureSizeBytes((entity.GetCount() + entity.GetFreeCount() + 16) * sizeof(int), false);
+				result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
+
+				insertion += "\tvar item_pos: i32 = 0;";
+				insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
+				insertion += "\tif(free_count > 0) {";
+					insertion += QString("\t\titem_pos = b_Free%1[free_count - 1];").arg(entity.GetName());
+				insertion += "\t} else {";
+					insertion += QString("\t\titem_pos = atomicAdd(&%1, 1);").arg(max_index);
+				insertion += "\t}";
 			} else {
 				insertion += QString("\tlet item_pos: i32 = atomicAdd(&%1, 1);").arg(max_index);
 			}
@@ -671,6 +685,9 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 	}
 	
+	if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
+		result->m_ControlSSBO->EnsureSizeBytes(m_Vars.size() * sizeof(int));
+	}
 	for (int i = 0; i < m_Vars.size(); i++) {
 		const auto& var = m_Vars[i];
 		insertion.push_front(QString("#define Get_%1 (atomicLoad(&b_Control[%2]))").arg(var.p_Name).arg(i));
