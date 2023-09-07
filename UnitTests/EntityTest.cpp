@@ -281,7 +281,16 @@ namespace Test {
 		std::vector<GPUOther> gpu_other;
 		other_entities.GetSSBO()->GetValues(gpu_other, other_entities.GetMaxIndex());
 
-		CompareEntities<GPUOther>("Secondary Entity: After first add", other_expected, gpu_other, [](const GPUOther& a, const GPUOther& b) { return b.p_ParentIndex > a.p_ParentIndex; });
+		auto other_sort = [](const GPUOther& a, const GPUOther& b) { 
+			if (a.p_Id < 0) {
+				return false;
+			}
+			if (b.p_Id < 0) {
+				return true;
+			}
+			return b.p_ParentIndex > a.p_ParentIndex;
+		};
+		CompareEntities<GPUOther>("Secondary Entity: After first add", other_expected, gpu_other, other_sort);
 
 		// add in_value to most values again to check double buffering works
 #if defined(NESHNY_GL)
@@ -292,6 +301,11 @@ namespace Test {
 			glUniform1i(prog->GetUniform("uMode"), 1);
 			glUniform1f(prog->GetUniform("uValue"), float_val);
 		});
+		Neshny::PipelineStage::ModifyEntity(other_entities, "UnitTestEntity", true, { "RUN_OTHER" })
+		.AddDataVector("DataItem", data_items)
+		.AddEntity(entities)
+		.Run();
+
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 1;
 		uniform.p_Value = float(data_items.size());
@@ -303,10 +317,31 @@ namespace Test {
 		for (auto& item : expected) {
 			GPUThing::Add(item, data_items[item.p_Int % data_items.size()]);
 		}
+		for (auto& item : other_expected) {
+			auto& parent = expected[item.p_ParentIndex];
+			if (parent.p_Int % 3 == 1) {
+				item.p_Id = -1;
+			}
+		}
+		if (mode == Neshny::GPUEntity::DeleteMode::MOVING_COMPACT) {
+			for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
+				for (auto iter = other_expected.begin(); iter != other_expected.end(); iter++) {
+					if (iter->p_Id < 0) {
+						RemoveUnordered(other_expected, iter);
+					}
+				}
+			}
+		}
+
 		gpu_values.clear();
 		entities.GetSSBO()->GetValues(gpu_values, initial_count);
 
 		CompareEntities("After second add", expected, gpu_values);
+
+		gpu_other.clear();
+		other_entities.GetSSBO()->GetValues(gpu_other, other_entities.GetMaxIndex());
+
+		CompareEntities<GPUOther>("After second add and other delete", other_expected, gpu_other, other_sort);
 
 		// delete every nth item
 #if defined(NESHNY_GL)

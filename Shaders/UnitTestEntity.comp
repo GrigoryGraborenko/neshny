@@ -47,3 +47,13 @@ bool ThingMain(int item_index, Thing thing, inout Thing new_thing) {
     }
     return false;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+bool OtherMain(int item_index, Other other, inout Other new_other) {
+
+    Thing parent = GetThing(other.ParentIndex);
+    if ((parent.Id >= 0) && ((parent.Int % 3) == 1)) {
+        return true;
+    }
+    return false;
+}
