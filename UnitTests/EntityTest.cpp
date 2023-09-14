@@ -248,7 +248,7 @@ namespace Test {
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER abc" })
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddCreatableEntity(other_entities)
@@ -312,6 +312,16 @@ namespace Test {
 		executable
 			->WithDataVector("DataItem", data_items)
 			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+
+		auto other_executable = Neshny::PipelineStage::ModifyEntity(other_entities, "UnitTestEntity", true)
+			.AddInputOutputVar("uCheckVal")
+			.AddDataVector<DataItem>("DataItem")
+			.AddEntity(entities)
+			.Prepare<Uniform>();
+		other_executable
+			->WithDataVector("DataItem", data_items)
+			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+
 #endif
 
 		for (auto& item : expected) {

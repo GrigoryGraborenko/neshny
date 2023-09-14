@@ -21,8 +21,16 @@ namespace Test {
             ,{{
                 "#define SOME_NAME 7"
                 ,"int other = SOME_NAME + 456;"
+                ,"/*"
+                ,"int other = SOME_NAME + 999;"
+                ,"*/"
+                ,"int thing = SOME_NAME + 11;"
             },{
                 "int other = 7 + 456;"
+                ,"/*"
+                ,"int other = SOME_NAME + 999;"
+                ,"*/"
+                ,"int thing = 7 + 11;"
             }}
             ,{{
                 "#define THING(x) ((x)*(x))"
@@ -46,6 +54,35 @@ namespace Test {
                 ,"b_OutputThing[(base) + (2)] = (bitcast<i32>(item.Float));"
                 ,"b_OutputThing[(base) + (3)] = (bitcast<i32>(item.TwoDim.x)); b_OutputThing[(base) + (4)] = (bitcast<i32>(item.TwoDim.y));"
             }}
+            ,{{
+                "#define MACRO 7"
+                ,"#ifdef MACRO"
+                ,"int thing = 123;"
+                ,"#endif"
+                ,"int thing = 456;"
+                ,"#ifdef MACRO"
+                ,"int x = 1;"
+                ,"#else"
+                ,"int x = 2;"
+                ,"#endif"
+                ,"int y = 3;"
+                ,"#ifdef UNKNOWN"
+                ,"int z = 10;"
+                ,"#else"
+                ,"int z = 20;"
+                ,"#endif"
+                ,"#ifdef NOTDEF"
+                ,"int w = 20;"
+                ,"#endif"
+            },{
+                "int thing = 123;",
+                "int thing = 456;",
+                "int x = 1;",
+                "int y = 3;",
+                "int z = 20;",
+                ""
+            }}
+
         };
 
         auto loader = [] (QString fname, QString& err) -> QByteArray {
