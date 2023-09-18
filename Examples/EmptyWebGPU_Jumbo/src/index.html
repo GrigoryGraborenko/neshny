@@ -1,0 +1,84 @@
+<html>
+    <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<style>
+		canvas.emscripten {
+			border: 0px none;
+			margin-left:auto;
+			margin-right:auto;
+			display:block
+		}
+		
+		body {
+			margin: 0;
+			padding: 0;
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: 0;
+			bottom: 0;
+		}
+		
+		canvas {
+			object-fit: contain;
+			margin: 0;
+			padding: 0;
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+		
+		.info-container {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		.info {
+			text-align: center;
+			font-size: 4em;
+		}
+	</style>
+	<script type='text/javascript' src="EmptyWebGPU_Jumbo.js"></script>
+    <script type='text/javascript'>
+		var webgpu = {
+			canvas: document.getElementById('canvas')
+		};
+		if (navigator["gpu"]) {
+			navigator["gpu"]["requestAdapter"]().then(function (adapter) {
+				adapter["requestDevice"]().then( function (device) {
+					webgpu["preinitializedWebGPUDevice"] = device;
+					console.log("WebGPU Initialized");
+					createQtAppInstance(webgpu);
+					webgpu.ready.then(() => {
+						console.log("Ready");
+					});
+
+				});
+			}, function () {
+				console.error("No WebGPU adapter; not starting");
+				showError();
+			});
+		} else {
+			console.error("No support for WebGPU; not starting");
+			showError();
+		}
+	</script>
+    </head>
+
+    <body>
+	  <div class="info-container">
+        <div id="loadingDiv" class="info">Loading...</div>
+        <div id="errorDiv" class="info" style="display: none">This browser does not support WebGPU. Please load this on the latest desktop version of Chrome or Edge.</div>
+	  </div>
+      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    </body>
+</html>

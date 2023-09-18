@@ -1,0 +1,47 @@
+# Prerequisites
+/debug/
+/release/
+/build-web/
+/build/
+generated/
+/*.dir/
+/x64/
+.qt/
+/external/WebGPU
+
+# Visual Studio
+.vs/
+*.VC.db
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+
+# cmake
+CMakeCache.txt
+cmake_install.cmake
+UserSettings.cmake
+.embedded_token
+EmbeddedFiles.cpp
+EmbeddedDirectories.cpp
+UnitTestList.cpp
+CMakeFiles/
+
+# Compiled Object files
+*.lib
+*.d
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Executables
+*.exe
+*.out
+*.app
+
+*.recipe
