@@ -1,28 +1,19 @@
 ###############################################################################
-# example: cmake -G "Visual Studio 16 2019" -A x64 . 
-# example: cmake . -B build -G "Visual Studio 16 2019" -A x64
+# examples:
+# cmake . -B build -G "Visual Studio 16 2019" -A x64
+# emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake"
 #
-# emcmake cmake -B build-web -G "Ninja" -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake"
-# emcmake cmake -B build-web -G "Ninja"
 # cmake --build build-web
-# python -m http.server --directory build-web
+# node server/server
 
-# rm -r build-web | emcmake cmake -B build-web -G "Ninja" | cmake --build build-web | python -m http.server --directory build-web
-# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release & cmake --build build-web & python -m http.server --directory build-web
-
-# cd server && node server
-# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake" & cmake --build build-web
-# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake" & cmake --build build-web & python -m http.server --directory build-web
-# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_multithread/lib/cmake" & cmake --build build-web
+# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake" & cmake --build build-web & node server/server
 
 cmake_minimum_required(VERSION 3.18)
 
-# modify this
-set(PROJECT_NAME "EmptyWebGPU_Jumbo")
-
+include("${CMAKE_SOURCE_DIR}/UserSettings.cmake")
+include("${CMAKE_SOURCE_DIR}/ProjectSettings.cmake")
 project(${PROJECT_NAME})
 set(CMAKE_CXX_STANDARD 17)
-include("${CMAKE_SOURCE_DIR}/UserSettings.cmake")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 # startup project for VS
@@ -48,17 +39,12 @@ else ()
 endif ()
 
 if (EMSCRIPTEN)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "build")
     find_package(Qt6 COMPONENTS Core Gui REQUIRED)
     target_link_libraries(${PROJECT_NAME}
         Qt6::Core
         Qt6::Gui
     )
-	
-    #target_include_directories(${PROJECT_NAME}
-        #PRIVATE
-        #${QT_WASM_DIR}/include
-        #${QT_WASM_DIR}/include/QtCore
-    #)
 
     set(SDL2_LIBRARIES "")
 
@@ -106,25 +92,19 @@ elseif (EMSCRIPTEN)
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2 -s USE_PTHREADS")
 	
-    # TODO: all the debug flags are link only
-    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -s DEMANGLE_SUPPORT=1 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
 
     set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s ASYNCIFY=1")
-    #set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s USE_PTHREADS")
    
     # Linker flags to optimize for smallest output code size
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web,worker -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
 endif()
 
 ###############################################################################
 message(STATUS "Embedding shaders and unit tests")
 
 if (NOT EMSCRIPTEN)
-#if (FALSE)
 
 # adds shaders to directory structure and embeds them
 # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
@@ -142,7 +122,6 @@ add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/.embedded_token
     COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
     DEPENDS ${SHADER_PATH}/*.wgsl DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
-#    DEPENDS ${NESHNY_DIR}/shaders/*.vert DEPENDS ${NESHNY_DIR}/shaders/*.frag DEPENDS ${NESHNY_DIR}/shaders/*.comp DEPENDS ${NESHNY_DIR}/shaders/*.glsl
 )
 
 # command that embeds list of unit tests and their names into a cpp file
@@ -211,8 +190,6 @@ message(STATUS "Setting up file system")
 
 # copy over dlls required for execution
 configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
-#configure_file(${SDL2_IMAGE_DIR}/lib/x64/SDL2_image.dll ${CMAKE_BINARY_DIR}/release/SDL2_image.dll COPYONLY)
-
 
 configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
