@@ -32,12 +32,9 @@ private:
 
 	qint64					m_AccumilatedNanoseconds = 0;
 
-	//SDL_Window* sdl_window;
+	WebGPUPipeline			m_QuadPipeline;
+	WebGPUTexture*			m_DepthTex = nullptr;
 
-	//int	m_Width = 1920;
-	//int	m_Height = 1080;
 	int	m_Width = 1280;
 	int	m_Height = 720;
-	//int	m_Width = 1060;
-	//int	m_Height = 600;
 };

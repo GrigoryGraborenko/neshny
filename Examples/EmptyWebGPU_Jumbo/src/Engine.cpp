@@ -30,6 +30,14 @@ void Engine::Key(int key, bool is_down) {
 ////////////////////////////////////////////////////////////////////////////////
 bool Engine::Init(void) {
 	printf("Initializing...\n");
+
+	m_DepthTex = new WebGPUTexture();
+	m_DepthTex->InitDepth(m_Width, m_Height);
+
+	WebGPURenderBuffer* render_buffer = Core::GetBuffer("Square");
+	m_QuadPipeline
+		.FinalizeRender("Quad", *render_buffer);
+
 	return true;
 }
 
@@ -43,14 +51,22 @@ void Engine::Render(int width, int height) {
 		printf("Resizing from %i x %i to %i x %i \n", m_Width, m_Height, win_width, win_height);
 		m_Width = win_width;
 		m_Height = win_height;
+		delete m_DepthTex;
+		m_DepthTex = new WebGPUTexture();
+		m_DepthTex->InitDepth(m_Width, m_Height);
 
 		Core::Singleton().SetResolution(m_Width, m_Height);
 		return;
 	}
 
+	{
+		WebGPURTT rtt;
+		auto token = rtt.Activate({ Core::Singleton().GetCurrentSwapTextureView() }, m_DepthTex->GetTextureView());
+		rtt.Render(&m_QuadPipeline);
+	}
+
 	DebugRender::Clear();
 	Core::RenderEditor();
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
