@@ -6,7 +6,7 @@
 # cmake --build build-web
 # node server/server
 
-# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake" & cmake --build build-web & node server/server
+# rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release & cmake --build build-web & node server/server
 
 cmake_minimum_required(VERSION 3.18)
 
@@ -39,6 +39,8 @@ else ()
 endif ()
 
 if (EMSCRIPTEN)
+
+    set(CMAKE_PREFIX_PATH "${QT_WASM_DIR}/lib/cmake")
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "build")
     find_package(Qt6 COMPONENTS Core Gui REQUIRED)
     target_link_libraries(${PROJECT_NAME}

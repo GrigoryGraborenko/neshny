@@ -3,6 +3,8 @@
 # These directories are examples only - replace with your own paths
 # Also make sure to replace PROJECT_NAME in CMakeLists.txt
 set(NESHNY_DIR "C:/Neshny")
-set(QT_DIR "C:/Qt/5.15.2/msvc2019_64")
+set(QT_DIR "C:/Qt/6.5.1/msvc2019_64")
+set(QT_WASM_DIR "C:/Qt/6.5.0/wasm_singlethread")
 set(SDL2_DIR "C:/SDL/SDL2-2.26.0")
 set(SHADER_PATH "src/shaders")
+set(DAWN_PATH "C:/CodeLib/Dawn")
