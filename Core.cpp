@@ -519,11 +519,11 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 
 	// Get an adapter for the backend to use, and create the device.
 	dawn::native::Adapter backendAdapter;
+	wgpu::AdapterProperties properties;
 	{
 		std::vector<dawn::native::Adapter> adapters = instance.GetAdapters();
 		auto adapterIt = std::find_if(adapters.begin(), adapters.end(),
-			[this, backend](const dawn::native::Adapter adapter) -> bool {
-				wgpu::AdapterProperties properties;
+			[&](const dawn::native::Adapter& adapter) -> bool {
 				adapter.GetProperties(&properties);
 
 				if (backend == WebGPUNativeBackend::D3D12) {
@@ -538,9 +538,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 					return properties.backendType == wgpu::BackendType::OpenGLES;
 				}
 				return false;
-				//return properties.backendType == wgpu::BackendType::D3D12;
 			});
-		ASSERT(adapterIt != adapters.end());
 		backendAdapter = *adapterIt;
 	}
 
@@ -568,9 +566,9 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	toggles.chain.sType = WGPUSType_DawnTogglesDescriptor;
 	toggles.chain.next = nullptr;
 	toggles.enabledToggles = enableToggleNames.data();
-	toggles.enabledTogglesCount = static_cast<uint32_t>(enableToggleNames.size());
+	toggles.enabledToggleCount = static_cast<uint32_t>(enableToggleNames.size());
 	toggles.disabledToggles = disabledToggleNames.data();
-	toggles.disabledTogglesCount = static_cast<uint32_t>(disabledToggleNames.size());
+	toggles.disabledToggleCount = static_cast<uint32_t>(disabledToggleNames.size());
 
 	WGPUDeviceDescriptor deviceDesc = {};
 	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
@@ -580,7 +578,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	requiredLimits.limits = supported.limits;
 	deviceDesc.nextInChain = nullptr;
 	deviceDesc.requiredFeatures = nullptr;
-	deviceDesc.requiredFeaturesCount = 0;
+	deviceDesc.requiredFeatureCount = 0;
 	deviceDesc.label = nullptr;
 	deviceDesc.requiredLimits = &requiredLimits;
 

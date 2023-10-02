@@ -5,6 +5,7 @@
 #include <list>
 #include <set>
 #include <deque>
+#include <stack>
 #include <math.h>
 #include <algorithm>
 #include <iostream>
@@ -17,15 +18,18 @@
 #include <mutex>
 #include <variant>
 
-#include "glad/glad.h"
-
-#include "imgui/imgui.h"
-#include "imgui/imgui_stdlib.h"
+#ifdef NESHNY_GL
+    #include "glad/glad.h"
+#endif
 
 #include "NeshnyUtils.h"
-
 #include "LinearAlgebra.h"
-#include "GLUtils.h"
+#include "Preprocessor.h"
+#ifdef NESHNY_WEBGPU
+    #include "WGPUUtils.h"
+#elif defined(NESHNY_GL)
+    #include "GLUtils.h"
+#endif
 #include "NeshnyStructs.h"
 #include "Serialization.h"
 #include "Core.h"

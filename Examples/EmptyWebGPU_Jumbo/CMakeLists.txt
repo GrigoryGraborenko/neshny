@@ -1,6 +1,7 @@
 ###############################################################################
 # examples:
 # cmake . -B build -G "Visual Studio 16 2019" -A x64
+# cmake . -B build -G "Visual Studio 17 2022" -A x64
 # emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake"
 #
 # cmake --build build-web
@@ -82,8 +83,7 @@ if (WIN32)
     
     target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU)
     target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU/dawn)
-
-    #target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
+    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
 
     # ensure visual studio compiles as a windowed project not command line
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
