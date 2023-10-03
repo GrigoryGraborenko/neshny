@@ -81,45 +81,47 @@ setInterval(() => {
     static_data.files = new_static_files;
 }, refresh_milliseconds);
 
-const server = http.createServer({}, function (request, response) {
+module.exports = () => {
+    const server = http.createServer({}, function (request, response) {
 
-    var url = request.url;
-    if(url.indexOf("?") !== -1) {
-        url = url.slice(0, url.indexOf("?"));
-    }
+        var url = request.url;
+        if(url.indexOf("?") !== -1) {
+            url = url.slice(0, url.indexOf("?"));
+        }
 
-    if(request.method === "GET") {
-        const file = static_data.files[url];
-        if(file !== undefined) {
+        if(request.method === "GET") {
+            const file = static_data.files[url];
+            if(file !== undefined) {
 
-            if(file.redirect) {
-                response.writeHead(302, {
-                    "Location": file.redirect,
-                    "Cache-Control": `public, max-age=${max_age}`
-                });
-                response.end();
+                if(file.redirect) {
+                    response.writeHead(302, {
+                        "Location": file.redirect,
+                        "Cache-Control": `public, max-age=${max_age}`
+                    });
+                    response.end();
+                    return;
+                }
+
+                const headers = {
+                    "Content-Type": file.content_type,
+                    "Cache-Control": file.cache_control,
+                    "Cross-Origin-Embedder-Policy": "require-corp",
+                    "Cross-Origin-Opener-Policy": "same-origin"
+                };
+                let encoding = "binary";
+                if(file.encoding) {
+                    encoding = file.encoding;
+                    headers["Content-Type"] += "; charset=" + file.encoding;
+                }
+                response.writeHead(200, headers);
+                response.end(file.file, encoding);
                 return;
             }
-
-            const headers = {
-				"Content-Type": file.content_type,
-				"Cache-Control": file.cache_control,
-				"Cross-Origin-Embedder-Policy": "require-corp",
-				"Cross-Origin-Opener-Policy": "same-origin"
-			};
-            let encoding = "binary";
-            if(file.encoding) {
-                encoding = file.encoding;
-                headers["Content-Type"] += "; charset=" + file.encoding;
-            }
-            response.writeHead(200, headers);
-            response.end(file.file, encoding);
-            return;
         }
-    }
-    response.writeHead(404);
-    response.end("404 Not Found\n");
+        response.writeHead(404);
+        response.end("404 Not Found\n");
 
-}).listen(port);
+    }).listen(port);
 
-console.log(`Listening on port ${port}`);
+    console.log(`Listening on port ${port}`);
+}

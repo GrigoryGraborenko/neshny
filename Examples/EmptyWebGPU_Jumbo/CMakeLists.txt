@@ -1,6 +1,5 @@
 ###############################################################################
 # examples:
-# cmake . -B build -G "Visual Studio 16 2019" -A x64
 # cmake . -B build -G "Visual Studio 17 2022" -A x64
 # emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake"
 #
@@ -79,17 +78,19 @@ target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}
 )
 
-if (WIN32)
+if (NOT EMSCRIPTEN)
     
     target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU)
     target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU/dawn)
     target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
 
-    # ensure visual studio compiles as a windowed project not command line
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
-    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
+    if (WIN32)
+        # ensure visual studio compiles as a windowed project not command line
+        set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
+        set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
+    endif()
 
-elseif (EMSCRIPTEN)
+else()
 
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
@@ -108,42 +109,42 @@ message(STATUS "Embedding shaders and unit tests")
 
 if (NOT EMSCRIPTEN)
 
-# adds shaders to directory structure and embeds them
-# remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
-file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
+    # adds shaders to directory structure and embeds them
+    # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
+    file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
 
-# this creates a near-empty project whose entire purpose is to rerun the embed script "CMakeEmbedded.txt" when the shaders change ONLY IN RELEASE BUILD
-# it also runs "CMakeUnitTests.txt" when unit tests change
-# a token file is required for this process - ".embedded_token" does nothing other than exist to signal that the embed step has run
-add_custom_target(EMBEDDED_BUILD ALL DEPENDS ${CMAKE_BINARY_DIR}/.embedded_token ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
+    # this creates a near-empty project whose entire purpose is to rerun the embed script "CMakeEmbedded.txt" when the shaders change ONLY IN RELEASE BUILD
+    # it also runs "CMakeUnitTests.txt" when unit tests change
+    # a token file is required for this process - ".embedded_token" does nothing other than exist to signal that the embed step has run
+    add_custom_target(EMBEDDED_BUILD ALL DEPENDS ${CMAKE_BINARY_DIR}/.embedded_token ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
 
-# for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
-# for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
+    # for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
+    # for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
 
-add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/.embedded_token
-    COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
-    DEPENDS ${SHADER_PATH}/*.wgsl DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
-)
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/.embedded_token
+        COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
+        DEPENDS ${SHADER_PATH}/*.wgsl DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
+    )
 
-# command that embeds list of unit tests and their names into a cpp file
-add_custom_command(
-    OUTPUT ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp
-    COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
-    DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
-    DEPENDS ${CMAKE_SOURCE_DIR}/src/UnitTests/*.cpp
-)
+    # command that embeds list of unit tests and their names into a cpp file
+    add_custom_command(
+        OUTPUT ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp
+        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
+        DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
+        DEPENDS ${CMAKE_SOURCE_DIR}/src/UnitTests/*.cpp
+    )
 
-# ensure this all happens before the main build
-add_dependencies(${PROJECT_NAME} EMBEDDED_BUILD)
+    # ensure this all happens before the main build
+    add_dependencies(${PROJECT_NAME} EMBEDDED_BUILD)
 
-# adds list of shader directories to allow dynamic runtime loading in debug
-file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
+    # adds list of shader directories to allow dynamic runtime loading in debug
+    file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
-elseif(EMSCRIPTEN)
+else()
 
-include(${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
-file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
+    include(${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
+    file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 endif()
 
@@ -190,6 +191,9 @@ source_group("generated" FILES ${GeneratedList})
 ###############################################################################
 message(STATUS "Setting up file system")
 
+file(WRITE "dawn_setup.js" "const execute = require('${NESHNY_DIR}/Scripts/dawn_setup');\nexecute();")
+file(WRITE "server.js" "const execute = require('${NESHNY_DIR}/Scripts/server');\nexecute();")
+
 # copy over dlls required for execution
 configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
 
@@ -198,9 +202,7 @@ configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll
 configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
 configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
 
-if (WIN32)
-
-elseif (EMSCRIPTEN)
+if (EMSCRIPTEN)
     configure_file(src/index.html ${CMAKE_BINARY_DIR}/index.html COPYONLY)
 endif()
 

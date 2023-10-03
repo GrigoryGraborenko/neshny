@@ -113,26 +113,26 @@ async function run() {
     if (fs.statSync(`${dawn_path}/dawn/.git`, { throwIfNoEntry: false }) === undefined) {
         console.log("Cloning dawn repo...");
         await exec("git clone https://dawn.googlesource.com/dawn", { cwd: dawn_path });
-    } else {
         dawn_path += "/dawn";
+    } else {
         console.log("Found existing dawn repo, updating...");
-        // await exec("git pull", { cwd: dawn_path });
+        dawn_path += "/dawn";
+        await exec("git pull", { cwd: dawn_path });
     }
-/*
+
     console.log("Fetching dependencies...");
     await exec(`python tools/fetch_dawn_dependencies.py --use-test-deps`, { cwd: dawn_path });
 
     console.log("Running cmake...");
-    await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
     await exec(`cmake . -B build-debug -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+    await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
 
     console.log("Building debug...");
     await exec(`cmake --build build-debug --config=DEBUG`, { cwd: dawn_path });
     console.log("Building release...");
     await exec(`cmake --build build-release --config=RELEASE`, { cwd: dawn_path });
-*/
-    console.log("Copying lib files...");
 
+    console.log("Copying lib files...");
     fs.mkdirSync('./external/WebGPU/lib/Debug', { recursive: true });
     fs.mkdirSync('./external/WebGPU/lib/Release', { recursive: true });
     
@@ -169,9 +169,11 @@ async function run() {
     */
 }
 
-run().then(() => {
-    console.log("Completed Successfully");
-}).catch(err => {
-    console.error("Error!");
-    console.error(err);
-});
+module.exports = () => {
+    run().then(() => {
+        console.log("Completed Successfully");
+    }).catch(err => {
+        console.error("Error!");
+        console.error(err);
+    });
+}

@@ -1,4 +1,4 @@
-# Prerequisites
+#generated
 /debug/
 /release/
 /build-web/
@@ -8,6 +8,12 @@ generated/
 /x64/
 .qt/
 /external/WebGPU
+.embedded_token
+EmbeddedFiles.cpp
+EmbeddedDirectories.cpp
+UnitTestList.cpp
+dawn_setup.js
+server.js
 
 # Visual Studio
 .vs/
@@ -21,10 +27,6 @@ generated/
 CMakeCache.txt
 cmake_install.cmake
 UserSettings.cmake
-.embedded_token
-EmbeddedFiles.cpp
-EmbeddedDirectories.cpp
-UnitTestList.cpp
 CMakeFiles/
 
 # Compiled Object files
