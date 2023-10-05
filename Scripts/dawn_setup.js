@@ -4,7 +4,10 @@ const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 
 const search_str = "DAWN_PATH";
+
 const required_files = [
+    "SPIRV-Tools-opt.lib",
+    "SPIRV-Tools.lib",
     "absl_int128.lib",
     "absl_raw_logging_internal.lib",
     "absl_str_format_internal.lib",
@@ -20,14 +23,68 @@ const required_files = [
     "dawn_utils.lib",
     "dawncpp.lib",
     "dawncpp_headers.lib",
-    "SPIRV-Tools.lib",
-    "SPIRV-Tools-opt.lib",
-    "tint.lib",
-    "tint_diagnostic_utils.lib",
-    "tint_utils_io.lib",
-    "tint_val.lib",
+    "tint_api.lib",
+    "tint_api_common.lib",
+    "tint_api_options.lib",
+    "tint_cmd_common.lib",
+    "tint_lang_core.lib",
+    "tint_lang_core_constant.lib",
+    "tint_lang_core_intrinsic.lib",
+    "tint_lang_core_ir.lib",
+    "tint_lang_core_ir_transform.lib",
+    "tint_lang_core_type.lib",
+    "tint_lang_hlsl_validate.lib",
+    "tint_lang_hlsl_writer.lib",
+    "tint_lang_hlsl_writer_ast_printer.lib",
+    "tint_lang_hlsl_writer_ast_raise.lib",
+    "tint_lang_hlsl_writer_common.lib",
+    "tint_lang_spirv.lib",
+    "tint_lang_spirv_intrinsic.lib",
+    "tint_lang_spirv_ir.lib",
+    "tint_lang_spirv_reader.lib",
+    "tint_lang_spirv_reader_ast_lower.lib",
+    "tint_lang_spirv_reader_ast_parser.lib",
+    "tint_lang_spirv_reader_common.lib",
+    "tint_lang_spirv_type.lib",
+    "tint_lang_spirv_writer.lib",
+    "tint_lang_spirv_writer_ast_printer.lib",
+    "tint_lang_spirv_writer_ast_raise.lib",
+    "tint_lang_spirv_writer_common.lib",
+    "tint_lang_spirv_writer_printer.lib",
+    "tint_lang_spirv_writer_raise.lib",
+    "tint_lang_wgsl.lib",
+    "tint_lang_wgsl_ast.lib",
+    "tint_lang_wgsl_ast_transform.lib",
+    "tint_lang_wgsl_helpers.lib",
+    "tint_lang_wgsl_inspector.lib",
+    "tint_lang_wgsl_intrinsic.lib",
+    "tint_lang_wgsl_ir.lib",
+    "tint_lang_wgsl_program.lib",
+    "tint_lang_wgsl_reader.lib",
+    "tint_lang_wgsl_reader_lower.lib",
+    "tint_lang_wgsl_reader_parser.lib",
+    "tint_lang_wgsl_reader_program_to_ir.lib",
+    "tint_lang_wgsl_resolver.lib",
+    "tint_lang_wgsl_sem.lib",
+    "tint_lang_wgsl_writer.lib",
+    "tint_lang_wgsl_writer_ast_printer.lib",
+    "tint_lang_wgsl_writer_ir_to_program.lib",
+    "tint_lang_wgsl_writer_raise.lib",
+    "tint_lang_wgsl_writer_syntax_tree_printer.lib",
+    "tint_utils_debug.lib",
+    "tint_utils_diagnostic.lib",
+    "tint_utils_generator.lib",
+    "tint_utils_ice.lib",
+    "tint_utils_id.lib",
+    "tint_utils_reflection.lib",
+    "tint_utils_result.lib",
+    "tint_utils_rtti.lib",
+    "tint_utils_strconv.lib",
+    "tint_utils_symbol.lib",
+    "tint_utils_text.lib",
     "webgpu_dawn.lib"
 ];
+
 
 function crawlExtensionFiles(file_list, ext, dir, root_dir = undefined) {
     if (!root_dir) {
@@ -46,25 +103,19 @@ function crawlExtensionFiles(file_list, ext, dir, root_dir = undefined) {
     });
 }
 
-/*
 function crawlRequiredFiles(file_list, dir) {
     fs.readdirSync(dir).forEach(function(filename) {
         var filepath = dir + "/" + filename;
         var stats = fs.statSync(filepath);
         if(!stats.isDirectory()) {
             if (required_files.includes(filename)) {
-                if (file_list[filename]) {
-                    file_list[filename].paths.push(filepath);
-                } else {
-                    file_list[filename] = { paths: [filepath] };
-                }
+                file_list.push(filepath);
             }
         } else {
             crawlRequiredFiles(file_list, dir + "/" + filename);
         }
     });
 }
-*/
 
 function copyAllFilesTo(file_list, dir) {
     file_list.forEach(path => {
@@ -89,7 +140,7 @@ function copyAllFilesStructureTo(file_obj_list, dest_dir) {
     });
 }
 
-async function run() {
+async function run(all_libs = false) {
     try {
         await exec("git --version");
     } catch (err) {
@@ -132,45 +183,36 @@ async function run() {
     console.log("Building release...");
     await exec(`cmake --build build-release --config=RELEASE`, { cwd: dawn_path });
 
-    console.log("Copying lib files...");
     fs.mkdirSync('./external/WebGPU/lib/Debug', { recursive: true });
     fs.mkdirSync('./external/WebGPU/lib/Release', { recursive: true });
     
+    let debug_lib_list = [];
+    let release_lib_list = [];
+    if (all_libs) {
+        console.log("Copying all lib files...");
+        crawlExtensionFiles(debug_lib_list, ".lib", `${dawn_path}/build-debug`);
+        crawlExtensionFiles(release_lib_list, ".lib", `${dawn_path}/build-release`);
+        copyAllFilesTo(debug_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Debug");
+        copyAllFilesTo(release_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Release");
+    } else {
+        console.log("Copying required lib files only (run with -all to copy all)...");
+        crawlRequiredFiles(debug_lib_list, `${dawn_path}/build-debug`);
+        crawlRequiredFiles(release_lib_list, `${dawn_path}/build-release`);
+        copyAllFilesTo(debug_lib_list, "./external/WebGPU/lib/Debug");
+        copyAllFilesTo(release_lib_list, "./external/WebGPU/lib/Release");
+    }
+
+    console.log("Copying header files...");
     const all_header_list = [];
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/src`);
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/include`);
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/build-debug/gen/include`);
-
-    let debug_lib_list = [];
-    let release_lib_list = [];
-    crawlExtensionFiles(debug_lib_list, ".lib", `${dawn_path}/build-debug`);
-    crawlExtensionFiles(release_lib_list, ".lib", `${dawn_path}/build-release`);
-
     copyAllFilesStructureTo(all_header_list, "./external/WebGPU");
-
-    copyAllFilesTo(debug_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Debug");
-    copyAllFilesTo(release_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Release");
-
-    /*
-    const copy_list = [];
-    required_files.forEach(filename => {
-        if(!file_list[filename]) {
-            console.error("ERROR - CANNOT FIND " + filename);
-            return;
-        }
-        const paths = file_list[filename].paths;
-        if(paths.length != 1) {
-            console.error("ERROR - TOO MANY PATHS FOR " + filename);
-            return;
-        }
-        copy_list.push(paths[0]);
-    });
-    copyAllFilesTo(copy_list, "./external/WebGPU/lib/Debug");
-    */
 }
 
 module.exports = () => {
-    run().then(() => {
+    const copy_all = (process.argv.length > 2) && (process.argv[2] === '-all');
+    run(copy_all).then(() => {
         console.log("Completed Successfully");
     }).catch(err => {
         console.error("Error!");

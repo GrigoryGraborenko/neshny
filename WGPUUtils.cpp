@@ -872,7 +872,6 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 	WGPUComputePassDescriptor pass_desc;
 	pass_desc.nextInChain = nullptr;
 	pass_desc.label = nullptr;
-	pass_desc.timestampWriteCount = 0;
 	pass_desc.timestampWrites = nullptr;
 	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
 

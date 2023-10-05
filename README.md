@@ -1,39 +1,57 @@
-# Neshny
-Neshny is an OpenGL/C++ library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card. There is an optional UI that can overlay your window and display valuable debugging information.
+# <b>Neshny</b>
+Neshny is an C++/WebGPU/OpenGL library for games and simulations. It is designed to be unobtrusive - use as little or as much of it as you wish. It is not an engine, rather a tool to help make writing your own engine easier. The core feature is an entity system that runs mostly on the graphics card. There is an optional UI that can overlay your window and display valuable debugging information.
 
-Currently it has dependencies on Qt >= v5.15, Dear ImGui >= v1.88, and Metastuff. There is an optional dependency on SDL as well for some features, and CMake >= 3.18 is strongly recommended.
+There are two main ways to use it - with OpenGL or with WebGPU. The two are mutually exclusive. The recommendation is to pick WebGPU, as it is set up to cross compile to both the desktop and the browser. OpenGL support will continue for some time but may be removed in the distant future, depending on how well WebGPU does. 
+
+### <i>Dependencies</i>
+* Qt >= v6
+* Dear ImGui >= v1.89 <i>(included in starter)</i>
+* Metastuff <i>(included in starter)</i>
+* SDL >= 2.26
+* CMake >= 3.18
+* NodeJS >= 16.0
+* Python >= 3.0 (for now)
 
 ## <b>Installation</b>
 Clone this repo to a location of your choice:
 ```
 git clone https://github.com/GrigoryGraborenko/neshny.git
 ```
-### <u>Using CMake</u>
-Pick one of the starter projects in the **Examples** directory - for example, the **EmptyQT+SDLJumboBuild** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds drastically down to seconds. 
+### <i>Using CMake</i>
+Pick one of the starter projects in the **Examples** directory - for example, the **EmptyWebGPU_Jumbo** will create a near-empty cmake based project optimized for Visual Studio. It also sets up a pattern for Jumbo builds - this is highly recommended, as this reduces all compilation speeds down to seconds. 
 
 Make a copy of the entire directory and place it wherever you like. Ensure you have cmake 3.18 or greater installed.
 
-Edit the **UserSettings.cmake** to point to the correct directories where libraries are installed:
+Rename the `UserSettings.cmake.template` to `UserSettings.cmake` and edit it to point to the correct directories where libraries are installed:
 ``` cmake
-set(NESHNY_DIR "C:/Code/Neshny")
-set(QT_DIR "C:/Qt/5.15.2/msvc2019_64")
+set(NESHNY_DIR "C:/Code/Neshny") # change all these to your local
+set(QT_DIR "C:/Qt/6.5.0/msvc2019_64")
+set(QT_WASM_DIR "C:/Qt/6.5.0/wasm_singlethread")
 set(SDL2_DIR "C:/SDL/SDL2-2.0.14")
-set(SDL2_MIXER_DIR "C:/SDL/SDL2_mixer-2.0.4")
 set(SHADER_PATH "src/shaders")
+set(DAWN_PATH "C:/CodeLib/Dawn") # where you would like it to be installed - see below
 ```
-Also make sure to edit this line near the top of CMakeLists.txt:
+Also make sure to rename `ProjectSettings.cmake.template` to `ProjectSettings.cmake` and change the name of the project:
 ```
 set(PROJECT_NAME "EmptyQTJumboBuild") # change to your project name
 ```
 Then navigate to the root of the copied project and run this command in the terminal:
 ``` 
-cmake -G "Visual Studio 16 2019" -A x64 .
+cmake . -B build -G "Visual Studio 17 2022" -A x64
 ```
-Replace `"Visual Studio 16 2019"` with whatever compiler you prefer. This will generate all the project files needed. Then open up the solution/project files and run it. You should see this:
-![Screenshot of Empty QT SDL Project](/Documentation/empty_qt_sdl_jumbo.png)
+Replace `"Visual Studio 17 2022"` with whatever compiler you prefer. This will generate all the project files needed.
+#### <i>WebGPU - installing dawn</i>
+If you're using WebGPU, you will need to install dawn for desktop builds. Once cmake is run, you should have a file in the root directory called `dawn_setup.js`. Make sure node and python are both installed (apologies, google still needs python - will see if I can remove this dependency later) and run:
+```
+node dawn_setup.js
+```
+This will download and build dawn in your `DAWN_PATH` and copy all required files to your external folder.
+
+Then open up the solution/project files and run it. You should see this:
+![Screenshot of Empty QT SDL Project](/Documentation/empty_webgpu_qt_sdl_jumbo.png)
 
 
-### <u>Manually</u>
+### <i>Manually</i>
 Clone this repo and point to the base dir in your include directories list. Then add
 ``` C++
 // put this in your headers
@@ -42,10 +60,10 @@ Clone this repo and point to the base dir in your include directories list. Then
 #include <IncludeAll.cpp> // Neshny
 using namespace Neshny;
 ```
-This assumes you already have QT, ImGui and Metastuff installed.
+This assumes you already have QT, SDL, ImGui and Metastuff installed.
 
 ## <b>Features</b>
-### <u>Viewing the editor overlay</u>
+### <i>Viewing the editor overlay</i>
 Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
 ``` C++
 if (show_editor) {
@@ -57,7 +75,7 @@ if (show_editor) {
     Core::RenderEditor();
 }
 ```
-### <u>Shader and buffer convenience classes</u>
+### <i>Shader and buffer convenience classes</i>
 ``` C++
 GLShader shader;
 QString err_msg;
@@ -76,7 +94,7 @@ shader.UseProgram();
 glUniform1i(shader.GetUniform("extra_uniform"), 123);
 
 ```
-### <u>Shader loading and viewing</u>
+### <i>Shader loading and viewing</i>
 Here's an example of using a rendering shader:
 ``` C++
 // dynamically load the shader that corresponds to Fullscreen.vert and Fullscreen.frag
