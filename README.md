@@ -62,19 +62,9 @@ using namespace Neshny;
 ```
 This assumes you already have QT, SDL, ImGui and Metastuff installed.
 
-## <b>Features</b>
-### <i>Viewing the editor overlay</i>
-Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
-``` C++
-if (show_editor) {
-    // optional rendering of debug visuals
-    DebugRender::Render3DDebug(view_perspective_matrix, width, height);
-    // reset for per-cycle debugging visuals
-    DebugRender::Clear();
-    // this will do all UI/UX for the editor
-    Core::RenderEditor();
-}
-```
+## <b>WebGPU usage</b>
+TODO
+## <b>OpenGL usage</b>
 ### <i>Shader and buffer convenience classes</i>
 ``` C++
 GLShader shader;
@@ -124,8 +114,8 @@ Core::DispatchMultiple(compute_prog, 64, 512);
 // or you could manage it yourself:
 // glDispatchCompute(4, 4, 4);
 ```
-### <u>GPU entities and pipelines</u>
-A `GPUEntity` manages the concept of an entity that lives and dies entirely in GPU memory. It is best used with a `Pipeline`, which is a wrapper around a call to a compute or render shader that modifies or renders the entity, and handles all the setup and initialization.
+### <i>GPU entities and pipelines</i>
+A `GPUEntity` manages the concept of an entity that lives and dies entirely in GPU memory. It is best used with a `Pipeline`, which is a wrapper around a call to a compute shader that modifies or renders the entity, and handles all the setup and initialization.
 You start by defining a plain old data data type with packing alignment of 1. Then you add each member to a metastuff definition. Then each tick you call `PipelineStage::ModifyEntity` with a compute shader that runs for each entity, modifies it, and can delete it as well.
 ``` C++
 #pragma pack(push)
@@ -141,7 +131,7 @@ struct GPUProjectile {
 
 #pragma pack(pop)
 
-// gotta define all struct members to ensure correct storage
+// gotta define all struct members using metastuff to ensure correct storage
 namespace meta {
     template<>
     inline auto registerMembers<GPUProjectile>() {
@@ -226,7 +216,20 @@ bool ProjectileMain(int item_index, Projectile proj, inout Projectile new_proj) 
 }
 
 ```
-### <u>Entity data viewer with time-travel</u>
+## <b>Features</b>
+### <i>Viewing the editor overlay</i>
+Assuming you already have ImGui installed, call these functions each render cycle, preferrably near the end of the cycle:
+``` C++
+if (show_editor) {
+    // optional rendering of debug visuals
+    DebugRender::Render3DDebug(view_perspective_matrix, width, height);
+    // reset for per-cycle debugging visuals
+    DebugRender::Clear();
+    // this will do all UI/UX for the editor
+    Core::RenderEditor();
+}
+```
+### <i>Entity data viewer with time-travel</i>
 Debugging GPU entities can be difficult, since you can't just inspect CPU memory at a breakpoint like a regular C++ object. Thus Neshny provides a buffer viewer which can capture the internal structure of a GPU entity each frame and display it in a human readable format. Furthermore, you can store these captures for a customizable number of frames and rewind, or step frame by frame until you figure out what's going on. *Be mindful that this is for debug purposes only and will slow down your framerate and consume a lot of memory*.
 
 The way this works is that at every checkpoint where you care about the internals of an entity or SSBO, you add this:
@@ -240,10 +243,10 @@ If you open up the buffer viewer, you should see something like this once you ti
 There is also a scrollbar up the top where you can rewind to a point in time some frames ago. The newest are on the left, and get older as you go right. Time travelling will also render that old data within your game, *but only if you use the PipelineStage::RenderEntity system*. It works by substituting the chunk of memory saved previously instead of the data that is currently stored for that entity when rendering. 
 ![Screenshot of Buffer Viewer](/Documentation/buffer_viewer.png)
 
-### <u>Cameras</u>
+### <i>Cameras</i>
 There are currently three convenience camera classes provided: `Camera2D`, `Camera3DOrbit` and `Camera3DFPS`. They only exist to provide a useful `Matrix4` view perspective matrix. There are some convenience functions to move them around, but currently the recommended usage is to modify their internals directly, such as `p_Pos` for position or `p_Zoom` in `Camera2D`.
 
-### <u>Resource system</u>
+### <i>Resource system</i>
 The resource system uses threads to load and initialize resources in the background. Calling a resource via `Core::GetResource` the first time will initiate the loading process - every subsequent call will return either `PENDING`, `IN_ERROR` or 'DONE' for `m_State` [TODO change m_ to p_]. Once it is in the `DONE` state it will be cached and immediately return a pointer to the resource in question. This is designed to be used with a functional-style loop, much like ImGui. The call itself should be lightweight and block the executing thread for near-zero overhead. Each tick you get the same resource for as long as you require it, and it may be several or even hundreds of ticks later that the resource is resolved.
 ``` C++
 auto tex = Core::GetResource<Texture2D>("../images/example.png");
@@ -286,7 +289,7 @@ private:
 If you want to create a resource based off data in a file, you have the convenience base class `FileResource` which requires you to implement the `virtual bool FileInit(QString path, unsigned char* data, int length, QString& err)` function that is called after the file in the path is loaded. `data` and `length` contain the contents of the file if it has been successfully loaded.
 
 The default resource management is for older, larger resources to be deallocated once the memory limit is reached. You can change the memory limit for both regular memory and GPU memory in your `IEngine` subclass by setting `m_MaxMemory` and `m_MaxGPUMemory` as bytes. They are set to 2 gig and 1 gig respectively. If you would like to take over memory management yourself, override the function `virtual void ManageResources(ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram)`. Have a look inside the default implementation for a guide on how to do that. 
-### <u>3D Debug Visualizer</u>
+### <i>3D Debug Visualizer</i>
 An easy way to get started on a 3D project is to chuck in some debug lines so you can get some basic context. Here's an example of origin axis lines:
 ``` C++
 // 10 units. What's a unit? How long's a piece of string?
@@ -307,7 +310,7 @@ Then make sure you at some point in your render cycle call
 DebugRender::Render3DDebug(view_perspective_matrix, width, height);
 DebugRender::Clear();
 ```
-### <u>Scrapbook</u>
+### <i>Scrapbook</i>
 It may be useful from time to time to test out or visualize simple concepts without messing with your core render loop. Neshny provides a 2D and a 3D scrapbook which you can add debug render visuals to, provide simple ImGui controls, or do custom rendering inside the context of the scrapbook window.
 
 You can add visuals much like with the `DebugRender` (it uses the same underlying code) with functions such as `Scrapbook3D::Point` and `Scrapbook3D::Line`.
