@@ -61,7 +61,11 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 
 	WGPUShaderModuleWGSLDescriptor wgsl = {};
 	wgsl.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
+	wgsl.source = m_Source.data();
+#else
 	wgsl.code = m_Source.data();
+#endif
 	WGPUShaderModuleDescriptor desc = {};
 	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
 	auto fname_bytes = filename.toLocal8Bit();

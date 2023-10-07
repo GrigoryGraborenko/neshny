@@ -235,7 +235,11 @@ static WGPUProgrammableStageDescriptor ImGui_ImplWGPU_CreateShaderModule(const c
 
     WGPUShaderModuleWGSLDescriptor wgsl_desc = {};
     wgsl_desc.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
+    wgsl_desc.source = wgsl_source;
+#else
     wgsl_desc.code = wgsl_source;
+#endif    
 
     WGPUShaderModuleDescriptor desc = {};
     desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl_desc);
@@ -516,7 +520,11 @@ static void ImGui_ImplWGPU_CreateFontsTexture()
         WGPUSamplerDescriptor sampler_desc = {};
         sampler_desc.minFilter = WGPUFilterMode_Linear;
         sampler_desc.magFilter = WGPUFilterMode_Linear;
+#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
+        sampler_desc.mipmapFilter = WGPUFilterMode_Linear;
+#else
         sampler_desc.mipmapFilter = WGPUMipmapFilterMode_Linear;
+#endif    
         sampler_desc.addressModeU = WGPUAddressMode_Repeat;
         sampler_desc.addressModeV = WGPUAddressMode_Repeat;
         sampler_desc.addressModeW = WGPUAddressMode_Repeat;

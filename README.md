@@ -50,6 +50,15 @@ This will download and build dawn in your `DAWN_PATH` and copy all required file
 Then open up the solution/project files and run it. You should see this:
 ![Screenshot of Empty QT SDL Project](/Documentation/empty_webgpu_qt_sdl_jumbo.png)
 
+If you are using WebGPU, to make a browser build, run this:
+```
+emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+```
+Then when you need to compile and host on port 8000, run:
+```
+cmake --build build-web
+node server
+```
 
 ### <i>Manually</i>
 Clone this repo and point to the base dir in your include directories list. Then add

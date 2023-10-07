@@ -1,10 +1,10 @@
 ###############################################################################
 # examples:
 # cmake . -B build -G "Visual Studio 17 2022" -A x64
-# emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/6.5.0/wasm_singlethread/lib/cmake"
+# emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 #
 # cmake --build build-web
-# node server/server
+# node server
 
 # rmdir build-web /s /q & emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release & cmake --build build-web & node server/server
 
