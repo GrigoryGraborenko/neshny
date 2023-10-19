@@ -15,7 +15,9 @@ struct MemberSpec {
 		T_VEC4,
 		T_IVEC2,
 		T_IVEC3,
-		T_IVEC4
+		T_IVEC4,
+		T_MAT3,
+		T_MAT4
 	};
 
 	static QString GetGPUType(Type type) {
@@ -38,6 +40,10 @@ struct MemberSpec {
 			return "ivec3";
 		} else if (type == MemberSpec::T_IVEC4) {
 			return "ivec4";
+		} else if (type == MemberSpec::T_MAT3) {
+			return "mat3";
+		} else if (type == MemberSpec::T_MAT4) {
+			return "mat4";
 		}
 #elif defined(NESHNY_WEBGPU)
 		if (type == MemberSpec::T_INT) {
@@ -58,6 +64,10 @@ struct MemberSpec {
 			return "vec3i";
 		} else if (type == MemberSpec::T_IVEC4) {
 			return "vec4i";
+		} else if (type == MemberSpec::T_MAT3) {
+			return "mat3x3f";
+		} else if (type == MemberSpec::T_MAT4) {
+			return "mat4x4f";
 		}
 #endif
 		return QString();
@@ -76,6 +86,10 @@ struct MemberSpec {
 			return sizeof(int) * 3;
 		} else if (type == MemberSpec::T_IVEC4) {
 			return sizeof(int) * 4;
+		} else if (type == MemberSpec::T_MAT3) {
+			return sizeof(float) * 9;
+		} else if (type == MemberSpec::T_MAT4) {
+			return sizeof(float) * 16;
 		}
 		return sizeof(int);
 	}
@@ -100,6 +114,17 @@ struct MemberSpec {
 			return QString("ivec3(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
 		} else if (type == MemberSpec::T_IVEC4) {
 			return QString("ivec4(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
+		} else if (type == MemberSpec::T_MAT3) {
+			return QString("mat3(%10_LOOKUP(base, %1), %10_LOOKUP(base, %2), %10_LOOKUP(base, %3), %10_LOOKUP(base, %4), %10_LOOKUP(base, %5), %10_LOOKUP(base, %6), %10_LOOKUP(base, %7), %10_LOOKUP(base, %8), %10_LOOKUP(base, %9))")
+				.arg(index).arg(index + 1).arg(index + 2)
+				.arg(index + 3).arg(index + 4).arg(index + 5)
+				.arg(index + 6).arg(index + 7).arg(index + 8).arg("%1");
+		} else if (type == MemberSpec::T_MAT4) {
+			return QString("mat4(%17_LOOKUP(base, %1), %17_LOOKUP(base, %2), %17_LOOKUP(base, %3), %17_LOOKUP(base, %4), %17_LOOKUP(base, %5), %17_LOOKUP(base, %6), %17_LOOKUP(base, %7), %17_LOOKUP(base, %8), %17_LOOKUP(base, %9), %17_LOOKUP(base, %10), %17_LOOKUP(base, %11), %17_LOOKUP(base, %12), %17_LOOKUP(base, %13), %17_LOOKUP(base, %14), %17_LOOKUP(base, %15), %17_LOOKUP(base, %16))")
+				.arg(index).arg(index + 1).arg(index + 2).arg(index + 3)
+				.arg(index + 4).arg(index + 5).arg(index + 6).arg(index + 7)
+				.arg(index + 8).arg(index + 9).arg(index + 10).arg(index + 11)
+				.arg(index + 12).arg(index + 13).arg(index + 14).arg(index + 15).arg("%1");
 		}
 #elif defined(NESHNY_WEBGPU)
 		if (type == MemberSpec::T_INT) {
@@ -120,6 +145,17 @@ struct MemberSpec {
 			return QString("vec3i(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg("%1");
 		} else if (type == MemberSpec::T_IVEC4) {
 			return QString("vec4i(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg("%1");
+		} else if (type == MemberSpec::T_MAT3) {
+			return QString("mat3x3f(%10_LOOKUP(base, %1), %10_LOOKUP(base, %2), %10_LOOKUP(base, %3), %10_LOOKUP(base, %4), %10_LOOKUP(base, %5), %10_LOOKUP(base, %6), %10_LOOKUP(base, %7), %10_LOOKUP(base, %8), %10_LOOKUP(base, %9))")
+				.arg(index).arg(index + 1).arg(index + 2)
+				.arg(index + 3).arg(index + 4).arg(index + 5)
+				.arg(index + 6).arg(index + 7).arg(index + 8).arg("%1");
+		} else if (type == MemberSpec::T_MAT4) {
+			return QString("mat4x4f(%17_LOOKUP(base, %1), %17_LOOKUP(base, %2), %17_LOOKUP(base, %3), %17_LOOKUP(base, %4), %17_LOOKUP(base, %5), %17_LOOKUP(base, %6), %17_LOOKUP(base, %7), %17_LOOKUP(base, %8), %17_LOOKUP(base, %9), %17_LOOKUP(base, %10), %17_LOOKUP(base, %11), %17_LOOKUP(base, %12), %17_LOOKUP(base, %13), %17_LOOKUP(base, %14), %17_LOOKUP(base, %15), %17_LOOKUP(base, %16))")
+				.arg(index).arg(index + 1).arg(index + 2).arg(index + 3)
+				.arg(index + 4).arg(index + 5).arg(index + 6).arg(index + 7)
+				.arg(index + 8).arg(index + 9).arg(index + 10).arg(index + 11)
+				.arg(index + 12).arg(index + 13).arg(index + 14).arg(index + 15).arg("%1");
 		}
 #endif
 

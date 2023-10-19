@@ -491,6 +491,7 @@ struct BaseMatrix3 {
 };
 
 using Matrix3 = BaseMatrix3<double>;
+using fMatrix3 = BaseMatrix3<float>;
 
 ////////////////////////////////////////////////////////////////////////////////
 //

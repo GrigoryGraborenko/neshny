@@ -57,12 +57,19 @@ public:
 		}
 
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1); }
+		void				Render		( RTT& rtt, const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt); }
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations); }
+		void				Render		( RTT& rtt, const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt); }
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1); }
-		void				Run			( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations );
+		void				Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1, &rtt); }
+
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr); }
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr); }
+		template <class UniformSpec>
+		void				Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1, nullptr); }
+		void				Run			( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations, RTT* rtt );
 	};
 #endif
 
@@ -116,7 +123,7 @@ public:
 	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 
 	template <class UniformSpec>
-	std::shared_ptr<Prepared>	Prepare				( void ) {
+	std::unique_ptr<Prepared>	Prepare				( void ) {
 		std::vector<MemberSpec> uniform_members;
 		Serialiser<UniformSpec> serializeFunc(uniform_members);
 		meta::doForAllMembers<UniformSpec>(serializeFunc);
@@ -157,7 +164,7 @@ protected:
 		int						p_NumIntsPerItem;
 		std::vector<MemberSpec> p_Members;
 	};
-	std::shared_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
+	std::unique_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
 #endif
 
 	struct AddedEntity {

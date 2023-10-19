@@ -486,9 +486,9 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
+std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
 
-	std::shared_ptr<PipelineStage::Prepared> result = std::make_shared<Prepared>();
+	std::unique_ptr<PipelineStage::Prepared> result = std::make_unique<Prepared>();
 	result->m_RunType = m_RunType;
 	result->m_Entity = m_Entity;
 	result->m_Buffer = m_Buffer;
@@ -512,12 +512,12 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	std::shared_ptr<SSBO> replace = nullptr;
 	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
-	if (is_render && m_Entity) {
-		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
-		if (time_slider > 0) {
-			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
-		}
-	}
+	//if (is_render && m_Entity) {
+	//	int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
+	//	if (time_slider > 0) {
+	//		replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
+	//	}
+	//}
 
 	for (auto str : m_ShaderDefines) {
 		insertion += QString("#define %1").arg(str);
@@ -525,8 +525,12 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
 	if (result->m_ControlSSBO) {
-		insertion_buffers += "@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;";
-		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, false);
+		if (is_render) {
+			insertion_buffers += "@group(0) @binding(0) var<storage, read> b_Control: array<i32>;";
+		} else {
+			insertion_buffers += "@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;";
+		}
+		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, is_render);
 	}
 
 	if(!unform_members.empty()) { // uniform
@@ -686,7 +690,7 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 	
 	if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
-		result->m_ControlSSBO->EnsureSizeBytes(m_Vars.size() * sizeof(int));
+		result->m_ControlSSBO->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
 	}
 	for (int i = 0; i < m_Vars.size(); i++) {
 		const auto& var = m_Vars[i];
@@ -753,7 +757,10 @@ std::shared_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
 	QByteArray insertion_str = (m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n")).toLocal8Bit();
-	QByteArray end_insertion_str = "\n//////////\n" + (m_Entity ? QString(end_insertion.join("\n")).arg(m_Entity->GetName()) : end_insertion.join("\n")).toLocal8Bit();
+	QByteArray end_insertion_str;
+	if (!end_insertion.empty()) {
+		end_insertion_str = "\n//////////\n" + (m_Entity ? QString(end_insertion.join("\n")).arg(m_Entity->GetName()) : end_insertion.join("\n")).toLocal8Bit();
+	}
 
 	if (is_render) {
 		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, insertion_str, end_insertion_str);
@@ -771,10 +778,14 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations) {
+void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations, RTT* rtt) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
+
+	if (!compute && !rtt) {
+		throw std::invalid_argument("Render requires an RTT");
+	}
 
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
@@ -885,20 +896,13 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		m_UniformBuffer->Write(uniform, 0, uniform_bytes);
 	}
 
-	if (entity_processing) {
+	if (compute) {
 		m_Pipeline->Compute(run_count);
 	} else {
 		if (!m_Buffer) {
 			throw std::invalid_argument("Render buffer not found");
 		}
-		//m_Pipeline->Render();
-		/*
-		if (m_Entity) {
-			m_Buffer->DrawInstanced(num_entities);
-		} else {
-			m_Buffer->Draw();
-		}
-		*/
+		rtt->Render(m_Pipeline, run_count);
 	}
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
