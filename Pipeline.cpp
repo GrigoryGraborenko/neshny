@@ -790,7 +790,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
 
-	int run_count = entity_processing ? m_Entity->GetCount() : iterations;
+	int run_count = m_Entity ? m_Entity->GetCount() : iterations;
 
 	if (entity_processing) {
 		variables.push_back({ "ioCount", &run_count });
