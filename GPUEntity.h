@@ -302,8 +302,6 @@ public:
 	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
-	template<class T>
-	int							AddInstance				( T object, int* index = nullptr ) { return AddInstance((void*)&object, index); }
 	int							AddInstance				( void* data, int* index = nullptr );
 	void						DeleteInstance			( int index );
 

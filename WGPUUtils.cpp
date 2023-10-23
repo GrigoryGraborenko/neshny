@@ -877,6 +877,9 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 	pass_desc.nextInChain = nullptr;
 	pass_desc.label = nullptr;
 	pass_desc.timestampWrites = nullptr;
+#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
+	pass_desc.timestampWriteCount = 0;
+#endif
 	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
 
 	wgpuComputePassEncoderSetPipeline(pass, m_ComputePipeline);

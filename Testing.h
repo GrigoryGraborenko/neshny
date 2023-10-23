@@ -48,6 +48,8 @@ protected:
 	void						IRender		( void );
 	void						IExecute	( void );
 
+	TestResult					ExecuteTest	( const struct UnitTest& test );
+
 	std::vector<TestResult>		m_Results;
 	bool						m_Display = false;
 };
