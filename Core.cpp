@@ -647,25 +647,6 @@ void Core::SDLLoopInner() {
 
 	wgpuDevicePushErrorScope(Core::Singleton().GetWebGPUDevice(), WGPUErrorFilter_Validation);
 
-	SyncResolution();
-#ifdef NESHNY_WEBGPU
-	WGPUTextureView view = GetCurrentSwapTextureView();
-	if (!view) {
-		LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
-		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
-#ifndef __EMSCRIPTEN__
-		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
-#endif
-		return;
-	}
-#endif
-
-/*
-	if (!(SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)) {
-		unfocus_timeout = 2;
-	}
-*/
-
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
 	// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -673,13 +654,6 @@ void Core::SDLLoopInner() {
 	// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
-
-/*
-		if (unfocus_timeout > 0) {
-			unfocus_timeout--;
-			continue;
-		}
-*/
 
 		ImGui_ImplSDL2_ProcessEvent(&event);
 		if ((event.type == SDL_QUIT) || (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(m_Window))) {
@@ -699,6 +673,19 @@ void Core::SDLLoopInner() {
 		m_Ticks++;
 	}
 	m_Engine->ManageResources(GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
+
+	SyncResolution();
+#ifdef NESHNY_WEBGPU
+	WGPUTextureView view = GetCurrentSwapTextureView();
+	if (!view) {
+		LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
+		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
+#ifndef __EMSCRIPTEN__
+		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#endif
+		return;
+	}
+#endif
 
 	///////////////////////////////////////////// render engine
 
