@@ -75,12 +75,21 @@ namespace Test {
                 ,"int w = 20;"
                 ,"#endif"
             },{
-                "int thing = 123;",
-                "int thing = 456;",
-                "int x = 1;",
-                "int y = 3;",
-                "int z = 20;",
-                ""
+                "int thing = 123;"
+                ,"int thing = 456;"
+                ,"int x = 1;"
+                ,"int y = 3;"
+                ,"int z = 20;"
+                ,""
+            }}
+            ,{{
+                "#define MACRO 123"
+                ,"#define MACRO_LONGER 456"
+                ,"int thing1 = MACRO;"
+                ,"int thing2 = MACRO_LONGER;"
+            },{
+                "int thing1 = 123;"
+                ,"int thing2 = 456;"
             }}
 
         };

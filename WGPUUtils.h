@@ -29,6 +29,7 @@ public:
 
 	inline const std::vector<Error>&				GetErrors				( void ) const { return m_Errors; }
 	inline QByteArray								GetSource				( void ) const { return m_Source; }
+	inline QByteArray								GetRawSource			( void ) const { return m_SourcePrePreProcessor; }
 
 private:
 

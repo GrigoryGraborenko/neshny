@@ -26,6 +26,9 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
     output.reserve(input.size());
 
     struct ReplaceWords {
+
+        bool operator<(const ReplaceWords& other) { return p_Word.size() > other.p_Word.size(); }
+
         QByteArray  p_Word;
         QByteArray  p_Replace;
         int         p_NumArgs;
@@ -39,7 +42,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
         ELSE_REMOVE
     };
 
-    std::list<ReplaceWords> replacements = {};
+    std::list<ReplaceWords> replacements = {}; // needs to always be sorted from longest to shortest
 
     bool multi_line_comment = false;
     bool line_comment = false;
@@ -156,8 +159,11 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     }
                     ignore_until_newline = true;
                     c = def_end - 1;
+                    replacements.sort();
                     continue;
                 }
+                replacements.sort();
+
             // #undef
             } else if ((!remove_code) && (remaining > 6) && (input[c + 1] == 'u') && (input[c + 2] == 'n') && (input[c + 3] == 'd') && (input[c + 4] == 'e') && (input[c + 5] == 'f')) {
 
