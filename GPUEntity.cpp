@@ -21,8 +21,8 @@ bool GPUEntity::Init(int expected_max_count) {
 		m_OutputSSBO = new SSBO(WGPUBufferUsage_Storage, max_size);
 	}
 
-	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage);
-	m_FreeList = new SSBO(WGPUBufferUsage_Storage);
+	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
+	m_FreeList = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
 #endif
 	m_CurrentCount = 0;
 	m_MaxIndex = 0;

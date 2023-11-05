@@ -589,6 +589,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	if(m_Entity) {
 		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
 		result->m_Pipeline->AddBuffer(replace.get() ? *replace.get() : *m_Entity->GetSSBO(), vis_flags, input_read_only);
+		result->m_EntityBufferIndex = insertion_buffers.size();
 		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<i32>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName());
 
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
@@ -711,7 +712,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		if (m_Entity->IsDoubleBuffering()) {
 			end_insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg("%1");
 		} else {
-			end_insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
+			end_insertion += QString("\tif (item.%1 < 0) { return; }").arg(m_Entity->GetIDName());
 		}
 		end_insertion +=
 			"\tvar new_item: %1 = item;\n"
@@ -820,6 +821,11 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		if (entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			variables.push_back({ QString("io%1FreeCount").arg(name), &entity_controls[e].p_FreeCount });
 		}
+
+		if (entity->IsDoubleBuffering()) {
+			m_Pipeline->ReplaceBuffer(*entity->GetOuputSSBO(), *entity->GetSSBO());
+		}
+
 	}
 	
 	auto fill_var_data = [this, &variables] (QString name, std::pair<int, int*>& pair) {
@@ -902,6 +908,10 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		if (!m_Buffer) {
 			throw std::invalid_argument("Render buffer not found");
 		}
+		if (m_Entity && m_Entity->IsDoubleBuffering()) {
+			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_Entity->GetSSBO());
+		}
+
 		rtt->Render(m_Pipeline, run_count);
 	}
 

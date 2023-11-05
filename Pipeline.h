@@ -23,6 +23,7 @@ public:
 		RunType						m_RunType;
 		WebGPUPipeline*				m_Pipeline = nullptr;
 		WebGPUBuffer*				m_UniformBuffer = nullptr;
+		int							m_EntityBufferIndex = -1;
 
 		SSBO*						m_ControlSSBO = nullptr; // not owned, do not delete
 		GPUEntity*					m_Entity = nullptr; // not owned, do not delete
