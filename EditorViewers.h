@@ -5,6 +5,8 @@
 
 namespace Neshny {
 
+using GPUVariable = std::variant<int, unsigned int, float, fVec2, fVec3, fVec4, fMatrix3, fMatrix4>;
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,16 +178,18 @@ public:
 
 	inline static BufferViewer&	Singleton			( void ) { static BufferViewer instance; return instance; }
 
-	static inline void			Checkpoint			( QString name, QString stage, SSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
-	static inline void			Checkpoint			( QString name, QString stage, SSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
-	static inline void			Checkpoint			( QString stage, GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
+	static inline void					Checkpoint			( QString name, QString stage, SSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
+	static inline void					Checkpoint			( QString name, QString stage, SSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
+	static inline void					Checkpoint			( QString stage, GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
 
-	void						RenderImGui			( InterfaceBufferViewer& data );
+	void								RenderImGui			( InterfaceBufferViewer& data );
 
 	static inline std::shared_ptr<SSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
-	static inline void			Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
-	static inline void			ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
+	static inline void					Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
+	static inline void					ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
+
+	static std::optional<GPUVariable>	GetHoveredValue		( void ) { return Singleton().m_Hovered; }
 
 protected:
 
@@ -215,8 +219,9 @@ protected:
 	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }
 
 	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
-	QString		m_HighlightName;
-	int			m_HighlightID = -1;
+	QString										m_HighlightName;
+	int											m_HighlightID = -1;
+	std::optional<GPUVariable>					m_Hovered = std::nullopt;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

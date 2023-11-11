@@ -27,7 +27,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
 
     struct ReplaceWords {
 
-        bool operator<(const ReplaceWords& other) { return p_Word.size() > other.p_Word.size(); }
+        bool operator<(const ReplaceWords& other) const { return p_Word.size() > other.p_Word.size(); }
 
         QByteArray  p_Word;
         QByteArray  p_Replace;

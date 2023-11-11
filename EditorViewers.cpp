@@ -73,7 +73,7 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 		debug_squares.push_back({ fVec4(mid_pos.x, mid_pos.y, radius.x, radius.y), it->p_Col.ToFloat4() });
 	}
 
-	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)&debug_lines[0], (int)debug_lines.size() * sizeof(RenderPoint));
+	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)debug_lines.data(), (int)debug_lines.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
 		// TODO: this throws an error for one frame due to buffers being empty at first
@@ -500,12 +500,12 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 	ImGui::SameLine();
 	ImGui::Text("%i", max_rewind);
 
-
 	const int size_banner = 50;
 	ImGui::SetCursorPos(ImVec2(8, size_banner));
 	ImGui::BeginChild("BufferList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 200));
 
+	m_Hovered = std::nullopt;
 	const int MAX_COLS = 50;
 	for (auto& buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
@@ -548,24 +548,45 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 			if (ImGui::BeginTable("##Table", max_frames + 1, table_flags)) {
 				ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
 
-				std::vector<std::pair<QString, MemberSpec::Type>> struct_types;
+				struct StructType {
+					QString				p_Name;
+					MemberSpec::Type	p_Type;
+					MemberSpec::Type	p_FullType;
+					int					p_FullOffset = 0;
+				};
+
+				std::vector<StructType> struct_types;
+
+				int accum_size = 0;
 				for (const auto& member : buffer.second.p_Members) {
 					if (member.p_Type == MemberSpec::T_VEC2) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT });
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
 					} else if (member.p_Type == MemberSpec::T_VEC3) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT });
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
+						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
 					} else if (member.p_Type == MemberSpec::T_VEC4) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT }); struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_FLOAT });
-
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
+						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
+						struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_FLOAT, member.p_Type, -3 });
 					} else if (member.p_Type == MemberSpec::T_IVEC2) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT });
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
 					} else if (member.p_Type == MemberSpec::T_IVEC3) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT });
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
+						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT, member.p_Type, -2 });
 					} else if (member.p_Type == MemberSpec::T_IVEC4) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT }); struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_INT });
+						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
+						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT, member.p_Type, -2 });
+						struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_INT, member.p_Type, -3 });
 					} else {
-						struct_types.push_back({ member.p_Name, member.p_Type });
+						struct_types.push_back({ member.p_Name, member.p_Type, member.p_Type, 0 });
 					}
+					accum_size += member.p_Size;
 				}
 				int cycles = (int)struct_types.size();
 
@@ -602,13 +623,17 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 						ImGui::TableSetColumnIndex(0);
 
 						MemberSpec::Type cast_type = MemberSpec::T_INT;
+						std::optional<MemberSpec::Type> full_cast_type = std::nullopt;
+						int full_type_offet = 0;
 						int real_count = cycles ? row / cycles : row;
 						int struct_ind = cycles ? row % cycles : 0;
 						if (!struct_types.empty()) {
 							const auto& spec = struct_types[struct_ind];
-							auto info = QString("%1%2").arg(struct_ind ? "" : QString("[%1] ").arg(real_count)).arg(spec.first).toLocal8Bit();
+							auto info = QString("%1%2").arg(struct_ind ? "" : QString("[%1] ").arg(real_count)).arg(spec.p_Name).toLocal8Bit();
 							ImGui::Text(info.data());
-							cast_type = spec.second;
+							cast_type = spec.p_Type;
+							full_cast_type = spec.p_FullType;
+							full_type_offet = spec.p_FullOffset;
 							ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(real_count % 2 ? 220 : 180, 0, 0, 200));
 						} else {
 							ImGui::Text("%i", row);
@@ -642,6 +667,27 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 								ImGui::Text("%i", ((unsigned int*)rawptr)[row]);
 							} else {
 								ImGui::Text("%i", ((int*)rawptr)[row]);
+							}
+							if (ImGui::IsItemHovered(0) && full_cast_type.has_value()) {
+								if (*full_cast_type == MemberSpec::T_INT) {
+									m_Hovered = ((int*)rawptr)[row + full_type_offet];
+								} else if (*full_cast_type == MemberSpec::T_UINT) {
+									m_Hovered = ((unsigned int*)rawptr)[row + full_type_offet];
+								} else if (*full_cast_type == MemberSpec::T_FLOAT) {
+									m_Hovered = ((float*)rawptr)[row + full_type_offet];
+								} else if (*full_cast_type == MemberSpec::T_VEC2) {
+									m_Hovered = fVec2(((float*)rawptr)[row + full_type_offet], ((float*)rawptr)[row + full_type_offet + 1]);
+								} else if (*full_cast_type == MemberSpec::T_VEC3) {
+									m_Hovered = fVec3(((float*)rawptr)[row + full_type_offet], ((float*)rawptr)[row + full_type_offet + 1], ((float*)rawptr)[row + full_type_offet + 2]);
+								} else if (*full_cast_type == MemberSpec::T_VEC4) {
+									m_Hovered = fVec4(((float*)rawptr)[row + full_type_offet], ((float*)rawptr)[row + full_type_offet + 1], ((float*)rawptr)[row + full_type_offet + 2], ((float*)rawptr)[row + full_type_offet + 3]);
+								} else if (*full_cast_type == MemberSpec::T_IVEC2) {
+									m_Hovered = iVec2(((int*)rawptr)[row + full_type_offet], ((int*)rawptr)[row + full_type_offet + 1]);
+								} else if (*full_cast_type == MemberSpec::T_IVEC3) {
+									m_Hovered = iVec3(((int*)rawptr)[row + full_type_offet], ((int*)rawptr)[row + full_type_offet + 1], ((int*)rawptr)[row + full_type_offet + 2]);
+								} else if (*full_cast_type == MemberSpec::T_IVEC4) {
+									m_Hovered = iVec4(((int*)rawptr)[row + full_type_offet], ((int*)rawptr)[row + full_type_offet + 1], ((int*)rawptr)[row + full_type_offet + 2], ((int*)rawptr)[row + full_type_offet + 3]);
+								}
 							}
 						}
 					}

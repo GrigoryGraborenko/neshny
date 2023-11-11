@@ -1196,7 +1196,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,1.0, -1.0
 			,-1.0, 1.0
 		};
-		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_TriangleList, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float), {
 			0, 1, 2,
 			0, 3, 1
 		});
@@ -1213,7 +1213,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,S, S, S
 			,S, -S, S
 		};
-		new_buffer->Init(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_TriangleList, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		new_buffer->Init(WGPUVertexFormat_Float32x3, WGPUPrimitiveTopology_TriangleList, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float), {
 			0, 1, 4
 			,4, 1, 5
 
@@ -1244,7 +1244,7 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			vertices.push_back(sin(ang));
 			ang += seg_rads;
 		}
-		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float));
 	} else if(name == "SquareOutline") {
 
 		std::vector<float> vertices = {
@@ -1254,9 +1254,9 @@ WebGPURenderBuffer* Core::IGetBuffer(QString name) {
 			,-1.0, 1.0
 			,-1.0, -1.0
 		};
-		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float));
+		new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float));
 #pragma msg("why does this fail with indices? combo of WGPUPrimitiveTopology_LineStrip and indices causes issues")
-		//new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)&vertices[0], (int)vertices.size() * sizeof(float), {
+		//new_buffer->Init(WGPUVertexFormat_Float32x2, WGPUPrimitiveTopology_LineStrip, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float), {
 		//	0, 1, 2, 3, 0
 		//});
 	} else if(name == "Cylinder") {
