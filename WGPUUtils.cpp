@@ -90,17 +90,17 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
 	if (size > 0) {
 		EnsureSizeBytes(size);
 	} else {
-		Create(0, nullptr);
+		Create(sizeof(int), nullptr); // zero sized buffers cause too many issues
 	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int size) :
 	m_Flags		( flags )
-	,m_Size		( size )
+	,m_Size		( std::max(size, (int)sizeof(int)) ) // zero sized buffers cause too many issues
 {
 	Init();
-	Create(size, data);
+	Create(m_Size, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +311,7 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 	m_NumIndices = (int)index_data.size();
 	m_VertexBuffer = new WebGPUBuffer(WGPUBufferUsage_Vertex, vertex_data, vertex_data_size);
 	if (!index_data.empty()) {
-		m_IndexBuffer = new WebGPUBuffer(WGPUBufferUsage_Index, (unsigned char*)&index_data[0], sizeof(uint16_t) * m_NumIndices);
+		m_IndexBuffer = new WebGPUBuffer(WGPUBufferUsage_Index, (unsigned char*)index_data.data(), sizeof(uint16_t) * m_NumIndices);
 	}
 }
 

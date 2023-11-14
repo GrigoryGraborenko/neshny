@@ -771,11 +771,11 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 
-	m_FrameTimer.restart();
-
 	// Main loop
 	DebugTiming::MainLoopTimer(); // init to zero
 	m_SyncLock.lock();
+
+	m_FrameTimer.restart();
 
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop([]() {
