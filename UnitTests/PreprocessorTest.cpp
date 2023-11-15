@@ -90,12 +90,41 @@ namespace Test {
             },{
                 "int thing1 = 123;"
                 ,"int thing2 = 456;"
+            }},
+            {{
+                "#include \"include.txt\""
+                ,"int abc = BLEG;"
+                ,"#include \"include.txt\""
+            },{
+                "float val = 1.234;"
+                ,"int abc = 333;"
+                ,""
+            }},
+            {{
+                "#include \"recurse.txt\""
+                ,"int abc = BLEG;"
+            },{
+                "float val = 1.234;"
+                ,"float thing = 99.9;"
+                ,"int abc = 333;"
+            }},
+            {{
+                "#include \"fail.txt\""
+            },{
+                "#error file \"fail.txt\" not found"
             }}
-
         };
 
         auto loader = [] (QString fname, QString& err) -> QByteArray {
-            return "int file = 1;";
+            if (fname == "recurse.txt") {
+                return "#include \"include.txt\"\nfloat thing = 99.9;";
+            } else if (fname == "include.txt") {
+                return "#define BLEG 333\nfloat val = 1.234;";
+            } else if (fname == "normal.txt") {
+                return "int file = 1;";
+            }
+            err = "not found";
+            return QByteArray();
         };
 
         for (int i = 0; i < scenarios.size(); i++) {

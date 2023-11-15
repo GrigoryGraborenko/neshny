@@ -10,8 +10,8 @@ supported:
     #ifdef
     #else
     #endif
-will support:
     #include
+will support:
     #ifndef
     #elifdef - else defined
     #elifndef - else not defined
@@ -43,6 +43,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
     };
 
     std::list<ReplaceWords> replacements = {}; // needs to always be sorted from longest to shortest
+    std::set<QString> includes = {}; // can only include a file once
 
     bool multi_line_comment = false;
     bool line_comment = false;
@@ -236,6 +237,47 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                 ifdefs.pop();
                 ignore_until_newline = true;
                 continue;
+            // #include
+            } else if ((!remove_code) && (remaining > 8) && (input[c + 1] == 'i') && (input[c + 2] == 'n') && (input[c + 3] == 'c') && (input[c + 4] == 'l') && (input[c + 5] == 'u') && (input[c + 6] == 'd') && (input[c + 7] == 'e')) {
+
+                int fname_start = -1;
+                int fname_end = -1;
+                for (int cc = c + 8; cc < input.size(); cc++) {
+                    char curr = input[cc];
+                    bool is_quote = curr == '"';
+                    bool endline = (curr == '\n') || (curr == '\r');
+                    if (endline) {
+                        break;
+                    } else if ((fname_start >= 0) && (fname_end < 0) && is_quote) {
+                        fname_end = cc;
+                        break;
+                    } else if ((fname_start < 0) && is_quote) {
+                        fname_start = cc + 1;
+                    }
+                }
+                ignore_until_newline = true;
+                if (fname_end >= 0) {
+                    auto fname = input.mid(fname_start, fname_end - fname_start);
+
+                    if (includes.find(fname) != includes.end()) {
+                        continue;
+                    }
+                    includes.insert(fname);
+
+                    QString error;
+                    auto included_data = loader(fname, error);
+                    if (!included_data.isNull()) {
+                        // modifies local copy of input so preprocessor can process args as well
+                        input.replace(c, fname_end + 1, included_data);
+                        ignore_until_newline = false;
+                        c--;
+                        continue;
+                    }
+                    output += QString("#error file \"%1\" not found").arg(fname).toLocal8Bit();
+                    ignore_until_newline = false;
+                    c--;
+                    continue;
+                }
             }
 
         } else if ((!remove_code) && (!multi_line_comment) && (!line_comment)) {
