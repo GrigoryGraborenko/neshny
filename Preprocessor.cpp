@@ -12,6 +12,7 @@ supported:
     #endif
     #include
 will support:
+    #define A (without value)
     #ifndef
     #elifdef - else defined
     #elifndef - else not defined
@@ -268,7 +269,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     auto included_data = loader(fname, error);
                     if (!included_data.isNull()) {
                         // modifies local copy of input so preprocessor can process args as well
-                        input.replace(c, fname_end + 1, included_data);
+                        input.replace(c, fname_end - c + 1, included_data);
                         ignore_until_newline = false;
                         c--;
                         continue;

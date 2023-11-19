@@ -333,6 +333,25 @@ namespace Test {
 		});
 #elif defined(NESHNY_WEBGPU)
 
+		Neshny::SSBO rando_ssbo(WGPUBufferUsage_Storage, num_randoms * 4);
+
+		////////////////////////////////
+		Neshny::WebGPUPipeline pipe;
+		pipe
+			.AddBuffer(rando_ssbo, WGPUShaderStage_Compute, false)
+			.FinalizeCompute("UnitTest", "#define TEST_RANDOM 1\n");
+
+		pipe.Compute(num_randoms, Neshny::iVec3(256, 1, 1));
+
+		std::vector<float> numbers;
+		rando_ssbo.GetValues(numbers, num_randoms);
+
+		int ind = 0;
+		CheckRandomNumbers([&numbers, &ind]() -> double {
+			double res = numbers[ind];
+			ind = (ind + 1) % numbers.size();
+			return res;
+		});
 #endif
 
 	}

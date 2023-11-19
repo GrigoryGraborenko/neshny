@@ -453,7 +453,7 @@ namespace Test {
 		pipe.Compute(first_pass, Neshny::iVec3(256, 1, 1));
 
 		int atomic_result_first = atomic_buffer.GetSingleValue<int>(0);
-		Expect("Atomic value mismatch", atomic_result_first == first_pass);
+		Expect("Atomic value mismatch after first pass", atomic_result_first == first_pass);
 
 		std::vector<float> out_values;
 		buffer.GetValues(out_values, num);
@@ -471,7 +471,7 @@ namespace Test {
 		pipe.Compute(second_pass, Neshny::iVec3(256, 1, 1));
 
 		int atomic_result_second = atomic_buffer.GetSingleValue<int>(0);
-		Expect("Atomic value mismatch", atomic_result_second == (first_pass + second_pass));
+		Expect("Atomic value mismatch after second pass", atomic_result_second == (first_pass + second_pass));
 
 		out_values.clear();
 		buffer.GetValues(out_values, num);

@@ -570,18 +570,13 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 	}
 
-	/*
-	const bool rand_gen = true; // add by default, why not
-	if (rand_gen) {
-
-		int control_ind = (int)var_vals.size();
-		int seed = rand();
-		var_vals.push_back({ seed, nullptr });
-
-		insertion += "#include \"Random.glsl\"\n";
-		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, atomicAdd(b_Control.i[%1], 1)); }").arg(control_ind);
+	result->m_UsingRandom = !is_render;
+	if (result->m_UsingRandom) {
+		m_Vars.push_back({ "ioRandSeed" });
+		insertion += "#include \"Random.wgsl\"\n";
+		insertion += QString("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandom(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
+		insertion += QString("fn Random() -> f32 { return GetRandom(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
 	}
-	*/
 
 	if(m_Entity) {
 		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
@@ -799,6 +794,12 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 			variables.push_back({ "ioEntityFreeCount", &entity_free_count });
 		}
 		m_Entity->GetFreeListSSBO()->EnsureSizeBytes((m_Entity->GetCount() + m_Entity->GetFreeCount() + 16) * sizeof(int), false);
+	}
+
+	int rand_seed_val = 0;
+	if (m_UsingRandom) {
+		rand_seed_val = rand();
+		variables.push_back({ "ioRandSeed", &rand_seed_val });
 	}
 
 	struct EntityControl {

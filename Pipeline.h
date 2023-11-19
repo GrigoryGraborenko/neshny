@@ -30,6 +30,7 @@ public:
 		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
 		QStringList					m_VarNames;
 		std::vector<GPUEntity*>		m_Entities;
+		bool						m_UsingRandom;
 
 		struct DataVectorInfo {
 			QString			m_Name;
