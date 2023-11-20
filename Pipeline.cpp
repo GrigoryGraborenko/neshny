@@ -508,20 +508,11 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
-	QStringList insertion_buffers;
-
-	std::shared_ptr<SSBO> replace = nullptr;
-	//if (is_render && m_Entity) {
-	//	int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
-	//	if (time_slider > 0) {
-	//		replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
-	//	}
-	//}
-
 	for (auto str : m_ShaderDefines) {
 		insertion += QString("#define %1").arg(str);
 	}
 
+	QStringList insertion_buffers;
 	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
 	if (result->m_ControlSSBO) {
 		if (is_render) {
@@ -580,7 +571,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	if(m_Entity) {
 		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
-		result->m_Pipeline->AddBuffer(replace.get() ? *replace.get() : *m_Entity->GetSSBO(), vis_flags, input_read_only);
+		result->m_Pipeline->AddBuffer(*m_Entity->GetSSBO(), vis_flags, input_read_only);
 		result->m_EntityBufferIndex = insertion_buffers.size();
 		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<i32>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName());
 
@@ -802,6 +793,14 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		variables.push_back({ "ioRandSeed", &rand_seed_val });
 	}
 
+	m_TemporaryFrame = nullptr;
+	if (!compute && m_Entity) {
+		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
+		if (time_slider > 0) {
+			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, iterations);
+		}
+	}
+
 	struct EntityControl {
 		int		p_MaxIndex = 0;
 		int		p_NextId = 0;
@@ -824,7 +823,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		if (entity->IsDoubleBuffering()) {
 			m_Pipeline->ReplaceBuffer(*entity->GetOuputSSBO(), *entity->GetSSBO());
 		}
-
 	}
 	
 	auto fill_var_data = [this, &variables] (QString name, std::pair<int, int*>& pair) {
@@ -889,7 +887,9 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		if (m_Entity && m_Entity->IsDoubleBuffering()) {
 			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_Entity->GetSSBO());
 		}
-
+		if (m_TemporaryFrame.get()) {
+			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_TemporaryFrame.get());
+		}
 		rtt->Render(m_Pipeline, iterations);
 	}
 

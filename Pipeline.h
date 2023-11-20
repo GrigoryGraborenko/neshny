@@ -31,6 +31,7 @@ public:
 		QStringList					m_VarNames;
 		std::vector<GPUEntity*>		m_Entities;
 		bool						m_UsingRandom;
+		std::shared_ptr<SSBO>		m_TemporaryFrame;
 
 		struct DataVectorInfo {
 			QString			m_Name;
