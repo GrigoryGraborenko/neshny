@@ -6,17 +6,17 @@ namespace Neshny {
 supported:
     #define A B
     #define A(x) (x * x)
+    #define A (without value)
     #undef
     #ifdef
     #else
     #endif
     #include
 will support:
-    #define A (without value)
     #ifndef
     #elifdef - else defined
     #elifndef - else not defined
-not supported:
+will not support:
     #if
 */
 
@@ -85,7 +85,9 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     bool newline = curr == '\n';
                     bool whitespace = (curr == ' ') || newline || (curr == '\r');
                     if (newline) {
-                        if ((def_end < 0) && (def_start >= 0)) {
+                        if ((name_end < 0) && (name_start >= 0)) {
+                            name_end = cc;
+                        } else if ((def_end < 0) && (def_start >= 0)) {
                             def_end = cc;
                         }
                         break;
@@ -163,9 +165,18 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     c = def_end - 1;
                     replacements.sort();
                     continue;
+                } else if (name_end >= 0) {
+                    replacements.push_back({
+                        input.mid(name_start, name_end - name_start),
+                        QByteArray(),
+                        0
+                    });
+                    ignore_until_newline = true;
+                    c = name_end - 1;
+                    replacements.sort();
+                    continue;
                 }
                 replacements.sort();
-
             // #undef
             } else if ((!remove_code) && (remaining > 6) && (input[c + 1] == 'u') && (input[c + 2] == 'n') && (input[c + 3] == 'd') && (input[c + 4] == 'e') && (input[c + 5] == 'f')) {
 
@@ -274,7 +285,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                         c--;
                         continue;
                     }
-                    output += QString("#error file \"%1\" not found").arg(fname).toLocal8Bit();
+                    output += QString("#error file \"%1\" not found").arg(QString(fname)).toLocal8Bit();
                     ignore_until_newline = false;
                     c--;
                     continue;
@@ -340,7 +351,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                         // modifies local copy of input so preprocessor can process args as well
                         input.replace(c, arg_end - c + 1, replacement);
                         c--;
-                    } else {
+                    } else if (!replace.p_Replace.isNull()) {
                         output += replace.p_Replace;
                         c += replace.p_Word.size() - 1;
                     }

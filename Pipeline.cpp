@@ -611,18 +611,22 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 		insertion += "}";
 	}
-
-	/*
+	
 	for (int b = 0; b < m_SSBOs.size(); b++) {
 		int buffer_index = insertion_buffers.size();
 		auto& ssbo = m_SSBOs[b];
-		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name).arg(ssbo.p_ReadOnly ? "readonly " : "");
+
+		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> %3: array<%4>;")
+			.arg(insertion_buffers.size())
+			.arg(ssbo.p_ReadOnly ? "read" : "read_write")
+			.arg(ssbo.p_Name)
+			.arg(MemberSpec::GetGPUType(ssbo.p_Type));
+		result->m_Pipeline->AddBuffer(ssbo.p_Buffer, vis_flags, ssbo.p_ReadOnly);
 	}
-	for (const auto& tex : m_Textures) {
-		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
-	}
-	*/
+	//for (const auto& tex : m_Textures) {
+	//	insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
+	//}
+
 	
 	for (int e = 0; e < m_Entities.size(); e++) {
 		GPUEntity& entity = m_Entities[e].p_Entity;

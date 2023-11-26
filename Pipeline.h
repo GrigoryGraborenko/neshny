@@ -77,12 +77,9 @@ public:
 #endif
 
 	struct AddedSSBO {
-		SSBO& p_Buffer;
+		SSBO&					p_Buffer;
 		QString					p_Name;
 		MemberSpec::Type		p_Type;
-#if defined(NESHNY_WEBGPU)
-		WGPUShaderStageFlags	p_Flags;
-#endif
 		bool					p_ReadOnly = true;
 	};
 
@@ -121,7 +118,7 @@ public:
 
 #elif defined(NESHNY_WEBGPU)
 	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name }); return *this; }
-	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, WGPUShaderStageFlags flags, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, flags, read_only }); return *this; }
+	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, read_only }); return *this; }
 	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 

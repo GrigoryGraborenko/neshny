@@ -221,6 +221,16 @@ namespace Test {
 			expected.push_back(thing);
 		}
 
+		std::vector<int> buffer_values;
+		for (int i = 0; i < initial_count; i++) {
+			buffer_values.push_back(i * 3 + 123);
+		}
+#if defined(NESHNY_GL)
+		Neshny::GLSSBO test_buffer(buffer_values.size() * sizeof(int), (unsigned char*)buffer_values.data());
+#elif defined(NESHNY_WEBGPU)
+		Neshny::WebGPUBuffer test_buffer(WGPUBufferUsage_Storage, (unsigned char*)buffer_values.data(), buffer_values.size() * sizeof(int));
+#endif
+
 		const float in_value = 123.4f;
 		const int div_val = 7;
 
@@ -243,6 +253,7 @@ namespace Test {
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 		.AddDataVector("DataItem", data_items)
 		.AddCreatableEntity(other_entities)
+		.AddSSBO("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT)
 		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
@@ -252,6 +263,7 @@ namespace Test {
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddCreatableEntity(other_entities)
+			.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT)
 			.Prepare<Uniform>();
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
@@ -271,6 +283,8 @@ namespace Test {
 				});
 			}
 			GPUThing::Add(item, in_value);
+			item.p_IntTwoDim.x += buffer_values[parent_index];
+
 			parent_index++;
 		}
 		std::vector<GPUThing> gpu_values;

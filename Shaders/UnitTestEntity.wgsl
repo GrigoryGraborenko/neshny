@@ -25,6 +25,7 @@ fn ThingMain(item_index: i32, thing: Thing, new_thing: ptr<function, Thing>) -> 
             other.FourDim = vec4f(thing.TwoDim, thing.FourDim.zw);
             CreateOther(other);
         }
+        (*new_thing).IntTwoDim += vec2i(b_TestBuffer[item_index], 0);
 #endif
     } else if(Uniform.Mode == 1) {
         let data: DataItem = GetDataItem(thing.Int % int_value);

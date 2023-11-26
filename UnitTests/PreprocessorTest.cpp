@@ -55,7 +55,7 @@ namespace Test {
                 ,"b_OutputThing[(base) + (3)] = (bitcast<i32>(item.TwoDim.x)); b_OutputThing[(base) + (4)] = (bitcast<i32>(item.TwoDim.y));"
             }}
             ,{{
-                "#define MACRO 7"
+                "#define MACRO"
                 ,"#ifdef MACRO"
                 ,"int thing = 123;"
                 ,"#endif"

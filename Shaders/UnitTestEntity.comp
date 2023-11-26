@@ -27,6 +27,7 @@ bool ThingMain(int item_index, Thing thing, inout Thing new_thing) {
             other.FourDim.zw = thing.FourDim.zw;
             CreateOther(other);
         }
+        new_thing.IntTwoDim.x += b_TestBuffer.i[item_index];
 #endif
 
     } else if(uMode == 1) {
