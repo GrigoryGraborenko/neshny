@@ -723,6 +723,9 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 		search = data.p_Search.c_str();
 	}
 
+	ImGui::SameLine();
+	ImGui::Checkbox("Show Preprocessed", &data.p_ShowPreprocessed);
+
 	const int size_banner = 50;
 	ImGui::SetCursorPos(ImVec2(8, size_banner));
 	ImGui::BeginChild("ShaderList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
@@ -747,7 +750,7 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 #if defined(NESHNY_GL)
 InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search) {
 #elif defined(NESHNY_WEBGPU)
-InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, QString name, WebGPUShader* shader, bool is_compute, QString search) {
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, QString search) {
 #endif
 
 	const int context_lines = 4;
@@ -836,7 +839,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 		}
 #elif defined(NESHNY_WEBGPU)
 
-		QList<QByteArray> lines = shader->GetSource().split('\n');
+		QList<QByteArray> lines = (data.p_ShowPreprocessed ? shader->GetSource() : shader->GetRawSource()).split('\n');
 		const auto& errors = shader->GetErrors();
 		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
 		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);
@@ -846,22 +849,24 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer & data, Q
 		if (search.isNull()) {
 			for (int line = 0; line < lines.size(); line++) {
 				bool err_found = false;
-				for (const auto& err : errors) {
-					if (err.m_LineNum == line) {
-						err_found = true;
-						ImGui::TextColored(error_col, QString("%1").arg(line).toLocal8Bit().data());
-						ImGui::SameLine();
-						ImGui::SetCursorPosX(number_width);
+				if (data.p_ShowPreprocessed) {
+					for (const auto& err : errors) {
+						if (err.m_LineNum == line) {
+							err_found = true;
+							ImGui::TextColored(error_col, QString("%1").arg(line).toLocal8Bit().data());
+							ImGui::SameLine();
+							ImGui::SetCursorPosX(number_width);
 
-						auto before_error = lines[line].left(err.m_LinePos + 1);
-						auto after_error = lines[line].right(lines[line].size() - err.m_LinePos - 1);
+							auto before_error = lines[line].left(err.m_LinePos + 1);
+							auto after_error = lines[line].right(lines[line].size() - err.m_LinePos - 1);
 
-						ImGui::TextUnformatted(before_error.data());
-						ImGui::SameLine(0.0, 0.0);
-						ImGui::PushStyleColor(ImGuiCol_Text, error_col);
-						ImGui::TextUnformatted(after_error.data());
-						ImGui::PopStyleColor();
-						break;
+							ImGui::TextUnformatted(before_error.data());
+							ImGui::SameLine(0.0, 0.0);
+							ImGui::PushStyleColor(ImGuiCol_Text, error_col);
+							ImGui::TextUnformatted(after_error.data());
+							ImGui::PopStyleColor();
+							break;
+						}
 					}
 				}
 				if (!err_found) {

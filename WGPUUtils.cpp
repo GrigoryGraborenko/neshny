@@ -90,7 +90,8 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
 	if (size > 0) {
 		EnsureSizeBytes(size);
 	} else {
-		Create(sizeof(int), nullptr); // zero sized buffers cause too many issues
+		m_Size = std::max(size, (int)sizeof(int));
+		Create(m_Size, nullptr); // zero sized buffers cause too many issues
 	}
 }
 
@@ -169,7 +170,7 @@ void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::ClearBuffer() {
 
-	if (m_Size <= 0) {
+	if ((m_Size <= 0) || (m_Buffer == nullptr)) {
 		return;
 	}
 

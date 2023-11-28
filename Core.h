@@ -197,6 +197,7 @@ struct InterfaceBufferViewer {
 
 struct InterfaceShaderViewer {
 	bool			p_Visible = false;
+	bool			p_ShowPreprocessed = true;
 	std::string		p_Search = "";
 	std::vector<InterfaceCollapsible> p_Items;
 };
@@ -266,6 +267,7 @@ namespace meta {
 	template<> inline auto registerMembers<Neshny::InterfaceShaderViewer>() {
 		return members(
 			member("Visible", &Neshny::InterfaceShaderViewer::p_Visible)
+			,member("ShowPreprocessed", &Neshny::InterfaceShaderViewer::p_ShowPreprocessed)
 			,member("Search", &Neshny::InterfaceShaderViewer::p_Search)
 			,member("Items", &Neshny::InterfaceShaderViewer::p_Items)
 		);

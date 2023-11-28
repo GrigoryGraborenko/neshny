@@ -113,6 +113,23 @@ namespace Test {
             },{
                 "#error file \"fail.txt\" not found"
             }}
+            ,{{
+                "#define THING"
+                ,""
+                ,"#ifdef HELLO"
+                ,"int i = 1;"
+                ,"#elifdef THING1"
+                ,"int i = 2;"
+                ,"#elifdef THING"
+                ,"int i = 3;"
+                ,"#elifdef BLEG"
+                ,"int i = 4;"
+                ,"#endif"
+            },{
+                ""
+                ,"int i = 3;"
+                ,""
+            }}
         };
 
         auto loader = [] (QString fname, QString& err) -> QByteArray {
