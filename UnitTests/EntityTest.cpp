@@ -226,7 +226,7 @@ namespace Test {
 			buffer_values.push_back(i * 3 + 123);
 		}
 #if defined(NESHNY_GL)
-		Neshny::GLSSBO test_buffer(buffer_values.size() * sizeof(int), (unsigned char*)buffer_values.data());
+		Neshny::GLSSBO test_buffer((int)buffer_values.size() * sizeof(int), (unsigned char*)buffer_values.data());
 #elif defined(NESHNY_WEBGPU)
 		Neshny::WebGPUBuffer test_buffer(WGPUBufferUsage_Storage, (unsigned char*)buffer_values.data(), buffer_values.size() * sizeof(int));
 #endif
@@ -253,17 +253,17 @@ namespace Test {
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 		.AddDataVector("DataItem", data_items)
 		.AddCreatableEntity(other_entities)
-		.AddSSBO("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT)
+		.AddSSBO("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER abc" })
+		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddCreatableEntity(other_entities)
-			.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT)
+			.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 			.Prepare<Uniform>();
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
@@ -437,6 +437,81 @@ namespace Test {
 	void UnitTest_GPUEntityMoving(void) {
 		GPUEntityTest(Neshny::GPUEntity::DeleteMode::MOVING_COMPACT);
     }
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCache(void) {
+
+		const int prey_count = 50;
+		const int hunter_count = 20;
+
+		const float map_radius = 50;
+		const int grids = 10;
+		const float find_radius = 10;
+
+		constexpr float find_radius_sqr = find_radius * find_radius;
+
+		RandomSeed(0);
+
+		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
+		prey_entities.Init(1000);
+
+		Neshny::GPUEntity hunter_entities("Hunter", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUOther::p_Id, "Id");
+		hunter_entities.Init(1000);
+
+		Neshny::Grid2DCache cache(prey_entities, "TwoDim");
+
+		std::vector<GPUThing> expected_prey;
+		for (int i = 0; i < prey_count; i++) {
+			GPUThing prey = GPUThing::Init(i);
+			prey.p_Float = Random(0.0, 10);
+			prey.p_TwoDim = Neshny::fVec2(Random(-map_radius, map_radius), Random(-map_radius, map_radius));
+			prey_entities.AddInstance(&prey);
+			expected_prey.push_back(prey);
+		}
+
+		std::vector<GPUOther> expected_hunters;
+		for (int i = 0; i < hunter_count; i++) {
+			float x = Random(-map_radius, map_radius);
+			float y = Random(-map_radius, map_radius);
+			GPUOther hunter{
+				-1,
+				0,
+				0,
+				Neshny::fVec4(x, y, 0.0, 0.0)
+			};
+			hunter_entities.AddInstance(&hunter);
+			expected_hunters.push_back(hunter);
+		}
+
+		for (auto& hunter : expected_hunters) {
+			Neshny::fVec2 hunter_pos(hunter.p_FourDim.x, hunter.p_FourDim.y);
+			for (const auto& prey : expected_prey) {
+				float dist_sqr = (prey.p_TwoDim - hunter_pos).LengthSquared();
+				if (dist_sqr < find_radius_sqr) {
+					hunter.p_Float += prey.p_Float;
+					hunter.p_ParentIndex++;
+				}
+			}
+		}
+
+		// run the generation algorithm
+		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
+
+#if defined(NESHNY_GL)
+		// TODO: test here as well
+#elif defined(NESHNY_WEBGPU)
+		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, { "TEST_CACHE" })
+			.AddEntity(prey_entities, &cache)
+			.Prepare<Uniform>();
+		Uniform uniform{ 0, find_radius };
+		executable->Run(uniform);
+#endif
+
+		std::vector<GPUOther> gpu_values;
+		hunter_entities.GetSSBO()->GetValues(gpu_values, hunter_count);
+
+		CompareEntities<GPUOther>("Cache lookup", expected_hunters, gpu_values);
+	}
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_Compute(void) {

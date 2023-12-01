@@ -130,6 +130,24 @@ namespace Test {
                 ,"int i = 3;"
                 ,""
             }}
+                // TODO: fix me
+            //,{{
+            //    "#define THING"
+            //    ,"#ifdef HELLO"
+            //    ,"int i = 1;"
+            //    ,"#else"
+            //    ,"int i = 2;"
+            //    ,"#ifdef GLORB"
+            //    ,"int i = 3;"
+            //    ,"#endif"
+            //    ,"int i = 4;"
+            //    ,"#endif"
+            //    ,"int i = 5;"
+            //},{
+            //    ""
+            //    ,"int i = 2;"
+            //    ,"int i = 5;"
+            //}}
         };
 
         auto loader = [] (QString fname, QString& err) -> QByteArray {

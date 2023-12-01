@@ -18,6 +18,14 @@ public:
 		BASIC_COMPUTE
 	};
 
+	enum class BufferAccess {
+		READ_ONLY
+		,READ_WRITE
+#if defined(NESHNY_WEBGPU)
+		,READ_WRITE_ATOMIC
+#endif
+	};
+
 #if defined(NESHNY_WEBGPU)
 	class Prepared {
 		RunType						m_RunType;
@@ -28,6 +36,7 @@ public:
 		SSBO*						m_ControlSSBO = nullptr; // not owned, do not delete
 		GPUEntity*					m_Entity = nullptr; // not owned, do not delete
 		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
+		class BaseCache*			m_Cache = nullptr; // not owned, do not delete
 		QStringList					m_VarNames;
 		std::vector<GPUEntity*>		m_Entities;
 		bool						m_UsingRandom;
@@ -80,7 +89,7 @@ public:
 		SSBO&					p_Buffer;
 		QString					p_Name;
 		MemberSpec::Type		p_Type;
-		bool					p_ReadOnly = true;
+		BufferAccess			p_Access;
 	};
 
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines = {}, class BaseCache* cache = nullptr) {
@@ -106,7 +115,7 @@ public:
 	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
 #if defined(NESHNY_GL)
 	PipelineStage&				AddInputOutputVar	( QString name, int* in_out ) { m_Vars.push_back({ name, in_out }); return *this; }
-	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, read_only }); return *this; }
+	PipelineStage&				AddSSBO				( QString name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, name, array_type, access }); return *this; }
 	PipelineStage&				AddTexture			( QString name, GLuint texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	void						Run					( std::optional<std::function<void(Shader* program)>> pre_execute = std::nullopt );
 
@@ -118,7 +127,7 @@ public:
 
 #elif defined(NESHNY_WEBGPU)
 	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name }); return *this; }
-	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, MemberSpec::Type array_type, bool read_only = true ) { m_SSBOs.push_back({ ssbo, name, array_type, read_only }); return *this; }
+	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, name, array_type, access }); return *this; }
 	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 
@@ -225,6 +234,7 @@ protected:
 	RunType						m_RunType;
 	GPUEntity*					m_Entity = nullptr;
 	RenderableBuffer*			m_Buffer = nullptr;
+	BaseCache*					m_Cache = nullptr;
 	QString						m_ShaderName;
 	std::vector<QString>		m_ShaderDefines;
 	bool						m_ReplaceMain = false;
@@ -324,6 +334,33 @@ private:
 	iVec2						m_GridSize;
 	Vec2						m_GridMin;
 	Vec2						m_GridMax;
+
+#if defined(NESHNY_WEBGPU)
+	std::unique_ptr<PipelineStage::Prepared> m_CacheIndex;
+	std::unique_ptr<PipelineStage::Prepared> m_CacheAlloc;
+	std::unique_ptr<PipelineStage::Prepared> m_CacheFill;
+public:
+	struct Uniform {
+		iVec2	p_GridSize;
+		fVec2	p_GridMin;
+		fVec2	p_GridMax;
+	};
+#endif
 };
 
 } // namespace Neshny
+
+#if defined(NESHNY_WEBGPU)
+
+namespace meta {
+
+	template<> inline auto registerMembers<Neshny::Grid2DCache::Uniform>() {
+		return members(
+			member("GridSize", &Neshny::Grid2DCache::Uniform::p_GridSize),
+			member("GridMin", &Neshny::Grid2DCache::Uniform::p_GridMin),
+			member("GridMax", &Neshny::Grid2DCache::Uniform::p_GridMax)
+		);
+	}
+}
+
+#endif

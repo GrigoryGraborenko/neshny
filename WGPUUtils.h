@@ -25,7 +25,7 @@ public:
 	bool											Init					( const std::function<QByteArray(QString, QString&)>& loader, QString filename, QByteArray start_insert, QByteArray end_insert );
 
 	inline WGPUShaderModule							Get						( void ) const { return m_Shader; }
-	inline bool										IsValid					( void ) const { return m_Shader != nullptr; }
+	inline bool										IsValid					( void ) const { return (m_Shader != nullptr) && m_Errors.empty(); }
 
 	inline const std::vector<Error>&				GetErrors				( void ) const { return m_Errors; }
 	inline QByteArray								GetSource				( void ) const { return m_Source; }
