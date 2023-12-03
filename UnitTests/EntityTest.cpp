@@ -253,7 +253,7 @@ namespace Test {
 		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 		.AddDataVector("DataItem", data_items)
 		.AddCreatableEntity(other_entities)
-		.AddSSBO("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
+		.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
@@ -448,7 +448,7 @@ namespace Test {
 		const int grids = 10;
 		const float find_radius = 10;
 
-		constexpr float find_radius_sqr = find_radius * find_radius;
+		const float find_radius_sqr = find_radius * find_radius;
 
 		RandomSeed(0);
 

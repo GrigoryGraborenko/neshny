@@ -576,7 +576,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 		buffer_layout.nextInChain = nullptr;
 		buffer_layout.hasDynamicOffset = false;
 		buffer_layout.minBindingSize = 0;
-		if (buffer.p_Buffer->GetFlags() & WGPUBufferUsage_Uniform) {
+		if (buffer.p_Buffer->GetUsageFlags() & WGPUBufferUsage_Uniform) {
 			buffer_layout.type = WGPUBufferBindingType_Uniform;
 		} else if(buffer.p_ReadOnly) {
 			buffer_layout.type = WGPUBufferBindingType_ReadOnlyStorage;

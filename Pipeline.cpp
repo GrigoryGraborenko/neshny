@@ -16,12 +16,11 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 	,m_ControlSSBO		( control_ssbo )
 {
 	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
+		cache->Bind(*this);
 	}
 #if defined(NESHNY_WEBGPU)
 	const auto& limits = Core::Singleton().GetLimits();
 	m_LocalSize = iVec3(limits.maxComputeInvocationsPerWorkgroup, 1, 1);
-//#elif defined(NESHNY_GL)
 #endif
 }
 
@@ -29,7 +28,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, false });
 	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
+		cache->Bind(*this);
 	}
 	return *this;
 }
@@ -38,7 +37,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ entity, true });
 	if (cache) {
-		m_ExtraCode += cache->Bind(m_SSBOs);
+		cache->Bind(*this);
 	}
 	return *this;
 }
@@ -542,7 +541,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
 	}
 
-	if (m_Entity) {
+	if (!is_render) {
 		m_Vars.push_back({ "ioCount" });
 	}
 	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
@@ -615,9 +614,8 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		insertion += "}";
 	}
 	
-	for (int b = 0; b < m_SSBOs.size(); b++) {
+	for (const auto& ssbo: m_SSBOs) {
 		int buffer_index = insertion_buffers.size();
-		auto& ssbo = m_SSBOs[b];
 		bool read_only = ssbo.p_Access == BufferAccess::READ_ONLY;
 		auto type_str = MemberSpec::GetGPUType(ssbo.p_Type);
 		if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
@@ -630,13 +628,49 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			.arg(type_str);
 		result->m_Pipeline->AddBuffer(ssbo.p_Buffer, vis_flags, read_only);
 	}
+
+	for (const auto& ssbo_spec : m_StructBuffers) {
+
+		QStringList members;
+		for (const auto& member : ssbo_spec.p_Members) {
+			members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+		}
+		immediate_insertion += QString("struct %1 {").arg(ssbo_spec.p_StructName);
+		immediate_insertion += members.join(",\n");
+		immediate_insertion += "};";
+
+		int buffer_index = insertion_buffers.size();
+		bool read_only = ssbo_spec.p_Access == BufferAccess::READ_ONLY;
+		auto type_str = ssbo_spec.p_StructName;
+		if (ssbo_spec.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
+			type_str = QString("atomic<%1>").arg(type_str);
+		}
+		if (ssbo_spec.p_IsArray) {
+			type_str = QString("array<%1>").arg(type_str);
+		}
+		if (ssbo_spec.p_Buffer.GetUsageFlags() & WGPUBufferUsage_Uniform) {
+			read_only = true;
+			insertion_buffers += QString("@group(0) @binding(%1) var<uniform> %2: %3;")
+				.arg(insertion_buffers.size())
+				.arg(ssbo_spec.p_Name)
+				.arg(type_str);
+		} else {
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> %3: %4;")
+				.arg(insertion_buffers.size())
+				.arg(read_only ? "read" : "read_write")
+				.arg(ssbo_spec.p_Name)
+				.arg(type_str);
+		}
+
+		result->m_Pipeline->AddBuffer(ssbo_spec.p_Buffer, vis_flags, read_only);
+	}
+
 	//for (const auto& tex : m_Textures) {
 	//	insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
 	//}
 
-	
-	for (int e = 0; e < m_Entities.size(); e++) {
-		GPUEntity& entity = m_Entities[e].p_Entity;
+	for (auto& entity_spec : m_Entities) {
+		GPUEntity& entity = entity_spec.p_Entity;
 		QString name = entity.GetName();
 		insertion += QString("//////////////// Entity %1").arg(name);
 
@@ -648,7 +682,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		insertion += entity.GetGPUInsertion();
 		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
 
-		if (m_Entities[e].p_Creatable) {
+		if (entity_spec.p_Creatable) {
 
 			QString next_id = QString("io%1NextId").arg(name);
 			QString max_index = QString("io%1MaxIndex").arg(name);
@@ -785,6 +819,8 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	if (m_Entity) {
 		iterations = m_Entity->GetMaxIndex();
+	}
+	if (compute) {
 		variables.push_back({ "ioCount", &iterations });
 	}
 
@@ -1057,6 +1093,7 @@ Grid2DCache::Grid2DCache(GPUEntity& entity, QString pos_name) :
 #if defined(NESHNY_WEBGPU)
 	,m_GridIndices	( WGPUBufferUsage_Storage )
 	,m_GridItems	( WGPUBufferUsage_Storage )
+	,m_Uniform		( WGPUBufferUsage_Uniform, sizeof(Grid2DCacheUniform) )
 #endif
 {
 }
@@ -1086,7 +1123,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		,{ "PHASE_INDEX" }
 	)
 	.AddCode(main_func)
-	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
 		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
@@ -1101,7 +1138,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		,{ "PHASE_ALLOCATE" }
 	)
 	.AddCode(main_func)
-	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
 	.AddInputOutputVar("AllocationCount", &alloc_count)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
@@ -1118,8 +1155,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		,{ "PHASE_FILL" }
 	)
 	.AddCode(main_func)
-	.AddSSBO("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
-	.AddSSBO("b_Cache", m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Cache", m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
 		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
@@ -1137,23 +1174,23 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		m_CacheIndex = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_INDEX" })
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddCode(main_func)
-			.Prepare<Uniform>();
+			.Prepare<Grid2DCacheUniform>();
 
 		m_CacheAlloc = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_ALLOCATE" })
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddCode(main_func)
 			.AddInputOutputVar("AllocationCount")
-			.Prepare<Uniform>();
+			.Prepare<Grid2DCacheUniform>();
 
 		m_CacheFill = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_FILL" })
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
 			.AddCode(main_func)
-			.Prepare<Uniform>();
+			.Prepare<Grid2DCacheUniform>();
 	}
 
 	int alloc_count = 0;
-	Uniform uniform{
+	Grid2DCacheUniform uniform{
 		grid_size
 		,grid_min
 		,grid_max
@@ -1162,20 +1199,24 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_CacheIndex->Run(uniform);
 	m_CacheAlloc->Run(uniform, {{ "AllocationCount", &alloc_count }});
 	m_CacheFill->Run(uniform);
-#endif
 
+	// gets used by the entity run that uses the buffer
+	m_Uniform.SetSingleValue(0, uniform);
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
+void Grid2DCache::Bind(PipelineStage& target_stage) {
 
 	auto name = m_Entity.GetName();
-	ssbos.push_back({ m_GridIndices, QString("b_%1GridIndices").arg(name), MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY });
-	ssbos.push_back({ m_GridItems, QString("b_%1GridItems").arg(name), MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY });
+
+	target_stage.AddBuffer(QString("b_%1GridIndices").arg(name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(QString("b_%1GridItems").arg(name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
 
 #if defined(NESHNY_GL)
 
-	return QString(
+	target_stage.AddCode(QString(
 			"ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size); // forward declare \n"
 			"ivec2 Get%1IndexRangeAt(ivec2 grid_pos) {\n"
 			"\tint index = (grid_pos.x + grid_pos.y * %6) * 3;\n"
@@ -1197,14 +1238,14 @@ QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
 		.arg(m_GridMax.y, 0, 'f', 6)
 		.arg(m_GridSize.x)
 		.arg(m_GridSize.y)
-	;
+	);
 #else
 
-	// TODO: need to remove hardcoding, otherwise it cannot be dynamic!
-	return QString(
+	target_stage.AddStructBuffer<Grid2DCacheUniform>(QString("b_%1GridUniform").arg(name), QString("%1GridUniformStruct").arg(name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
+	target_stage.AddCode(QString(
 			"#include \"CacheUtils.wgsl\"\n"
 			"fn Get%1IndexRangeAt(grid_pos: vec2i) -> vec2i {\n"
-			"\tlet index: i32 = (grid_pos.x + grid_pos.y * %6) * 3;\n"
+			"\tlet index: i32 = (grid_pos.x + grid_pos.y * b_%1GridUniform.GridSize.x) * 3;\n"
 			"\tlet start: i32 = b_%1GridIndices[index + 1];\n"
 			"\tlet count: i32 = b_%1GridIndices[index + 2];\n"
 			"\treturn vec2i(start, start + count);\n"
@@ -1213,21 +1254,12 @@ QString Grid2DCache::Bind(std::vector<PipelineStage::AddedSSBO>& ssbos) {
 			"\treturn b_%1GridItems[index];\n"
 			"}\n"
 			"fn Get%1GridPosAt(pos: vec2f) -> vec2i {\n"
-			"\treturn GetGridPos2D(pos, vec2f(%2, %3), vec2f(%4, %5), vec2i(%6, %7));\n" // TODO: should you be hardcoding in the grid params?
+			"\treturn GetGridPos2D(pos, b_%1GridUniform.GridMin, b_%1GridUniform.GridMax, b_%1GridUniform.GridSize);\n"
 			"}"
 		)
 		.arg(name)
-		.arg(m_GridMin.x, 0, 'f', 6)
-		.arg(m_GridMin.y, 0, 'f', 6)
-		.arg(m_GridMax.x, 0, 'f', 6)
-		.arg(m_GridMax.y, 0, 'f', 6)
-		.arg(m_GridSize.x)
-		.arg(m_GridSize.y)
-	;
-
-	return "";
+	);
 #endif
-
 }
 
 } // namespace Neshny

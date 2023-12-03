@@ -319,7 +319,7 @@ namespace Test {
 			,&control_ssbo
 			,{ "TEST_RANDOM" }
 		)
-		.AddSSBO("RandomBuffer", rando_ssbo, Neshny::MemberSpec::T_FLOAT, Neshny::PipelineStage::BufferAccess::READ_WRITE)
+		.AddBuffer("RandomBuffer", rando_ssbo, Neshny::MemberSpec::T_FLOAT, Neshny::PipelineStage::BufferAccess::READ_WRITE)
 		.Run();
 
 		std::vector<float> numbers;

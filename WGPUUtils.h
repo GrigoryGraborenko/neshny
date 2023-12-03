@@ -61,10 +61,10 @@ public:
 
 	inline WGPUBuffer								Get						( void ) { return m_Buffer; }
 	inline int										GetSizeBytes			( void ) const { return m_Size; }
-	inline WGPUBufferUsageFlags						GetFlags				( void ) const { return m_Flags; }
+	inline WGPUBufferUsageFlags						GetUsageFlags			( void ) const { return m_Flags; }
 
 	template<class T>
-	inline void										SetSingleValue(int index, T value) {
+	inline void										SetSingleValue(int index, const T& value) {
 		Write((unsigned char*)&value, index * sizeof(T), sizeof(T));
 	}
 
