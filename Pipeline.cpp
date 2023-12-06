@@ -1107,8 +1107,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	Vec2 range = grid_max - grid_min;
 	Vec2 cell_size(range.x / grid_size.x, range.y / grid_size.y);
-	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int));
-	m_GridItems.EnsureSizeBytes(m_Entity.GetCount() * sizeof(int));
+	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int), true);
+	m_GridItems.EnsureSizeBytes(m_Entity.GetCount() * sizeof(int), false);
 
 #if defined(NESHNY_GL)
 
@@ -1242,22 +1242,16 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 #else
 
 	target_stage.AddStructBuffer<Grid2DCacheUniform>(QString("b_%1GridUniform").arg(name), QString("%1GridUniformStruct").arg(name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
-	target_stage.AddCode(QString(
-			"#include \"CacheUtils.wgsl\"\n"
-			"fn Get%1IndexRangeAt(grid_pos: vec2i) -> vec2i {\n"
-			"\tlet index: i32 = (grid_pos.x + grid_pos.y * b_%1GridUniform.GridSize.x) * 3;\n"
-			"\tlet start: i32 = b_%1GridIndices[index + 1];\n"
-			"\tlet count: i32 = b_%1GridIndices[index + 2];\n"
-			"\treturn vec2i(start, start + count);\n"
-			"}\n"
-			"fn Get%1IndexAtCache(index: i32) -> i32 {\n"
-			"\treturn b_%1GridItems[index];\n"
-			"}\n"
-			"fn Get%1GridPosAt(pos: vec2f) -> vec2i {\n"
-			"\treturn GetGridPos2D(pos, b_%1GridUniform.GridMin, b_%1GridUniform.GridMax, b_%1GridUniform.GridSize);\n"
-			"}"
-		)
+
+	QFile utils_file(NESHNY_DIR "/Shaders/Templates/GridCache2D.wgsl.template");
+	if (!utils_file.open(QIODevice::ReadOnly)) {
+		target_stage.AddCode("#error could not open 'GridCache2D.wgsl.template'");
+		return;
+	}
+	target_stage.AddCode(
+		QString(utils_file.readAll())
 		.arg(name)
+		.arg(m_Entity.GetIDName())
 	);
 #endif
 }

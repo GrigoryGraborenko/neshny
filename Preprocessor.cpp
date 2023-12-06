@@ -21,6 +21,11 @@ will not support:
 */
 
 ////////////////////////////////////////////////////////////////////////////////
+bool IsWhiteSpace(char c) {
+    return (c == ' ') || (c == '\n') || (c == '\r') || (c == '\t');
+}
+
+////////////////////////////////////////////////////////////////////////////////
 QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, QString&)>& loader, QString& err_msg) {
 
     QByteArray output;
@@ -81,7 +86,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                 for (int cc = c + 7; cc < input.size(); cc++) {
                     char curr = input[cc];
                     bool newline = curr == '\n';
-                    bool whitespace = (curr == ' ') || newline || (curr == '\r');
+                    bool whitespace = IsWhiteSpace(curr);
                     if (newline) {
                         if ((name_end < 0) && (name_start >= 0)) {
                             name_end = cc;
@@ -182,7 +187,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                 int name_end = -1;
                 for (int cc = c + 7; cc < input.size(); cc++) {
                     char curr = input[cc];
-                    bool whitespace = (curr == ' ') || (curr == '\n') || (curr == '\r');
+                    bool whitespace = IsWhiteSpace(curr);
                     if ((name_start >= 0) && (name_end < 0) && whitespace) {
                         name_end = cc;
                         break;
@@ -214,7 +219,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                 int name_end = -1;
                 for (int cc = c + 6; cc < input.size(); cc++) {
                     char curr = input[cc];
-                    bool whitespace = (curr == ' ') || (curr == '\n') || (curr == '\r');
+                    bool whitespace = IsWhiteSpace(curr);
                     if ((name_start >= 0) && (name_end < 0) && whitespace) {
                         name_end = cc;
                         break;
@@ -252,7 +257,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                 int name_end = -1;
                 for (int cc = c + 8; cc < input.size(); cc++) {
                     char curr = input[cc];
-                    bool whitespace = (curr == ' ') || (curr == '\n') || (curr == '\r');
+                    bool whitespace = IsWhiteSpace(curr);
                     if ((name_start >= 0) && (name_end < 0) && whitespace) {
                         name_end = cc;
                         break;

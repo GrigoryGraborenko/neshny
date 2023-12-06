@@ -188,6 +188,8 @@ void WebGPUBuffer::Read(unsigned char* buffer, int offset, int size) {
 		return;
 	}
 
+	DebugTiming debug_func("WebGPUBuffer::Read");
+
 	struct AsyncInfo {
 		WGPUBuffer					p_Buffer;
 		unsigned char*				p_Destination;
@@ -872,7 +874,6 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 	if (workgroups > limits.maxComputeWorkgroupsPerDimension) {
 		throw std::invalid_argument("Exceeded maxComputeWorkgroupsPerDimension");
 	}
-
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	WGPUComputePassDescriptor pass_desc;
 	pass_desc.nextInChain = nullptr;

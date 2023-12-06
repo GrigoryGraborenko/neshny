@@ -25,6 +25,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # set(CMAKE_SUPPRESS_REGENERATION true)
 
 set(BASE_DIR ${CMAKE_SOURCE_DIR})
+add_compile_definitions(NESHNY_DIR="${NESHNY_DIR}" PROJECT_SHADER_PATH="${SHADER_PATH}")
 
 ###############################################################################
 message(STATUS "Setting up compilation")

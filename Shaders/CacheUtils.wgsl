@@ -8,3 +8,12 @@ fn GetGridPos2D(pos: vec2f, grid_min: vec2f, grid_max: vec2f, grid_size: vec2i) 
 	let frac: vec2f = (pos - grid_min) * inv_range;
 	return max(vec2i(0, 0), min(vec2i(grid_size.x - 1, grid_size.y - 1), vec2i(floor(vec2f(grid_size) * frac))));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+struct Grid2DCacheCursor {
+	p_MinPos: vec2i,
+	p_MaxPos: vec2i,
+	p_Pos: vec2i,
+	p_Indices: vec2i,
+	p_IndexIndexIndexIndex: i32
+};

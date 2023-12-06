@@ -16,6 +16,7 @@ set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT $
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # turn off ZERO_CHECK if you want with this next line
 # set(CMAKE_SUPPRESS_REGENERATION true)
+add_compile_definitions(NESHNY_DIR="${NESHNY_DIR}" PROJECT_SHADER_PATH="${SHADER_PATH}")
 
 ###############################################################################
 message(STATUS "Setting up compilation")

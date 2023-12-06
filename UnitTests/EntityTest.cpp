@@ -439,7 +439,7 @@ namespace Test {
     }
 
 	////////////////////////////////////////////////////////////////////////////////
-	void UnitTest_GPUEntityCache(void) {
+	void GPUEntityCache(bool use_cursor) {
 
 		const int prey_count = 50;
 		const int hunter_count = 20;
@@ -497,10 +497,18 @@ namespace Test {
 		// run the generation algorithm
 		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
 
+		// run again to make sure results do not accumilate
+		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
+
+
 #if defined(NESHNY_GL)
 		// TODO: test here as well
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, { "TEST_CACHE" })
+		std::vector<QString> shader_defines;
+		if (use_cursor) {
+			shader_defines.push_back("USE_CURSOR");
+		}
+		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, shader_defines)
 			.AddEntity(prey_entities, &cache)
 			.Prepare<Uniform>();
 		Uniform uniform{ 0, find_radius };
@@ -511,6 +519,16 @@ namespace Test {
 		hunter_entities.GetSSBO()->GetValues(gpu_values, hunter_count);
 
 		CompareEntities<GPUOther>("Cache lookup", expected_hunters, gpu_values);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCacheCursor(void) {
+		GPUEntityCache(true);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCacheRaw(void) {
+		GPUEntityCache(false);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////

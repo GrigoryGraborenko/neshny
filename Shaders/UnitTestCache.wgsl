@@ -8,6 +8,20 @@ fn HunterMain(item_index: i32, hunter: Hunter, new_hunter : ptr<function, Hunter
 	let radius: f32 = Uniform.Value;
 	let radius_sqr: f32 = radius * radius;
 
+#ifdef USE_CURSOR	
+	var cursor = StartPreyCacheCursor(pos - vec2f(radius, radius), pos + vec2f(radius, radius));
+	while (HasNextPrey(&cursor)) {
+		var prey: Prey;
+		if (NextPrey(&cursor, &prey)) {
+			let delta: vec2f = prey.TwoDim - pos;
+			let dist_sqr: f32 = dot(delta, delta);
+			if (dist_sqr < radius_sqr) {
+				(*new_hunter).Float += prey.Float;
+				(*new_hunter).ParentIndex++;
+			}
+		}
+	}
+#else
 	let grid_search_min: vec2i = GetPreyGridPosAt(pos - vec2f(radius, radius));
 	let grid_search_max: vec2i = GetPreyGridPosAt(pos + vec2f(radius, radius));
 
@@ -22,6 +36,7 @@ fn HunterMain(item_index: i32, hunter: Hunter, new_hunter : ptr<function, Hunter
 				if (prey.Id < 0) {
 					continue;
 				}
+
 				let delta: vec2f = prey.TwoDim - pos;
 				let dist_sqr: f32 = dot(delta, delta);
 				if (dist_sqr < radius_sqr) {
@@ -31,6 +46,7 @@ fn HunterMain(item_index: i32, hunter: Hunter, new_hunter : ptr<function, Hunter
 			}
 		}
 	}
+#endif
 
     return false;
 }
