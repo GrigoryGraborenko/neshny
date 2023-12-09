@@ -1243,13 +1243,15 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 
 	target_stage.AddStructBuffer<Grid2DCacheUniform>(QString("b_%1GridUniform").arg(name), QString("%1GridUniformStruct").arg(name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
 
-	QFile utils_file(NESHNY_DIR "/Shaders/Templates/GridCache2D.wgsl.template");
-	if (!utils_file.open(QIODevice::ReadOnly)) {
+	QString err_msg;
+	auto utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);
+	if (utils_file.isNull()) {
+		qWarning() << "could not open 'GridCache2D.wgsl.template'" << err_msg;
 		target_stage.AddCode("#error could not open 'GridCache2D.wgsl.template'");
 		return;
 	}
 	target_stage.AddCode(
-		QString(utils_file.readAll())
+		QString(utils_file)
 		.arg(name)
 		.arg(m_Entity.GetIDName())
 	);

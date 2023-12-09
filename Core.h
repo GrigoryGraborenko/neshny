@@ -456,6 +456,8 @@ public:
 	inline static Core&					Singleton					( void ) { static Core core; return core; }
 
 	void								SetEmbeddableFileLoader		( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
+	QByteArray							LoadEmbedded				( QString filename, QString& err_msg );
+
 	inline void							SetTicksOverride			( int ticks ) { m_Ticks = ticks; }
 	Token								SyncWithMainThread			( void );
 

@@ -182,6 +182,15 @@ Core::~Core(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+QByteArray Core::LoadEmbedded(QString filename, QString& err_msg) {
+	if (m_EmbeddableLoader.has_value()) {
+		return (*m_EmbeddableLoader)(filename, err_msg);
+	}
+	err_msg = "No loader set";
+	return QByteArray();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 Token Core::SyncWithMainThread(void) {
 
 #ifdef __EMSCRIPTEN__
