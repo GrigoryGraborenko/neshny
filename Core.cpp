@@ -17,9 +17,17 @@ DebugTiming::DebugTiming(const char* label) :
 
 ////////////////////////////////////////////////////////////////////////////////
 DebugTiming::~DebugTiming(void) {
+	Finish();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void DebugTiming::Finish(void) {
+	if (m_Finished) {
+		return;
+	}
+	m_Finished = true;
 
 	qint64 nanos = m_Timer.nsecsElapsed();
-
 	auto& timings = GetTimings();
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
 		if ((iter->p_Label == m_Label) || (strcmp(iter->p_Label, m_Label) == 0)) {
@@ -1351,6 +1359,34 @@ void Core::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int sou
 	wgpuCommandEncoderRelease(encoder);
 	wgpuQueueSubmit(self.m_Queue, 1, &commands);
 	wgpuCommandBufferRelease(commands);
+}
+
+#ifdef __EMSCRIPTEN__
+EM_ASYNC_JS(void, await_device_queue, (), {
+	const device = webgpu["preinitializedWebGPUDevice"];
+	await device.queue.onSubmittedWorkDone();
+});
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::WaitForCommandsToFinish(void) {
+	auto& self = Core::Singleton();
+
+	DebugTiming debug_timing("Core::WaitForCommandsToFinish");
+
+#ifndef __EMSCRIPTEN__
+	std::optional<WGPUQueueWorkDoneStatus> status_result;
+	wgpuQueueOnSubmittedWorkDone(self.m_Queue, 0, [](WGPUQueueWorkDoneStatus status, void* user_data) {
+		auto info = (std::optional<WGPUQueueWorkDoneStatus>*)user_data;
+		*info = status;
+		}, &status_result);
+
+	while (!status_result.has_value()) {
+		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+	}
+#else
+	await_device_queue();
+#endif
 }
 
 #endif

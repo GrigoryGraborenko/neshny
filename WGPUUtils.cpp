@@ -118,6 +118,7 @@ void WebGPUBuffer::Create(int size, unsigned char* data) {
 	desc.size = size;
 	desc.nextInChain = nullptr;
 	desc.label = nullptr;
+	desc.mappedAtCreation = false;
 
 	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
 	if (data) {
@@ -182,54 +183,32 @@ void WebGPUBuffer::ClearBuffer() {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::Read(unsigned char* buffer, int offset, int size) {
-
 	size = size >= 0 ? size : m_Size - offset;
 	if (size <= 0) {
 		return;
 	}
-
 	DebugTiming debug_func("WebGPUBuffer::Read");
-
-	struct AsyncInfo {
-		WGPUBuffer					p_Buffer;
-		unsigned char*				p_Destination;
-		int							p_Offset;
-		int							p_Size;
-		bool						p_Complete = false;
-		WGPUBufferMapAsyncStatus	m_Status;
-	};
-
 	WGPUBufferDescriptor desc = {};
 	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
 	desc.size = size;
 	desc.nextInChain = nullptr;
 	desc.label = nullptr;
-
+	desc.mappedAtCreation = false;
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
-
 	Core::CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
-	offset = 0; // since you are copying from a temp buffer that already took the offset into account, this must be set to zero
 
-	AsyncInfo info = { copy_buffer, buffer, offset, size };
-	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, offset, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
-		AsyncInfo* input_info = (AsyncInfo*)user_data;
+	std::optional<WGPUBufferMapAsyncStatus> status;
+	// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
+	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
+		auto info = (std::optional<WGPUBufferMapAsyncStatus>*)user_data;
+		*info = status;
+	}, &status);
 
-		if (status == WGPUBufferMapAsyncStatus_Success) {
-			auto buffer_data = wgpuBufferGetConstMappedRange(input_info->p_Buffer, input_info->p_Offset, input_info->p_Size);
-			memcpy(input_info->p_Destination, buffer_data, input_info->p_Size);
-			wgpuBufferUnmap(input_info->p_Buffer);
-		}
-		input_info->m_Status = status;
-		input_info->p_Complete = true;
-	}, &info);
+	Core::WaitForCommandsToFinish();
 
-	while (!info.p_Complete) {
-#ifndef __EMSCRIPTEN__
-		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
-#else
-		emscripten_sleep(0);
-#endif
-	}
+	auto buffer_data = wgpuBufferGetConstMappedRange(copy_buffer, 0, size);
+	memcpy(buffer, buffer_data, size);
+	wgpuBufferUnmap(copy_buffer);
 
 	wgpuBufferDestroy(copy_buffer);
 }

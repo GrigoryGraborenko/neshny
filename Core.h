@@ -158,16 +158,18 @@ public:
 	DebugTiming(const char* label);
 	~DebugTiming(void);
 
-	static QStringList					Report(void);
+	void								Finish			( void );
+	static QStringList					Report			( void );
 
-	static std::vector<TimingInfo>& GetTimings(void) { static std::vector<TimingInfo> timings = {}; return timings; }
+	static std::vector<TimingInfo>&		GetTimings		( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
 
-	static qint64						MainLoopTimer(void) { static QElapsedTimer timer; qint64 time = timer.nsecsElapsed(); timer.restart(); return time; }
+	static qint64						MainLoopTimer	( void ) { static QElapsedTimer timer; qint64 time = timer.nsecsElapsed(); timer.restart(); return time; }
 
 private:
 
 	QElapsedTimer		m_Timer;
-	const char* m_Label;
+	const char*			m_Label;
+	bool				m_Finished = false;
 };
 
 #define INTERFACE_SAVE_VERSION 1 // todo: start incrementing this on release
@@ -499,6 +501,7 @@ public:
 	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							CopyBufferToBuffer			( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size );
+	static void							WaitForCommandsToFinish		( void );
 
 #endif
 
