@@ -509,6 +509,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
+	result->m_ReadRequired = entity_processing || (!m_Vars.empty());
 
 	for (auto str : m_ShaderDefines) {
 		immediate_insertion += QString("#define %1").arg(str);
@@ -954,7 +955,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	}
 #endif
 
-	if (m_ControlSSBO) {
+	if (m_ControlSSBO && m_ReadRequired) {
 		std::vector<int> control_values;
 		m_ControlSSBO->GetValues<int>(control_values, (int)var_vals.size());
 		for (int v = 0; v < var_vals.size(); v++) {

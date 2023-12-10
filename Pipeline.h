@@ -40,7 +40,8 @@ public:
 		QStringList					m_VarNames;
 		std::vector<GPUEntity*>		m_Entities;
 		bool						m_UsingRandom;
-		std::shared_ptr<SSBO>		m_TemporaryFrame;
+		bool						m_ReadRequired = false;
+		std::shared_ptr<SSBO>		m_TemporaryFrame; // used for time travel feature
 
 		struct DataVectorInfo {
 			QString			m_Name;
