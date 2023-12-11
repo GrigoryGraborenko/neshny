@@ -839,7 +839,7 @@ void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
+void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std::function<void(WGPUCommandEncoder encoder)>> pre_execute) {
 
 	CheckBuffersUpToDate();
 
@@ -869,6 +869,10 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size) {
 
 	wgpuComputePassEncoderEnd(pass);
 	wgpuComputePassEncoderRelease(pass);
+
+	if (pre_execute.has_value()) {
+		(*pre_execute)(encoder);
+	}
 
 	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
 	wgpuCommandEncoderRelease(encoder);

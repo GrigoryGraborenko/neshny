@@ -1351,14 +1351,16 @@ WebGPUSampler* Core::IGetSampler(WGPUAddressMode mode, WGPUFilterMode filter, bo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size) {
+void Core::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder) {
 	auto& self = Core::Singleton();
-	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(self.m_Device, nullptr);
+	WGPUCommandEncoder encoder = existing_encoder ? existing_encoder : wgpuDeviceCreateCommandEncoder(self.m_Device, nullptr);
 	wgpuCommandEncoderCopyBufferToBuffer(encoder, source, source_offset_bytes, destination, dest_offset_bytes, size);
-	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
-	wgpuCommandEncoderRelease(encoder);
-	wgpuQueueSubmit(self.m_Queue, 1, &commands);
-	wgpuCommandBufferRelease(commands);
+	if (!existing_encoder) {
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(self.m_Queue, 1, &commands);
+		wgpuCommandBufferRelease(commands);
+	}
 }
 
 #ifdef __EMSCRIPTEN__

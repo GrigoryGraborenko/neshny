@@ -289,7 +289,7 @@ public:
 	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );
 	void						ReplaceBuffer			( int index, WebGPUBuffer& replacement );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
-	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1) );
+	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1), std::optional<std::function<void(WGPUCommandEncoder encoder)>> pre_execute = std::nullopt );
 
 	inline Type					GetType					( void ) { return m_Type; }
 	inline WGPURenderPipeline	GetRenderPipeline		( void ) { return m_RenderPipeline; }
