@@ -55,6 +55,7 @@ private:
 };
 
 std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);
+double AngleDiff(double a, double b);
 
 ////////////////////////////////////////////////////////////////////////////////
 template<typename V>
