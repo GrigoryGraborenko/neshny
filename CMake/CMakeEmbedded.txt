@@ -10,7 +10,6 @@ function(create_resources output_fname)
     # iterate through input files
     math(EXPR last "${ARGC} - 1")
     foreach(i RANGE 1 ${last})
-
         # get short filename
         string(REGEX MATCH "([^/]+)$" filename ${ARGV${i}})
         # replace filename spaces & extension separator for C compatibility
@@ -33,8 +32,9 @@ function(create_resources output_fname)
 endfunction()
 
 # get the list of shaders from the app
-file(GLOB_RECURSE ShaderList ${SHADER_PATH}/*.*)
+file(GLOB_RECURSE ShaderList "${BASE_DIR}/${SHADER_PATH}/*.*")
 file(GLOB_RECURSE NeshnyShaderList ${NESHNY_DIR}/shaders/*.*)
+
 create_resources("${BASE_DIR}/src/EmbeddedFiles.cpp" ${NeshnyShaderList} ${ShaderList})
 
 # creates an empty file whose timestamp determines if the embed step has run, preventing pointless reruns

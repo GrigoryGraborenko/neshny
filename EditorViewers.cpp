@@ -1039,7 +1039,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height).ToOpenGL();
+	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height).ToGPU();
 
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);
@@ -1131,7 +1131,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height).ToOpenGL();
+	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height).ToGPU();
 
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);

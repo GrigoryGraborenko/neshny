@@ -699,7 +699,7 @@ struct BaseMatrix4 {
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
 	}
 
-	BaseMatrix4<float> ToOpenGL(void) const {
+	BaseMatrix4<float> ToGPU(void) const {
 		return BaseMatrix4<float>(
 			(float)m[0][0], (float)m[1][0], (float)m[2][0], (float)m[3][0]
 			,(float)m[0][1], (float)m[1][1], (float)m[2][1], (float)m[3][1]

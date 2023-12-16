@@ -1,19 +1,19 @@
 ###############################################################################
 # example: cmake -G "Visual Studio 16 2019" -A x64 .
 
-# modify this
-set(PROJECT_NAME "EmptyQT+SDLJumboBuild")
-
-project(${PROJECT_NAME})
 cmake_minimum_required(VERSION 3.18)
 set(CMAKE_CXX_STANDARD 17)
-include(${CMAKE_SOURCE_DIR}/UserSettings.cmake)
+include("${CMAKE_SOURCE_DIR}/UserSettings.cmake")
+include("${CMAKE_SOURCE_DIR}/ProjectSettings.cmake")
+project(${PROJECT_NAME})
 
 # startup project for VS
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 # puts ZERO_CHECK and ALL_BUILD into subdirectories
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set(BASE_DIR ${CMAKE_SOURCE_DIR})
+
 # turn off ZERO_CHECK if you want with this next line
 # set(CMAKE_SUPPRESS_REGENERATION true)
 add_compile_definitions(NESHNY_DIR="${NESHNY_DIR}" PROJECT_SHADER_PATH="${SHADER_PATH}")
@@ -25,7 +25,7 @@ message(STATUS "Setting up compilation")
 add_executable(${PROJECT_NAME} src/main.cpp)
 
 set(CMAKE_PREFIX_PATH ${QT_DIR})
-find_package(Qt5 COMPONENTS Core Gui REQUIRED)
+find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 
 if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
     set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
@@ -47,8 +47,8 @@ target_include_directories(${PROJECT_NAME}
 
 # lib files
 target_link_libraries(${PROJECT_NAME}
-    Qt5::Core
-    Qt5::Gui
+    Qt6::Core
+    Qt6::Gui
     ${SDL2_LIBRARIES}
 )
 
@@ -66,23 +66,23 @@ file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
 # this creates a near-empty project whose entire purpose is to rerun the embed script "CMakeEmbedded.txt" when the shaders change ONLY IN RELEASE BUILD
 # it also runs "CMakeUnitTests.txt" when unit tests change
 # a token file is required for this process - ".embedded_token" does nothing other than exist to signal that the embed step has run
-add_custom_target(EMBEDDED_BUILD ALL DEPENDS .embedded_token src/UnitTests.cpp)
+add_custom_target(EMBEDDED_BUILD ALL DEPENDS ${CMAKE_BINARY_DIR}/.embedded_token ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
 
 # for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
 # for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
 add_custom_command(
-    OUTPUT .embedded_token
-    COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
+    OUTPUT ${CMAKE_BINARY_DIR}/.embedded_token
+    COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
     DEPENDS ${SHADER_PATH}/*.vert DEPENDS ${SHADER_PATH}/*.frag DEPENDS ${SHADER_PATH}/*.comp DEPENDS ${SHADER_PATH}/*.glsl
     DEPENDS ${NESHNY_DIR}/shaders/*.vert DEPENDS ${NESHNY_DIR}/shaders/*.frag DEPENDS ${NESHNY_DIR}/shaders/*.comp DEPENDS ${NESHNY_DIR}/shaders/*.glsl
 )
 
 # command that embeds list of unit tests and their names into a cpp file
 add_custom_command(
-    OUTPUT src/UnitTests.cpp
-    COMMAND "${CMAKE_COMMAND}" -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
+    OUTPUT ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp
+    COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
     DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
-    DEPENDS src/UnitTests/*.cpp
+    DEPENDS ${CMAKE_SOURCE_DIR}/src/UnitTests/*.cpp
 )
 
 # ensure this all happens before the main build
@@ -127,7 +127,7 @@ target_sources(${PROJECT_NAME}
     ${ShaderList}
 )
 
-source_group(TREE src PREFIX src FILES ${FullList})
+source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX src FILES ${FullList})
 source_group(TREE ${NESHNY_DIR} PREFIX neshny FILES ${NeshnyList})
 source_group("generated" FILES ${GeneratedList})
 
@@ -137,9 +137,9 @@ message(STATUS "Setting up file system")
 # copy over dlls required for execution
 configure_file(${SDL2_LIB_DIR}/SDL2.dll release/SDL2.dll COPYONLY)
 
-configure_file(${QT_DIR}/bin/QT5Cored.dll release/QT5Cored.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT5Guid.dll release/QT5Guid.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT5Core.dll release/QT5Core.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT5Gui.dll release/QT5Gui.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT6Cored.dll release/QT6Cored.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT6Guid.dll release/QT6Guid.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT6Core.dll release/QT6Core.dll COPYONLY)
+configure_file(${QT_DIR}/bin/QT6Gui.dll release/QT6Gui.dll COPYONLY)
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/release)
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/release)
