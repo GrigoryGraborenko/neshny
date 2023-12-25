@@ -20,7 +20,6 @@ fn Get%1GridPosAt(pos: vec2f) -> vec2i {
 	return GetGridPos2D(pos, b_%1GridUniform.GridMin, b_%1GridUniform.GridMax, b_%1GridUniform.GridSize);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 fn HasNext%1(cursor: ptr<function, Grid2DCacheCursor>) -> bool {
 	return ((*cursor).p_Pos.x <= (*cursor).p_MaxPos.x) && ((*cursor).p_Pos.y <= (*cursor).p_MaxPos.y);
@@ -29,15 +28,15 @@ fn HasNext%1(cursor: ptr<function, Grid2DCacheCursor>) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 fn Start%1CacheCursor(min_pos: vec2f, max_pos: vec2f) -> Grid2DCacheCursor {
 	var cursor: Grid2DCacheCursor;
-	cursor.p_MinPos = Get%1GridPosAt(min_pos);
-	cursor.p_MaxPos = Get%1GridPosAt(max_pos);
+	cursor.p_MinPos = Get%1GridPosAt(min(min_pos, max_pos));
+	cursor.p_MaxPos = Get%1GridPosAt(max(min_pos, max_pos));
 	cursor.p_Pos = cursor.p_MinPos;
 	cursor.p_IndexIndexIndexIndex = -1;
 	return cursor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-fn Next%1(cursor: ptr<function, Grid2DCacheCursor>, item: ptr<function, %1>) -> bool {
+fn Next%1(cursor: ptr<function, Grid2DCacheCursor>, item: ptr<function, %1>) -> i32 {
 	if ((*cursor).p_IndexIndexIndexIndex < 0) {
 		(*cursor).p_Indices = Get%1IndexRangeAt((*cursor).p_Pos);
 		(*cursor).p_IndexIndexIndexIndex = (*cursor).p_Indices.x;
@@ -50,14 +49,14 @@ fn Next%1(cursor: ptr<function, Grid2DCacheCursor>, item: ptr<function, %1>) -> 
 			(*cursor).p_Pos.x = (*cursor).p_MinPos.x;
 			(*cursor).p_Pos.y++;
 		}
-		return false;
+		return -1;
 	}
 	let i: i32 = Get%1IndexAtCache((*cursor).p_IndexIndexIndexIndex);
 	(*cursor).p_IndexIndexIndexIndex++;
 	(*item) = Get%1(i);
 	if ((*item).%2 < 0) {
-		return false;
+		return -1;
 	}
 
-	return true;
+	return i;
 }

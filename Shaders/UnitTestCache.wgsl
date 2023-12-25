@@ -12,7 +12,7 @@ fn HunterMain(item_index: i32, hunter: Hunter, new_hunter : ptr<function, Hunter
 	var cursor = StartPreyCacheCursor(pos - vec2f(radius, radius), pos + vec2f(radius, radius));
 	while (HasNextPrey(&cursor)) {
 		var prey: Prey;
-		if (NextPrey(&cursor, &prey)) {
+		if (NextPrey(&cursor, &prey) >= 0) {
 			let delta: vec2f = prey.TwoDim - pos;
 			let dist_sqr: f32 = dot(delta, delta);
 			if (dist_sqr < radius_sqr) {

@@ -121,8 +121,16 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     }
                 }
                 if (def_end >= 0) {
+                    auto new_name = input.mid(name_start, name_end - name_start);
+                    for (auto iter = replacements.begin(); iter != replacements.end(); ) {
+                        if (iter->p_Word == new_name) {
+                            iter = replacements.erase(iter);
+                        } else {
+                            iter++;
+                        }
+                    }
                     replacements.push_back({
-                        input.mid(name_start, name_end - name_start),
+                        new_name,
                         input.mid(def_start, def_end - def_start),
                         (int)arg_names.size()
                     });

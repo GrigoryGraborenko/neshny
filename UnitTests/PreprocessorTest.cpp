@@ -130,7 +130,18 @@ namespace Test {
                 ,"int i = 3;"
                 ,""
             }}
-                // TODO: fix me
+            ,{{
+                "#define THING 123"
+                ,"#define THING 456"
+                ,"#define FUNC(x) (x + x)"
+                ,"#define FUNC(x) (x * x)"
+                ,"int x = THING;"
+                ,"int y = FUNC(7);"
+            },{
+                "int x = 456;"
+                ,"int y = (7 * 7);"
+            }}
+            // TODO: fix me
             //,{{
             //    "#define THING"
             //    ,"#ifdef HELLO"
