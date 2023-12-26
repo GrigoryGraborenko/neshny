@@ -32,11 +32,11 @@ fn main(@builtin(global_invocation_id) global_id: vec3u) {
         let end_counter: i32 = atomicAdd(&(b_Control[0]), 1);
         let alive_index: i32 = Uniform.LifeCount - end_counter - 1;
 
-        var value: i32 = b_Entity[alive_index * Uniform.IntsPer];
+        var value: i32 = b_Entity[alive_index * Uniform.IntsPer + ENTITY_OFFSET_INTS];
         if (value >= 0) {
             for (var i: i32 = 0; i < Uniform.IntsPer; i++) {
-                value = b_Entity[alive_index * Uniform.IntsPer + i];
-                b_Entity[dead_index * Uniform.IntsPer + i] = value;
+                value = b_Entity[alive_index * Uniform.IntsPer + i + ENTITY_OFFSET_INTS];
+                b_Entity[dead_index * Uniform.IntsPer + i + ENTITY_OFFSET_INTS] = value;
             }
             break;
         }

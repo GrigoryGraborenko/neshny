@@ -3,6 +3,12 @@
 
 namespace Neshny {
 
+#if defined(NESHNY_WEBGPU)
+const int ENTITY_OFFSET_INTS = 4;
+#else
+const int ENTITY_OFFSET_INTS = 0;
+#endif
+
 template<typename T>
 class Serialiser {
 public:
@@ -158,14 +164,14 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
 		functions += QString("fn Get%3%2(index: i32) -> %1 {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		if (member.p_Type == MemberSpec::Type::T_INT) {
-			functions += QString("#define Access%3%1(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+			functions += QString("#define Access%3%1(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index).arg("%1");
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
-			functions += QString("#define Access%3%1_X(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg("%1");
-			functions += QString("#define Access%3%1_Y(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
+			functions += QString("#define Access%3%1_X(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index).arg("%1");
+			functions += QString("#define Access%3%1_Y(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
 			if (member.p_Type != MemberSpec::Type::T_IVEC2) {
-				functions += QString("#define Access%3%1_Z(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 2).arg("%1");
+				functions += QString("#define Access%3%1_Z(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index + 2).arg("%1");
 				if (member.p_Type == MemberSpec::Type::T_IVEC4) {
-					functions += QString("#define Access%3%1_W(index) (b_%3[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index + 3).arg("%1");
+					functions += QString("#define Access%3%1_W(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index + 3).arg("%1");
 				}
 			}
 		}
@@ -256,7 +262,7 @@ public:
 		insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
 		insertion_double_buffer += QString("#define %1_SET(base, index, value) (b_Output%1.i[(base) + (index)] = (value))").arg(m_Name);
 #elif defined(NESHNY_WEBGPU)
-		QString get_base_str = QString("\tlet base = index * FLOATS_PER_%1;").arg(m_Name);
+		QString get_base_str = QString("\tlet base = index * FLOATS_PER_%1 + ENTITY_OFFSET_INTS;").arg(m_Name);
 
 		SerializeStructInfo<T>(m_Specs, get_base_str);
 
@@ -274,19 +280,22 @@ public:
 	}
 	~GPUEntity(void) { Destroy(); }
 
-	template <typename T> void ExtractAll(std::vector<T>& items) {
-		if (m_MaxIndex <= 0) {
+	template <typename T> void ExtractMultiple(std::vector<T>& items, int count) {
+		if (count <= 0) {
 			return;
 		}
-		items.resize(m_MaxIndex);
-		unsigned char* ptr = (unsigned char*)&(items[0]);
-		MakeCopyIn(ptr, 0, m_MaxIndex * m_NumDataFloats * sizeof(float));
+		items.resize(count);
+		MakeCopyIn((unsigned char*)items.data(), ENTITY_OFFSET_INTS * sizeof(int), count * m_NumDataFloats * sizeof(int));
+	}
+
+	template <typename T> void ExtractAll(std::vector<T>& items) {
+		ExtractMultiple(items, m_MaxIndex);
 	}
 
 	template <typename T> T ExtractSingle(int index) {
 		T item;
 		int size_item = m_NumDataFloats * sizeof(float);
-		MakeCopyIn((unsigned char*)&item, index * size_item, size_item);
+		MakeCopyIn((unsigned char*)&item, index * size_item + ENTITY_OFFSET_INTS * sizeof(int), size_item);
 		return item;
 	}
 

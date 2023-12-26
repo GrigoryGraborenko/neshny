@@ -513,6 +513,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	for (auto str : m_ShaderDefines) {
 		immediate_insertion += QString("#define %1").arg(str);
 	}
+	immediate_insertion += QString("#define ENTITY_OFFSET_INTS %1").arg(ENTITY_OFFSET_INTS);
 
 	QStringList insertion_buffers;
 	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
@@ -601,7 +602,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
 		}
 		insertion += QString("fn Destroy%1(index: i32) {").arg(m_Entity->GetName());
-		insertion += QString("\tlet base = index * FLOATS_PER_%1;").arg(m_Entity->GetName());
+		insertion += QString("\tlet base = index * FLOATS_PER_%1 + ENTITY_OFFSET_INTS;").arg(m_Entity->GetName());
 		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetName());
 
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {

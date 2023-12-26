@@ -6,7 +6,7 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 bool GPUEntity::Init(int expected_max_count) {
 
-	int max_size = expected_max_count * m_NumDataFloats * sizeof(float);
+	int max_size = (expected_max_count * m_NumDataFloats + ENTITY_OFFSET_INTS) * sizeof(int);
 #if defined(NESHNY_GL)
 	m_SSBO = new SSBO(max_size);
 	if (m_DoubleBuffering) {
@@ -79,7 +79,7 @@ int GPUEntity::AddInstance(void* data, int* index) {
 	}
 
 	int base = creation_index * m_NumDataFloats;
-	m_SSBO->Write((unsigned char*)data, base * sizeof(float), m_NumDataFloats * sizeof(float));
+	m_SSBO->Write((unsigned char*)data, (base + ENTITY_OFFSET_INTS) * sizeof(float), m_NumDataFloats * sizeof(float));
 	if (index) {
 		*index = creation_index;
 	}
@@ -105,7 +105,7 @@ void GPUEntity::DeleteInstance(int index) {
 
 		int id_value = -1;
 
-		m_SSBO->Write((unsigned char*)&id_value, index * size_item + pos_index, sizeof(float));
+		m_SSBO->Write((unsigned char*)&id_value, index * size_item + pos_index + ENTITY_OFFSET_INTS * sizeof(int), sizeof(float));
 		m_FreeList->EnsureSizeBytes((m_FreeCount + 1) * sizeof(int), false);
 		m_FreeList->Write((unsigned char*)&index, m_FreeCount * sizeof(int), sizeof(int));
 		m_FreeCount++;
@@ -115,7 +115,7 @@ void GPUEntity::DeleteInstance(int index) {
 #if defined(NESHNY_GL)
 			glCopyNamedBufferSubData(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
 #elif defined(NESHNY_WEBGPU)
-			Core::CopyBufferToBuffer(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
+			Core::CopyBufferToBuffer(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item + ENTITY_OFFSET_INTS * sizeof(int), index * size_item + ENTITY_OFFSET_INTS * sizeof(int), size_item);
 #endif
 		}
 		m_MaxIndex--;
@@ -168,7 +168,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 			.AddBuffer(*m_ControlSSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
-			.FinalizeCompute("Death");
+			.FinalizeCompute("Death", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
 	}
 	Uniform uniform{
 		death_count
@@ -236,14 +236,13 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int size = m_MaxIndex * entity_size;
 	unsigned char* ptr = new unsigned char[size];
-	MakeCopyIn(ptr, 0, size);
+	MakeCopyIn(ptr, ENTITY_OFFSET_INTS * sizeof(int), size);
 	auto result = std::shared_ptr<unsigned char[]>(ptr);
 	return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
-
 
 #if defined(NESHNY_GL)
 	if (!m_CopyBuffer) {

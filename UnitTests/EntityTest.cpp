@@ -288,12 +288,12 @@ namespace Test {
 			parent_index++;
 		}
 		std::vector<GPUThing> gpu_values;
-		entities.GetSSBO()->GetValues(gpu_values, initial_count);
+		entities.ExtractMultiple(gpu_values, initial_count);
 
 		CompareEntities("After first add", expected, gpu_values);
 
 		std::vector<GPUOther> gpu_other;
-		other_entities.GetSSBO()->GetValues(gpu_other, other_entities.GetMaxIndex());
+		other_entities.ExtractMultiple(gpu_other, other_entities.GetMaxIndex());
 
 		auto other_sort = [](const GPUOther& a, const GPUOther& b) { 
 			if (a.p_Id < 0) {
@@ -358,12 +358,12 @@ namespace Test {
 		}
 
 		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, initial_count);
+		entities.ExtractMultiple(gpu_values, initial_count);
 
 		CompareEntities("After second add", expected, gpu_values);
 
 		gpu_other.clear();
-		other_entities.GetSSBO()->GetValues(gpu_other, other_entities.GetMaxIndex());
+		other_entities.ExtractMultiple(gpu_other, other_entities.GetMaxIndex());
 
 		CompareEntities<GPUOther>("After second add and other delete", other_expected, gpu_other, other_sort);
 
@@ -401,7 +401,7 @@ namespace Test {
 		}
 
 		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS ? initial_count : entities.GetCount());
+		entities.ExtractMultiple(gpu_values, mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS ? initial_count : entities.GetCount());
 
 		CompareEntities("After deletion", expected, gpu_values);
 
@@ -423,7 +423,7 @@ namespace Test {
 		}
 
 		gpu_values.clear();
-		entities.GetSSBO()->GetValues(gpu_values, entities.GetCount());
+		entities.ExtractMultiple(gpu_values, entities.GetCount());
 
 		CompareEntities("After adding in new values", expected, gpu_values);
 	}
@@ -516,7 +516,7 @@ namespace Test {
 #endif
 
 		std::vector<GPUOther> gpu_values;
-		hunter_entities.GetSSBO()->GetValues(gpu_values, hunter_count);
+		hunter_entities.ExtractMultiple(gpu_values, hunter_count);
 
 		CompareEntities<GPUOther>("Cache lookup", expected_hunters, gpu_values);
 	}
