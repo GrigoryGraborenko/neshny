@@ -4,6 +4,10 @@
 namespace Neshny {
 
 #if defined(NESHNY_WEBGPU)
+//ioCount
+//ioFreeCount
+//ioNextId
+//ioMaxIndex
 const int ENTITY_OFFSET_INTS = 4;
 #else
 const int ENTITY_OFFSET_INTS = 0;
@@ -243,6 +247,9 @@ public:
 	};
 
 	// TODO: figure out better way of passing in T, perhaps template entire class
+
+#if defined(NESHNY_GL)
+
 	template <typename T> GPUEntity(QString name, DeleteMode delete_mode, int T::* id_ptr, QString id_name, bool double_buffer = true) :
 			m_DeleteMode(delete_mode)
 			,m_Name(name)
@@ -250,7 +257,6 @@ public:
 			,m_IDName(id_name)
 			,m_DoubleBuffering(double_buffer)
 		{
-#if defined(NESHNY_GL)
 		QString get_base_str = QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name);
 
 		SerializeStructInfo<T>(m_Specs, get_base_str);
@@ -261,7 +267,17 @@ public:
 		QStringList insertion_double_buffer = insertion;
 		insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
 		insertion_double_buffer += QString("#define %1_SET(base, index, value) (b_Output%1.i[(base) + (index)] = (value))").arg(m_Name);
+		m_GPUInsertion = insertion.join("\n");
+		m_GPUInsertionDoubleBuffer = insertion_double_buffer.join("\n");
+	}
 #elif defined(NESHNY_WEBGPU)
+	template <typename T> GPUEntity(QString name, int T::* id_ptr, QString id_name, bool double_buffer = true) :
+			m_Name(name)
+			,m_DeleteMode(DeleteMode::STABLE_WITH_GAPS)
+			,m_NumDataFloats(sizeof(T) / sizeof(float))
+			,m_IDName(id_name)
+			,m_DoubleBuffering(double_buffer)
+		{
 		QString get_base_str = QString("\tlet base = index * FLOATS_PER_%1 + ENTITY_OFFSET_INTS;").arg(m_Name);
 
 		SerializeStructInfo<T>(m_Specs, get_base_str);
@@ -272,12 +288,10 @@ public:
 		QStringList insertion_double_buffer = insertion;
 		insertion += QString("#define %1_SET(base, index, value) b_%1[(base) + (index)] = (value)").arg(m_Name);
 		insertion_double_buffer += QString("#define %1_SET(base, index, value) b_Output%1[(base) + (index)] = (value)").arg(m_Name);
-
-#endif
-
 		m_GPUInsertion = insertion.join("\n");
 		m_GPUInsertionDoubleBuffer = insertion_double_buffer.join("\n");
 	}
+#endif
 	~GPUEntity(void) { Destroy(); }
 
 	template <typename T> void ExtractMultiple(std::vector<T>& items, int count) {
@@ -317,7 +331,6 @@ public:
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopy			( void );
 
-	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
@@ -334,9 +347,12 @@ public:
 	inline QString				GetIDName				( void ) const { return m_IDName; }
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
+#if defined(NESHNY_GL)
+	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	void						ProcessMoveDeaths		( int death_count );
-	void						ProcessStableDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
+#endif
+	void						ProcessStableDeaths		( int death_count );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
 	void						SwapInputOutputSSBOs	( void );
 

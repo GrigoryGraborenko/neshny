@@ -546,9 +546,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	if (!is_render) {
 		m_Vars.push_back({ "ioCount" });
 	}
-	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
-		m_Vars.push_back({ "ioEntityDeaths" });
-	} else if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS)) {
+	if (entity_processing) {
 		m_Vars.push_back({ "ioEntityDeaths" });
 		m_Vars.push_back({ "ioEntityFreeCount" });
 	}
@@ -594,25 +592,15 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if(entity_processing) {
-		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Death: array<i32>;").arg(insertion_buffers.size());
-		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
-		}
+		result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
+		insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
+
 		insertion += QString("fn Destroy%1(index: i32) {").arg(m_Entity->GetName());
 		insertion += QString("\tlet base = index * FLOATS_PER_%1 + ENTITY_OFFSET_INTS;").arg(m_Entity->GetName());
 		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetName());
-
-		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			insertion += "\tlet death_index = atomicAdd(&ioEntityDeaths, 1);";
-			insertion += QString("\tb_Death[death_index] = index;");
-		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			insertion += "\tatomicAdd(&ioEntityDeaths, 1);";
-			insertion += "\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);";
-			insertion += "\tb_FreeList[free_index] = index;";
-		}
+		insertion += "\tatomicAdd(&ioEntityDeaths, 1);";
+		insertion += "\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);";
+		insertion += "\tb_FreeList[free_index] = index;";
 		insertion += "}";
 	}
 	
@@ -699,23 +687,21 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			insertion += QString("\tlet item_id: i32 = atomicAdd(&%1, 1);").arg(next_id);
 			
 			entity.GetFreeListSSBO()->EnsureSizeBytes((entity.GetCount() + entity.GetFreeCount() + 16) * sizeof(int), false);
-			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-				QString free_count = QString("io%1FreeCount").arg(name);
-				m_Vars.push_back({ free_count });
 
-				insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Free%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
-				result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
+			QString free_count = QString("io%1FreeCount").arg(name);
+			m_Vars.push_back({ free_count });
 
-				insertion += "\tvar item_pos: i32 = 0;";
-				insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
-				insertion += "\tif(free_count > 0) {";
-					insertion += QString("\t\titem_pos = b_Free%1[free_count - 1];").arg(entity.GetName());
-				insertion += "\t} else {";
-					insertion += QString("\t\titem_pos = atomicAdd(&%1, 1);").arg(max_index);
-				insertion += "\t}";
-			} else {
-				insertion += QString("\tlet item_pos: i32 = atomicAdd(&%1, 1);").arg(max_index);
-			}
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Free%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
+
+			insertion += "\tvar item_pos: i32 = 0;";
+			insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
+			insertion += "\tif(free_count > 0) {";
+				insertion += QString("\t\titem_pos = b_Free%1[free_count - 1];").arg(entity.GetName());
+			insertion += "\t} else {";
+				insertion += QString("\t\titem_pos = atomicAdd(&%1, 1);").arg(max_index);
+			insertion += "\t}";
+
 			insertion += QString("\titem.%1 = item_id;").arg(entity.GetIDName());
 			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
 		}
@@ -830,12 +816,8 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	}
 
 	if (entity_processing) {
-		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			variables.push_back({ "ioEntityDeaths", &entity_deaths });
-		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			variables.push_back({ "ioEntityDeaths", &entity_deaths });
-			variables.push_back({ "ioEntityFreeCount", &entity_free_count });
-		}
+		variables.push_back({ "ioEntityDeaths", &entity_deaths });
+		variables.push_back({ "ioEntityFreeCount", &entity_free_count });
 		m_Entity->GetFreeListSSBO()->EnsureSizeBytes((m_Entity->GetCount() + m_Entity->GetFreeCount() + 16) * sizeof(int), false);
 	}
 
@@ -868,9 +850,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 		variables.push_back({ QString("io%1NextId").arg(name), &entity_controls[e].p_NextId });
 		variables.push_back({ QString("io%1MaxIndex").arg(name), &entity_controls[e].p_MaxIndex });
-		if (entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			variables.push_back({ QString("io%1FreeCount").arg(name), &entity_controls[e].p_FreeCount });
-		}
+		variables.push_back({ QString("io%1FreeCount").arg(name), &entity_controls[e].p_FreeCount });
 
 		if (entity->IsDoubleBuffering()) {
 			m_Pipeline->ReplaceBuffer(*entity->GetOuputSSBO(), *entity->GetSSBO());
@@ -899,8 +879,12 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	};
 
+	int death_count_index = -1;
 	std::vector<std::pair<int, int*>> var_vals(m_VarNames.size(), { 0, nullptr });
 	for (int i = 0; i < m_VarNames.size(); i++) {
+		if (m_VarNames[i] == "ioEntityDeaths") {
+			death_count_index = i;
+		}
 		fill_var_data(m_VarNames[i], var_vals[i]);
 	}
 
@@ -971,25 +955,11 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	for (int e = 0; e < m_Entities.size(); e++) {
 		auto entity = m_Entities[e];
-		if (entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			entity->ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
-		} else {
-			entity->ProcessMoveCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId);
-		}
+		entity->ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
 	}
 
 	if (entity_processing) {
-		if ((m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && (entity_deaths > 0)) {
-#ifdef NESHNY_ENTITY_DEBUG
-			qDebug() << m_Entity->GetName() << " deaths: " << entity_deaths;
-#endif
-			m_Entity->ProcessMoveDeaths(entity_deaths);
-			//if (true) {
-			//	BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity->GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
-			//}
-		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			m_Entity->ProcessStableDeaths(entity_deaths);
-		}
+		m_Entity->ProcessStableDeaths(entity_deaths);
 
 #ifdef NESHNY_ENTITY_DEBUG
 		BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity->GetName()), "PostRun", *m_ControlSSBO, MemberSpec::Type::T_INT);

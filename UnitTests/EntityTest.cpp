@@ -206,10 +206,15 @@ namespace Test {
 	////////////////////////////////////////////////////////////////////////////////
 	void GPUEntityTest(Neshny::GPUEntity::DeleteMode mode) {
 
+#if defined(NESHNY_GL)
 		Neshny::GPUEntity entities("Thing", mode, &GPUThing::p_Id, "Id");
-		entities.Init(1000);
-
 		Neshny::GPUEntity other_entities("Other", mode, &GPUOther::p_Id, "Id");
+#elif defined(NESHNY_WEBGPU)
+		Neshny::GPUEntity entities("Thing", &GPUThing::p_Id, "Id");
+		Neshny::GPUEntity other_entities("Other", &GPUOther::p_Id, "Id");
+#endif
+
+		entities.Init(1000);
 		other_entities.Init(1000);
 
 		const int initial_count = 50;
@@ -435,8 +440,10 @@ namespace Test {
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_GPUEntityMoving(void) {
+#ifdef NESHNY_GL
 		GPUEntityTest(Neshny::GPUEntity::DeleteMode::MOVING_COMPACT);
-    }
+#endif
+	}
 
 	////////////////////////////////////////////////////////////////////////////////
 	void GPUEntityCache(bool use_cursor) {
@@ -452,10 +459,15 @@ namespace Test {
 
 		RandomSeed(0);
 
+#if defined(NESHNY_GL)
 		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
-		prey_entities.Init(1000);
-
 		Neshny::GPUEntity hunter_entities("Hunter", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUOther::p_Id, "Id");
+#elif defined(NESHNY_WEBGPU)
+		Neshny::GPUEntity prey_entities("Prey", &GPUThing::p_Id, "Id");
+		Neshny::GPUEntity hunter_entities("Hunter", &GPUOther::p_Id, "Id");
+#endif
+
+		prey_entities.Init(1000);
 		hunter_entities.Init(1000);
 
 		Neshny::Grid2DCache cache(prey_entities, "TwoDim");

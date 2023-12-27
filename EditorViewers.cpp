@@ -418,7 +418,11 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 	if (Core::IsBufferEnabled(buffer.GetName())) {
 		mem = buffer.MakeCopy();
 	}
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	bool is_stable = true;
+#if defined(NESHNY_GL)
+	is_stable = buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS;
+#endif
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), is_stable, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

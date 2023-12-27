@@ -124,13 +124,13 @@ void GPUEntity::DeleteInstance(int index) {
 	m_CurrentCount--;
 }
 
+#if defined(NESHNY_GL)
+
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	// todo: for each death, take index d from alive and copy it
 	m_ControlSSBO->EnsureSizeBytes(sizeof(int));
-
-#if defined(NESHNY_GL)
 
 	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
 
@@ -145,55 +145,9 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-#elif defined(NESHNY_WEBGPU)
-
-	struct Uniform {
-		int p_Count;
-		int p_LifeCount;
-		int p_IntsPer;
-	};
-
-	struct DeathPipeObjects {
-		DeathPipeObjects() : p_Uniform(WGPUBufferUsage_Uniform, sizeof(Uniform)) {}
-		WebGPUPipeline	p_Pipe;
-		WebGPUBuffer	p_Uniform;
-	};
-	
-	// global per-thread object since this will get reused many times
-	static thread_local DeathPipeObjects* death_obj = nullptr; // leaks at end of run, not important
-	if (!death_obj) {
-		death_obj = new DeathPipeObjects();
-		death_obj->p_Pipe
-			.AddBuffer(death_obj->p_Uniform, WGPUShaderStage_Compute, true)
-			.AddBuffer(*m_ControlSSBO, WGPUShaderStage_Compute, false)
-			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
-			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
-			.FinalizeCompute("Death", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
-	}
-	Uniform uniform{
-		death_count
-		,m_MaxIndex
-		,m_NumDataFloats
-	};
-
-	death_obj->p_Uniform.Write((unsigned char*)&uniform, 0, sizeof(Uniform));
-
-	death_obj->p_Pipe.ReplaceBuffer(1, *m_ControlSSBO);
-	death_obj->p_Pipe.ReplaceBuffer(2, *m_FreeList);
-	death_obj->p_Pipe.ReplaceBuffer(3, *m_SSBO);
-
-	death_obj->p_Pipe.Compute(death_count, iVec3(256, 1, 1));
-
-#endif
 
 	m_MaxIndex -= death_count;
 	m_CurrentCount -= death_count;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void GPUEntity::ProcessStableDeaths(int death_count) {
-	m_CurrentCount -= death_count;
-	m_FreeCount += death_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +156,14 @@ void GPUEntity::ProcessMoveCreates(int new_count, int new_next_id) {
 	m_CurrentCount = new_count;
 	m_MaxIndex = new_count;
 	m_NextId = new_next_id;
+}
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::ProcessStableDeaths(int death_count) {
+	m_CurrentCount -= death_count;
+	m_FreeCount += death_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
