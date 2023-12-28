@@ -65,6 +65,71 @@ void GPUEntity::Destroy(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
+
+	// TODO: this is temp, remove
+	int readback[4];
+	{
+		readback[0] = m_CurrentCount;
+		readback[1] = m_FreeCount;
+		readback[2] = m_NextId;
+		readback[3] = m_MaxIndex;
+		m_SSBO->Write((unsigned char*)readback, 0, sizeof(int) * 4);
+	}
+
+	int data_size = item_count * item_size;
+
+	struct CreatePipeObjects {
+		CreatePipeObjects(int size) : p_Data(WGPUBufferUsage_Storage, size) {}
+		WebGPUPipeline	p_Pipe;
+		WebGPUBuffer	p_Data;
+	};
+
+	// global per-thread object since this will get reused many times
+	static thread_local CreatePipeObjects* create_obj = nullptr; // leaks at end of run, not important
+	if (!create_obj) {
+		create_obj = new CreatePipeObjects(data_size + sizeof(int));
+		create_obj->p_Pipe
+			//.AddBuffer(death_obj->p_Uniform, WGPUShaderStage_Compute, true)
+			//.AddBuffer(*m_ControlSSBO, WGPUShaderStage_Compute, false)
+			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
+			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
+			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
+			.FinalizeCompute("EntityCreation", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
+	}
+
+	struct Info {
+		int p_Count;
+		int p_ItemInts;
+		int m_IdOffsetInts;
+	};
+	Info info = {
+		item_count,
+		item_size / (int)sizeof(int),
+		m_IdOffset / (int)sizeof(int)
+	};
+
+	// TODO: collapse to one write command
+	create_obj->p_Data.Write((unsigned char*)&info, 0, sizeof(Info));
+	create_obj->p_Data.Write(data, sizeof(Info), data_size);
+
+	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
+	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
+	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
+	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
+
+	// TODO: this is temp, remove
+	{
+		m_SSBO->Read((unsigned char*)readback, 0, sizeof(int) * 4);
+
+		m_CurrentCount = readback[0];
+		m_FreeCount = readback[1];
+		m_NextId = readback[2];
+		m_MaxIndex = readback[3];
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int GPUEntity::AddInstance(void* data, int* index) {
 
 	int id = m_NextId;

@@ -696,6 +696,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 			insertion += "\tvar item_pos: i32 = 0;";
 			insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
+			insertion += QString("\tatomicMax(&%1, 0);").arg(free_count); // ensure this is never negative after completion
 			insertion += "\tif(free_count > 0) {";
 				insertion += QString("\t\titem_pos = b_Free%1[free_count - 1];").arg(entity.GetName());
 			insertion += "\t} else {";

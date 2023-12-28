@@ -282,6 +282,15 @@ public:
 
 		SerializeStructInfo<T>(m_Specs, get_base_str);
 
+		int pos_index = 0;
+		for (const auto& member : m_Specs.p_Members) {
+			if (member.p_Name == m_IDName) {
+				m_IdOffset = pos_index;
+				break;
+			}
+			pos_index += member.p_Size;
+		}
+
 		QStringList insertion;
 		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
 		insertion += QString("#define %1_LOOKUP(base, index) (b_%1[(base) + (index)])").arg(m_Name);
@@ -325,6 +334,7 @@ public:
 	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
+	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
 	int							AddInstance				( void* data, int* index = nullptr );
 	void						DeleteInstance			( int index );
 
@@ -358,6 +368,8 @@ public:
 
 protected:
 
+	void						AddInstancesInternal	( unsigned char* data, int item_count, int item_size );
+
 	void						MakeCopyIn				( unsigned char* ptr, int offset, int size );
 
 	void						Destroy					( void );
@@ -368,6 +380,7 @@ protected:
 	QString						m_GPUInsertion;
 	QString						m_GPUInsertionDoubleBuffer;
 	QString						m_IDName;
+	int							m_IdOffset = -1;
 	int							m_NumDataFloats = 0;
 
 	bool						m_DoubleBuffering = true;
@@ -379,9 +392,9 @@ protected:
 	SSBO*						m_CopyBuffer = nullptr;
 
 	int							m_CurrentCount = 0;
-	int							m_MaxIndex = 0;
-	int							m_NextId = 0;
 	int							m_FreeCount = 0;
+	int							m_NextId = 0;
+	int							m_MaxIndex = 0;
 };
 
 } // namespace Neshny
