@@ -23,20 +23,21 @@ bool GPUEntity::Init(int expected_max_count) {
 
 	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
 	m_FreeList = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
+	m_InfoBuffer = new SSBO(WGPUBufferUsage_Storage, (unsigned char*)&m_Info, sizeof(EntityInfo));
 #endif
-	m_CurrentCount = 0;
-	m_MaxIndex = 0;
-	m_NextId = 0;
+	m_Info.p_Count = 0;
+	m_Info.p_MaxIndex = 0;
+	m_Info.p_NextId = 0;
 
 	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::Clear(void) {
-	m_CurrentCount = 0;
-	m_MaxIndex = 0;
-	m_NextId = 0;
-	m_FreeCount = 0;
+	m_Info.p_Count = 0;
+	m_Info.p_MaxIndex = 0;
+	m_Info.p_NextId = 0;
+	m_Info.p_FreeCount = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,24 +59,24 @@ void GPUEntity::Destroy(void) {
 		delete m_FreeList;
 		m_FreeList = nullptr;
 	}
+#if defined(NESHNY_GL)
 	if (m_CopyBuffer) {
 		delete m_CopyBuffer;
 		m_CopyBuffer = nullptr;
 	}
+#elif defined(NESHNY_WEBGPU)
+	if (m_InfoBuffer) {
+		delete m_InfoBuffer;
+		m_InfoBuffer = nullptr;
+	}
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
 
 	// TODO: this is temp, remove
-	int readback[4];
-	{
-		readback[0] = m_CurrentCount;
-		readback[1] = m_FreeCount;
-		readback[2] = m_NextId;
-		readback[3] = m_MaxIndex;
-		m_SSBO->Write((unsigned char*)readback, 0, sizeof(int) * 4);
-	}
+	TEMP_WriteStats();
 
 	int data_size = item_count * item_size;
 
@@ -95,6 +96,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
+			.AddBuffer(*m_InfoBuffer, WGPUShaderStage_Compute, false)
 			.FinalizeCompute("EntityCreation", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
 	}
 
@@ -116,31 +118,24 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
 	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
 	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
+	create_obj->p_Pipe.ReplaceBuffer(3, *m_InfoBuffer);
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
 
-	// TODO: this is temp, remove
-	{
-		m_SSBO->Read((unsigned char*)readback, 0, sizeof(int) * 4);
-
-		m_CurrentCount = readback[0];
-		m_FreeCount = readback[1];
-		m_NextId = readback[2];
-		m_MaxIndex = readback[3];
-	}
+	TEMP_ReadStats();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 int GPUEntity::AddInstance(void* data, int* index) {
 
-	int id = m_NextId;
+	int id = m_Info.p_NextId;
 	*((int*)data) = id; // todo: can this be a specified position
-	int creation_index = m_MaxIndex;
+	int creation_index = m_Info.p_MaxIndex;
 
-	if ((m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) && (m_FreeCount > 0)) {
-		creation_index = m_FreeList->GetSingleValue<int>(m_FreeCount - 1);
-		m_FreeCount--;
+	if ((m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) && (m_Info.p_FreeCount > 0)) {
+		creation_index = m_FreeList->GetSingleValue<int>(m_Info.p_FreeCount - 1);
+		m_Info.p_FreeCount--;
 	} else {
-		m_MaxIndex++;
+		m_Info.p_MaxIndex++;
 	}
 
 	int base = creation_index * m_NumDataFloats;
@@ -149,8 +144,8 @@ int GPUEntity::AddInstance(void* data, int* index) {
 		*index = creation_index;
 	}
 
-	m_CurrentCount++;
-	m_NextId++;
+	m_Info.p_Count++;
+	m_Info.p_NextId++;
 	return id;
 }
 
@@ -171,22 +166,22 @@ void GPUEntity::DeleteInstance(int index) {
 		int id_value = -1;
 
 		m_SSBO->Write((unsigned char*)&id_value, index * size_item + pos_index + ENTITY_OFFSET_INTS * sizeof(int), sizeof(float));
-		m_FreeList->EnsureSizeBytes((m_FreeCount + 1) * sizeof(int), false);
-		m_FreeList->Write((unsigned char*)&index, m_FreeCount * sizeof(int), sizeof(int));
-		m_FreeCount++;
+		m_FreeList->EnsureSizeBytes((m_Info.p_FreeCount + 1) * sizeof(int), false);
+		m_FreeList->Write((unsigned char*)&index, m_Info.p_FreeCount * sizeof(int), sizeof(int));
+		m_Info.p_FreeCount++;
 	} else {
-		if (index != (m_MaxIndex - 1)) {
+		if (index != (m_Info.p_MaxIndex - 1)) {
 			// copy the end item into this pos
 #if defined(NESHNY_GL)
-			glCopyNamedBufferSubData(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item, index * size_item, size_item);
+			glCopyNamedBufferSubData(m_SSBO->Get(), m_SSBO->Get(), (m_Info.p_MaxIndex - 1) * size_item, index * size_item, size_item);
 #elif defined(NESHNY_WEBGPU)
-			Core::CopyBufferToBuffer(m_SSBO->Get(), m_SSBO->Get(), (m_MaxIndex - 1) * size_item + ENTITY_OFFSET_INTS * sizeof(int), index * size_item + ENTITY_OFFSET_INTS * sizeof(int), size_item);
+			Core::CopyBufferToBuffer(m_SSBO->Get(), m_SSBO->Get(), (m_Info.p_MaxIndex - 1) * size_item + ENTITY_OFFSET_INTS * sizeof(int), index * size_item + ENTITY_OFFSET_INTS * sizeof(int), size_item);
 #endif
 		}
-		m_MaxIndex--;
+		m_Info.p_MaxIndex--;
 	}
 
-	m_CurrentCount--;
+	m_Info.p_Count--;
 }
 
 #if defined(NESHNY_GL)
@@ -206,40 +201,40 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	m_FreeList->Bind(1);
 
 	m_SSBO->Bind(2);
-	glUniform1i(death_prog->GetUniform("uLifeCount"), m_MaxIndex);
+	glUniform1i(death_prog->GetUniform("uLifeCount"), m_Info.p_MaxIndex);
 
 	Core::DispatchMultiple(death_prog, death_count, 512);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
-	m_MaxIndex -= death_count;
-	m_CurrentCount -= death_count;
+	m_Info.p_MaxIndex -= death_count;
+	m_Info.p_Count -= death_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessMoveCreates(int new_count, int new_next_id) {
 	// todo: for each creation, copy data out if it's asked for
-	m_CurrentCount = new_count;
-	m_MaxIndex = new_count;
-	m_NextId = new_next_id;
+	m_Info.p_Count = new_count;
+	m_Info.p_MaxIndex = new_count;
+	m_Info.p_NextId = new_next_id;
 }
 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessStableDeaths(int death_count) {
-	m_CurrentCount -= death_count;
-	m_FreeCount += death_count;
+	m_Info.p_Count -= death_count;
+	m_Info.p_FreeCount += death_count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessStableCreates(int new_max_index, int new_next_id, int new_free_count) {
 	// todo: for each creation, copy data out if it's asked for
 
-	int added_num = m_FreeCount - new_free_count;
-	m_FreeCount = std::max(new_free_count, 0);
-	m_CurrentCount += added_num;
-	m_MaxIndex = new_max_index;
-	m_NextId = new_next_id;
+	int added_num = m_Info.p_FreeCount - new_free_count;
+	m_Info.p_FreeCount = std::max(new_free_count, 0);
+	m_Info.p_Count += added_num;
+	m_Info.p_MaxIndex = new_max_index;
+	m_Info.p_NextId = new_next_id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,14 +249,14 @@ void GPUEntity::SwapInputOutputSSBOs(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 QString GPUEntity::GetDebugInfo(void) {
-	return QString("# %1 mx %2 id %3 free %4").arg(m_CurrentCount).arg(m_MaxIndex).arg(m_NextId).arg(m_FreeCount);
+	return QString("# %1 mx %2 id %3 free %4").arg(m_Info.p_Count).arg(m_Info.p_MaxIndex).arg(m_Info.p_NextId).arg(m_Info.p_FreeCount);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 
 	const int entity_size = m_NumDataFloats * sizeof(float);
-	const int size = m_MaxIndex * entity_size;
+	const int size = m_Info.p_MaxIndex * entity_size;
 	unsigned char* ptr = new unsigned char[size];
 	MakeCopyIn(ptr, ENTITY_OFFSET_INTS * sizeof(int), size);
 	auto result = std::shared_ptr<unsigned char[]>(ptr);

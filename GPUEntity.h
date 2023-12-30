@@ -3,11 +3,14 @@
 
 namespace Neshny {
 
+struct EntityInfo {
+	int	p_Count = 0;
+	int p_FreeCount = 0;
+	int p_NextId = 0;
+	int p_MaxIndex = 0;
+};
+
 #if defined(NESHNY_WEBGPU)
-//ioCount
-//ioFreeCount
-//ioNextId
-//ioMaxIndex
 const int ENTITY_OFFSET_INTS = 4;
 #else
 const int ENTITY_OFFSET_INTS = 0;
@@ -312,7 +315,7 @@ public:
 	}
 
 	template <typename T> void ExtractAll(std::vector<T>& items) {
-		ExtractMultiple(items, m_MaxIndex);
+		ExtractMultiple(items, m_Info.p_MaxIndex);
 	}
 
 	template <typename T> T ExtractSingle(int index) {
@@ -346,10 +349,10 @@ public:
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
 	inline SSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
-	inline int					GetCount				( void ) const { return m_CurrentCount; }
-	inline int					GetMaxIndex				( void ) const { return m_MaxIndex; }
-	inline int					GetNextId				( void ) const { return m_NextId; }
-	inline int					GetFreeCount			( void ) const { return m_FreeCount; }
+	inline int					GetCount				( void ) const { return m_Info.p_Count; }
+	inline int					GetMaxIndex				( void ) const { return m_Info.p_MaxIndex; }
+	inline int					GetNextId				( void ) const { return m_Info.p_NextId; }
+	inline int					GetFreeCount			( void ) const { return m_Info.p_FreeCount; }
 	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
 	inline QString				GetGPUInsertion			( void ) const { return m_GPUInsertion; }
@@ -357,10 +360,20 @@ public:
 	inline QString				GetIDName				( void ) const { return m_IDName; }
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
+	void						TEMP_WriteStats			( void ) {
+		m_InfoBuffer->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+	}
+	void						TEMP_ReadStats(void) {
+		m_InfoBuffer->Read((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+	}
+
 #if defined(NESHNY_GL)
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	void						ProcessMoveDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
+#elif defined(NESHNY_WEBGPU)
+	inline SSBO*				GetInfoSSBO				( void ) const { return m_InfoBuffer; }
+
 #endif
 	void						ProcessStableDeaths		( int death_count );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
@@ -389,12 +402,13 @@ protected:
 
 	SSBO*						m_ControlSSBO = nullptr;
 	SSBO*						m_FreeList = nullptr;
+#if defined(NESHNY_GL)
 	SSBO*						m_CopyBuffer = nullptr;
+#elif defined(NESHNY_WEBGPU)
+	SSBO*						m_InfoBuffer = nullptr;
+#endif
 
-	int							m_CurrentCount = 0;
-	int							m_FreeCount = 0;
-	int							m_NextId = 0;
-	int							m_MaxIndex = 0;
+	EntityInfo					m_Info;
 };
 
 } // namespace Neshny
