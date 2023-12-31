@@ -544,12 +544,12 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if (!is_render) {
-		m_Vars.push_back({ "ioMaxIndex" });
+		insertion += QString("#define Get_ioMaxIndex (atomicLoad(&b_%1[3]))").arg(m_Entity->GetName());
 	}
 	if (entity_processing) {
 		m_Vars.push_back({ "ioEntityDeaths" });
-		insertion += "#define ioEntityCount b_EntityInfo[0]";
-		insertion += "#define ioEntityFreeCount b_EntityInfo[1]";
+		insertion += QString("#define ioEntityCount b_%1[0]").arg(m_Entity->GetName());
+		insertion += QString("#define ioEntityFreeCount b_%1[1]").arg(m_Entity->GetName());
 	}
 	
 	if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
@@ -573,17 +573,10 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if(m_Entity) {
-		bool input_read_only = (!entity_processing) || m_Entity->IsDoubleBuffering();
+		bool input_read_only = is_render;
 		result->m_Pipeline->AddBuffer(*m_Entity->GetSSBO(), vis_flags, input_read_only);
 		result->m_EntityBufferIndex = insertion_buffers.size();
-		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<i32>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName());
-
-		result->m_Pipeline->AddBuffer(*m_Entity->GetInfoSSBO(), vis_flags, !entity_processing);
-		if (entity_processing) {
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_EntityInfo: array<atomic<i32>>;").arg(insertion_buffers.size());
-		} else {
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read> b_EntityInfo: array<i32>;").arg(insertion_buffers.size());
-		}
+		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<%4>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName()).arg(input_read_only ? "i32" : "atomic<i32>");
 
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
 			result->m_Pipeline->AddBuffer(*m_Entity->GetOuputSSBO(), vis_flags, false);
@@ -592,6 +585,10 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		} else {
 			insertion += m_Entity->GetGPUInsertion();
 		}
+		if (!input_read_only) {
+			insertion += QString("#define %1_LOOKUP(base, index) (atomicLoad(&b_%1[(base) + (index)]))").arg(m_Entity->GetName());
+		}
+
 		if (entity_processing) {
 			insertion += m_Entity->GetSpecs().p_GPUInsertion;
 		} else {
@@ -828,6 +825,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	if (entity_processing) {
 		variables.push_back({ "ioEntityDeaths", &entity_deaths });
+		variables.push_back({ "ioEntityFreeCount", &entity_free_count });
 		m_Entity->GetFreeListSSBO()->EnsureSizeBytes((m_Entity->GetCount() + m_Entity->GetFreeCount() + 16) * sizeof(int), false);
 	}
 
@@ -942,6 +940,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	////////////////////////////////////////////////////
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
+		Core::CopyBufferToBuffer(m_Entity->GetSSBO()->Get(), m_Entity->GetOuputSSBO()->Get(), 0, 0, sizeof(EntityInfo));
 		m_Pipeline->ReplaceBuffer(*m_Entity->GetOuputSSBO(), *m_Entity->GetSSBO());
 		m_Pipeline->ReplaceBuffer(*m_Entity->GetSSBO(), *m_Entity->GetOuputSSBO());
 		m_Entity->SwapInputOutputSSBOs();

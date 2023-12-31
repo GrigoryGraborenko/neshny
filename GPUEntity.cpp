@@ -23,7 +23,6 @@ bool GPUEntity::Init(int expected_max_count) {
 
 	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
 	m_FreeList = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
-	m_InfoBuffer = new SSBO(WGPUBufferUsage_Storage, (unsigned char*)&m_Info, sizeof(EntityInfo));
 #endif
 	m_Info.p_Count = 0;
 	m_Info.p_MaxIndex = 0;
@@ -59,17 +58,10 @@ void GPUEntity::Destroy(void) {
 		delete m_FreeList;
 		m_FreeList = nullptr;
 	}
-#if defined(NESHNY_GL)
 	if (m_CopyBuffer) {
 		delete m_CopyBuffer;
 		m_CopyBuffer = nullptr;
 	}
-#elif defined(NESHNY_WEBGPU)
-	if (m_InfoBuffer) {
-		delete m_InfoBuffer;
-		m_InfoBuffer = nullptr;
-	}
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +88,6 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
-			.AddBuffer(*m_InfoBuffer, WGPUShaderStage_Compute, false)
 			.FinalizeCompute("EntityCreation", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
 	}
 
@@ -118,7 +109,6 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
 	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
 	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
-	create_obj->p_Pipe.ReplaceBuffer(3, *m_InfoBuffer);
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
 
 	TEMP_ReadStats();

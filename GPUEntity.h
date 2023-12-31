@@ -298,7 +298,7 @@ public:
 		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
 		insertion += QString("#define %1_LOOKUP(base, index) (b_%1[(base) + (index)])").arg(m_Name);
 		QStringList insertion_double_buffer = insertion;
-		insertion += QString("#define %1_SET(base, index, value) b_%1[(base) + (index)] = (value)").arg(m_Name);
+		insertion += QString("#define %1_SET(base, index, value) atomicStore(&b_%1[(base) + (index)], value)").arg(m_Name);
 		insertion_double_buffer += QString("#define %1_SET(base, index, value) b_Output%1[(base) + (index)] = (value)").arg(m_Name);
 		m_GPUInsertion = insertion.join("\n");
 		m_GPUInsertionDoubleBuffer = insertion_double_buffer.join("\n");
@@ -361,19 +361,16 @@ public:
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
 	void						TEMP_WriteStats			( void ) {
-		m_InfoBuffer->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+		m_SSBO->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
 	}
 	void						TEMP_ReadStats(void) {
-		m_InfoBuffer->Read((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+		m_SSBO->Read((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
 	}
 
 #if defined(NESHNY_GL)
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	void						ProcessMoveDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
-#elif defined(NESHNY_WEBGPU)
-	inline SSBO*				GetInfoSSBO				( void ) const { return m_InfoBuffer; }
-
 #endif
 	void						ProcessStableDeaths		( int death_count );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
@@ -402,11 +399,7 @@ protected:
 
 	SSBO*						m_ControlSSBO = nullptr;
 	SSBO*						m_FreeList = nullptr;
-#if defined(NESHNY_GL)
 	SSBO*						m_CopyBuffer = nullptr;
-#elif defined(NESHNY_WEBGPU)
-	SSBO*						m_InfoBuffer = nullptr;
-#endif
 
 	EntityInfo					m_Info;
 };
