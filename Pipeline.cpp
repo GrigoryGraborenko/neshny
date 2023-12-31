@@ -670,7 +670,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		QString name = entity.GetName();
 		insertion += QString("//////////////// Entity %1").arg(name);
 
-		m_Vars.push_back({ QString("io%1Count").arg(name) });
+		insertion += QString("#define io%1Count b_%1[0]").arg(entity.GetName());
 
 		insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_%2: array<atomic<i32>>;").arg(insertion_buffers.size()).arg(entity.GetName());
 		result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
@@ -683,12 +683,13 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 		if (entity_spec.p_Creatable) {
 
+			insertion += QString("#define io%1FreeCount b_%1[1]").arg(entity.GetName());
+			insertion += QString("#define io%1NextId b_%1[2]").arg(entity.GetName());
+			insertion += QString("#define io%1MaxIndex b_%1[3]").arg(entity.GetName());
+
 			QString next_id = QString("io%1NextId").arg(name);
 			QString max_index = QString("io%1MaxIndex").arg(name);
 			QString free_count = QString("io%1FreeCount").arg(name);
-			m_Vars.push_back({ free_count });
-			m_Vars.push_back({ next_id });
-			m_Vars.push_back({ max_index });
 
 			insertion += QString("fn Create%1(input_item: %1) {").arg(name);
 			insertion += "\tvar item = input_item;";
@@ -700,6 +701,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
 
 			insertion += "\tvar item_pos: i32 = 0;";
+			insertion += QString("\tatomicAdd(&io%1Count, 1);").arg(entity.GetName());
 			insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
 			insertion += QString("\tatomicMax(&%1, 0);").arg(free_count); // ensure this is never negative after completion
 			insertion += "\tif(free_count > 0) {";
@@ -825,7 +827,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	if (entity_processing) {
 		variables.push_back({ "ioEntityDeaths", &entity_deaths });
-		variables.push_back({ "ioEntityFreeCount", &entity_free_count });
 		m_Entity->GetFreeListSSBO()->EnsureSizeBytes((m_Entity->GetCount() + m_Entity->GetFreeCount() + 16) * sizeof(int), false);
 	}
 
@@ -843,23 +844,8 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 
-	struct EntityControl {
-		int		p_MaxIndex = 0;
-		int		p_NextId = 0;
-		int		p_FreeCount = 0;
-	};
-	std::vector<EntityControl> entity_controls;
-	entity_controls.resize(m_Entities.size()); // resize to avoid reallocations, so you can have pointers to it
-
 	for (int e = 0; e < m_Entities.size(); e++) {
 		GPUEntity* entity = m_Entities[e];
-		QString name = entity->GetName();
-		entity_controls[e] = { entity->GetMaxIndex(), entity->GetNextId(), entity->GetFreeCount() };
-
-		variables.push_back({ QString("io%1NextId").arg(name), &entity_controls[e].p_NextId });
-		variables.push_back({ QString("io%1MaxIndex").arg(name), &entity_controls[e].p_MaxIndex });
-		variables.push_back({ QString("io%1FreeCount").arg(name), &entity_controls[e].p_FreeCount });
-
 		if (entity->IsDoubleBuffering()) {
 			m_Pipeline->ReplaceBuffer(*entity->GetOuputSSBO(), *entity->GetSSBO());
 		}
@@ -968,7 +954,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	for (int e = 0; e < m_Entities.size(); e++) {
 		auto entity = m_Entities[e];
-		entity->ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
+		entity->TEMP_ReadStats();
 	}
 
 #ifdef NESHNY_ENTITY_DEBUG
