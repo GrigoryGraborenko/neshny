@@ -67,8 +67,12 @@ void GPUEntity::Destroy(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
 
-	// TODO: this is temp, remove
-	TEMP_WriteStats();
+#if defined(NESHNY_GL)
+	for (int i = 0; i < item_count; i++) {
+		AddInstance(data);
+		data += item_size;
+	}
+#elif defined(NESHNY_WEBGPU)
 
 	int data_size = item_count * item_size;
 
@@ -83,8 +87,6 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	if (!create_obj) {
 		create_obj = new CreatePipeObjects(data_size + sizeof(int));
 		create_obj->p_Pipe
-			//.AddBuffer(death_obj->p_Uniform, WGPUShaderStage_Compute, true)
-			//.AddBuffer(*m_ControlSSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
@@ -102,6 +104,8 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 		m_IdOffset / (int)sizeof(int)
 	};
 
+	create_obj->p_Data.EnsureSizeBytes(sizeof(Info) + data_size);
+
 	// TODO: collapse to one write command
 	create_obj->p_Data.Write((unsigned char*)&info, 0, sizeof(Info));
 	create_obj->p_Data.Write(data, sizeof(Info), data_size);
@@ -112,6 +116,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
 
 	TEMP_ReadStats();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

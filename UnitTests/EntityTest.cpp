@@ -222,9 +222,9 @@ namespace Test {
 		std::vector<GPUOther> other_expected;
 		for (int i = 0; i < initial_count; i++) {
 			GPUThing thing = GPUThing::Init(i);
-			entities.AddInstance(&thing);
 			expected.push_back(thing);
 		}
+		entities.AddInstances(expected);
 
 		std::vector<int> buffer_values;
 		for (int i = 0; i < initial_count; i++) {
@@ -410,9 +410,10 @@ namespace Test {
 
 		CompareEntities("After deletion", expected, gpu_values);
 
+		std::vector<GPUThing> entities_to_add;
 		for (int i = 0; i < 10; i++) {
 			GPUThing thing = GPUThing::Init(i + 1000);
-			entities.AddInstance(&thing);
+			entities_to_add.push_back(thing);
 
 			bool found = false;
 			for (auto& item : expected) {
@@ -426,6 +427,7 @@ namespace Test {
 				expected.push_back(thing);
 			}
 		}
+		entities.AddInstances(entities_to_add);
 
 		gpu_values.clear();
 		entities.ExtractMultiple(gpu_values, entities.GetCount());
@@ -477,9 +479,9 @@ namespace Test {
 			GPUThing prey = GPUThing::Init(i);
 			prey.p_Float = Random(0.0, 10);
 			prey.p_TwoDim = Neshny::fVec2(Random(-map_radius, map_radius), Random(-map_radius, map_radius));
-			prey_entities.AddInstance(&prey);
 			expected_prey.push_back(prey);
 		}
+		prey_entities.AddInstances(expected_prey);
 
 		std::vector<GPUOther> expected_hunters;
 		for (int i = 0; i < hunter_count; i++) {
@@ -491,9 +493,9 @@ namespace Test {
 				0,
 				Neshny::fVec4(x, y, 0.0, 0.0)
 			};
-			hunter_entities.AddInstance(&hunter);
 			expected_hunters.push_back(hunter);
 		}
+		hunter_entities.AddInstances(expected_hunters);
 
 		for (auto& hunter : expected_hunters) {
 			Neshny::fVec2 hunter_pos(hunter.p_FourDim.x, hunter.p_FourDim.y);

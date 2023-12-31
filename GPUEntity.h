@@ -360,9 +360,6 @@ public:
 	inline QString				GetIDName				( void ) const { return m_IDName; }
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
-	void						TEMP_WriteStats			( void ) {
-		m_SSBO->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
-	}
 	void						TEMP_ReadStats(void) {
 		m_SSBO->Read((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
 	}
