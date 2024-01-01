@@ -525,7 +525,13 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, is_render);
 	}
-	result->m_ReadRequired = result->m_ControlSSBO && (entity_processing || (!m_Vars.empty()));
+	result->m_ReadRequired = false;
+	for (const auto& var: m_Vars) {
+		if (var.p_ReadBack) {
+			result->m_ReadRequired = result->m_ControlSSBO;
+			break;
+		}
+	}
 
 	if(!unform_members.empty()) { // uniform
 		QStringList members;
@@ -927,10 +933,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		m_Entity->SwapInputOutputSSBOs();
 	}
 
-	if (entity_processing) {
-		m_Entity->TEMP_ReadStats();
-	}
-
 #ifdef NESHNY_ENTITY_DEBUG
 	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
 		BufferViewer::Checkpoint(QString("%1 Death").arg(m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT);
@@ -945,11 +947,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 				*var_vals[v].second = control_values[v];
 			}
 		}
-	}
-
-	for (int e = 0; e < m_Entities.size(); e++) {
-		auto entity = m_Entities[e];
-		entity->TEMP_ReadStats();
 	}
 
 #ifdef NESHNY_ENTITY_DEBUG
@@ -1140,7 +1137,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		m_CacheAlloc = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_ALLOCATE" })
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddCode(main_func)
-			.AddInputOutputVar("AllocationCount")
+			.AddInputVar("AllocationCount")
 			.Prepare<Grid2DCacheUniform>();
 
 		m_CacheFill = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_FILL" })
@@ -1159,6 +1156,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	m_CacheIndex->Run(uniform);
 	m_CacheAlloc->Run(uniform, {{ "AllocationCount", &alloc_count }});
+	m_CacheAlloc->Run(uniform);
 	m_CacheFill->Run(uniform);
 
 	// gets used by the entity run that uses the buffer

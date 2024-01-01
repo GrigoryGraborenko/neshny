@@ -120,8 +120,6 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
 	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
-
-	TEMP_ReadStats();
 #endif
 }
 

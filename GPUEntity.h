@@ -363,10 +363,6 @@ public:
 	inline QString				GetIDName				( void ) const { return m_IDName; }
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
-	void						TEMP_ReadStats(void) {
-		m_SSBO->Read((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
-	}
-
 #if defined(NESHNY_GL)
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	void						ProcessMoveDeaths		( int death_count );

@@ -127,7 +127,8 @@ public:
 	}
 
 #elif defined(NESHNY_WEBGPU)
-	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name }); return *this; }
+	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name, true }); return *this; }
+	PipelineStage&				AddInputVar			( QString name ) { m_Vars.push_back({ name, false }); return *this; }
 	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
 	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 
@@ -203,6 +204,8 @@ protected:
 		QString		p_Name;
 #if defined(NESHNY_GL)
 		int*		p_Ptr;
+#elif defined(NESHNY_WEBGPU)
+		bool		p_ReadBack = true;
 #endif
 	};
 
