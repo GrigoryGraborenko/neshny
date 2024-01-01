@@ -189,7 +189,7 @@ namespace Test {
 	////////////////////////////////////////////////////////////////////////////////
 	template <class T>
 	void CompareEntities(QString msg_prefix, std::vector<T> expected, std::vector<T> actual, std::function<bool(const T&, const T&)> sort_func = [](const T& a, const T& b) { return b.p_Id > a.p_Id; }) {
-		Expect("Size mismatch", expected.size() <= actual.size());
+		Expect(msg_prefix + " -> Size mismatch", expected.size() <= actual.size());
 
 		std::sort(expected.begin(), expected.end(), sort_func);
 		std::sort(actual.begin(), actual.end(), sort_func);

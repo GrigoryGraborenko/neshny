@@ -315,7 +315,15 @@ public:
 	}
 
 	template <typename T> void ExtractAll(std::vector<T>& items) {
-		ExtractMultiple(items, m_Info.p_MaxIndex);
+		int size_item = m_NumDataFloats * sizeof(int);
+		int size_offset = ENTITY_OFFSET_INTS * sizeof(int);
+		int total_size = size_offset + size_item * m_MaxItems;
+		unsigned char* buffer = new unsigned char[total_size];
+		MakeCopyIn(buffer, 0, total_size);
+		int max_index = ((int*)buffer)[3];
+		items.resize(max_index);
+		memcpy(items.data(), buffer + size_offset, max_index * size_item);
+		delete[] buffer;
 	}
 
 	template <typename T> T ExtractSingle(int index) {
