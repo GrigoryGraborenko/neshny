@@ -333,7 +333,6 @@ public:
 		m_SSBO->SetSingleValue<T>(index, item);
 	}
 
-
 	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
@@ -349,10 +348,14 @@ public:
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
 	inline SSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
+	inline int					GetMaxCount				( void ) const { return m_MaxItems; }
+#if defined(NESHNY_GL)
 	inline int					GetCount				( void ) const { return m_Info.p_Count; }
 	inline int					GetMaxIndex				( void ) const { return m_Info.p_MaxIndex; }
 	inline int					GetNextId				( void ) const { return m_Info.p_NextId; }
 	inline int					GetFreeCount			( void ) const { return m_Info.p_FreeCount; }
+#endif
+
 	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
 	inline QString				GetGPUInsertion			( void ) const { return m_GPUInsertion; }
@@ -368,9 +371,9 @@ public:
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
 	void						ProcessMoveDeaths		( int death_count );
 	void						ProcessMoveCreates		( int new_count, int new_next_id );
-#endif
 	void						ProcessStableDeaths		( int death_count );
 	void						ProcessStableCreates	( int new_max_id, int new_next_id, int new_free_count );
+#endif
 	void						SwapInputOutputSSBOs	( void );
 
 protected:
@@ -387,6 +390,7 @@ protected:
 	QString						m_GPUInsertion;
 	QString						m_GPUInsertionDoubleBuffer;
 	QString						m_IDName;
+	int							m_MaxItems;
 	int							m_IdOffset = -1;
 	int							m_NumDataFloats = 0;
 

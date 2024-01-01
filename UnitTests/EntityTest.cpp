@@ -298,7 +298,7 @@ namespace Test {
 		CompareEntities("After first add", expected, gpu_values);
 
 		std::vector<GPUOther> gpu_other;
-		other_entities.ExtractMultiple(gpu_other, other_entities.GetMaxIndex());
+		other_entities.ExtractAll(gpu_other);
 
 		auto other_sort = [](const GPUOther& a, const GPUOther& b) { 
 			if (a.p_Id < 0) {
@@ -368,7 +368,7 @@ namespace Test {
 		CompareEntities("After second add", expected, gpu_values);
 
 		gpu_other.clear();
-		other_entities.ExtractMultiple(gpu_other, other_entities.GetMaxIndex());
+		other_entities.ExtractAll(gpu_other);
 
 		CompareEntities<GPUOther>("After second add and other delete", other_expected, gpu_other, other_sort);
 
@@ -406,7 +406,11 @@ namespace Test {
 		}
 
 		gpu_values.clear();
+#ifdef NESHNY_GL
 		entities.ExtractMultiple(gpu_values, mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS ? initial_count : entities.GetCount());
+#else
+		entities.ExtractMultiple(gpu_values, initial_count);
+#endif
 
 		CompareEntities("After deletion", expected, gpu_values);
 
@@ -430,7 +434,11 @@ namespace Test {
 		entities.AddInstances(entities_to_add);
 
 		gpu_values.clear();
+#ifdef NESHNY_GL
 		entities.ExtractMultiple(gpu_values, entities.GetCount());
+#else
+		entities.ExtractMultiple(gpu_values, initial_count);
+#endif
 
 		CompareEntities("After adding in new values", expected, gpu_values);
 	}

@@ -418,11 +418,13 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 	if (Core::IsBufferEnabled(buffer.GetName())) {
 		mem = buffer.MakeCopy();
 	}
-	bool is_stable = true;
 #if defined(NESHNY_GL)
-	is_stable = buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS;
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+#elif defined(NESHNY_WEBGPU)
+	int max_index = mem ? ((int*)mem.get())[3] : 0;
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), max_index, Core::GetTicks(), true, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 #endif
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), is_stable, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +651,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 								continue;
 							}
 							ImGui::TableSetColumnIndex(column + 1);
-							unsigned char* rawptr = &(col.p_Data[0]);
+							unsigned char* rawptr = &(col.p_Data[0]) + ENTITY_OFFSET_INTS * sizeof(int);
 							if ((struct_ind == 0) && (cycles >= 2) && col.p_UsingFreeList) {
 								int id = ((int*)rawptr)[row];
 								if (id == -1) {

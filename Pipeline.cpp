@@ -543,7 +543,9 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
 	}
 
-	if (!is_render) {
+	if (is_render) {
+		insertion += QString("#define Get_ioMaxIndex (b_%1[3])").arg(m_Entity->GetName());
+	} else {
 		insertion += QString("#define Get_ioMaxIndex (atomicLoad(&b_%1[3]))").arg(m_Entity->GetName());
 	}
 	if (entity_processing) {
@@ -695,8 +697,6 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			insertion += "\tvar item = input_item;";
 			insertion += QString("\tlet item_id: i32 = atomicAdd(&%1, 1);").arg(next_id);
 			
-			entity.GetFreeListSSBO()->EnsureSizeBytes((entity.GetCount() + entity.GetFreeCount() + 16) * sizeof(int), false);
-
 			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Free%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
 			result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
 
@@ -814,18 +814,15 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	}
 
 	int entity_deaths = 0;
-	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
 
 	if (m_Entity) {
-		iterations = m_Entity->GetMaxIndex();
-	}
-	if (compute) {
-		variables.push_back({ "ioMaxIndex", &iterations });
+		iterations = m_Entity->GetMaxCount();
+		//iterations = m_Entity->GetMaxIndex();
+
 	}
 
 	if (entity_processing) {
 		variables.push_back({ "ioEntityDeaths", &entity_deaths });
-		m_Entity->GetFreeListSSBO()->EnsureSizeBytes((m_Entity->GetCount() + m_Entity->GetFreeCount() + 16) * sizeof(int), false);
 	}
 
 	int rand_seed_val = 0;
@@ -1072,7 +1069,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	Vec2 range = grid_max - grid_min;
 	Vec2 cell_size(range.x / grid_size.x, range.y / grid_size.y);
 	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int), true);
-	m_GridItems.EnsureSizeBytes(m_Entity.GetCount() * sizeof(int), false);
+	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
 
 #if defined(NESHNY_GL)
 

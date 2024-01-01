@@ -6,6 +6,9 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 bool GPUEntity::Init(int expected_max_count) {
 
+	Destroy();
+	m_MaxItems = expected_max_count;
+
 	int max_size = (expected_max_count * m_NumDataFloats + ENTITY_OFFSET_INTS) * sizeof(int);
 #if defined(NESHNY_GL)
 	m_SSBO = new SSBO(max_size);
@@ -22,11 +25,8 @@ bool GPUEntity::Init(int expected_max_count) {
 	}
 
 	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
-	m_FreeList = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
+	m_FreeList = new SSBO(WGPUBufferUsage_Storage, expected_max_count * sizeof(int));
 #endif
-	m_Info.p_Count = 0;
-	m_Info.p_MaxIndex = 0;
-	m_Info.p_NextId = 0;
 
 	return true;
 }
@@ -37,6 +37,11 @@ void GPUEntity::Clear(void) {
 	m_Info.p_MaxIndex = 0;
 	m_Info.p_NextId = 0;
 	m_Info.p_FreeCount = 0;
+#if defined(NESHNY_WEBGPU)
+	if (m_SSBO) {
+		m_SSBO->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+	}
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +73,7 @@ void GPUEntity::Destroy(void) {
 void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
 
 #if defined(NESHNY_GL)
+	// TODO: this could be much more efficient, or converted to shader just like webgpu
 	for (int i = 0; i < item_count; i++) {
 		AddInstance(data);
 		data += item_size;
@@ -122,6 +128,8 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 ////////////////////////////////////////////////////////////////////////////////
 int GPUEntity::AddInstance(void* data, int* index) {
 
+	// TODO: disable this for webgpu
+
 	int id = m_Info.p_NextId;
 	*((int*)data) = id; // todo: can this be a specified position
 	int creation_index = m_Info.p_MaxIndex;
@@ -146,6 +154,8 @@ int GPUEntity::AddInstance(void* data, int* index) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::DeleteInstance(int index) {
+
+	// TODO: needs webgpu conversion
 
 	int size_item = m_NumDataFloats * sizeof(float);
 	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
@@ -213,8 +223,6 @@ void GPUEntity::ProcessMoveCreates(int new_count, int new_next_id) {
 	m_Info.p_NextId = new_next_id;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessStableDeaths(int death_count) {
 	m_Info.p_Count -= death_count;
@@ -231,6 +239,7 @@ void GPUEntity::ProcessStableCreates(int new_max_index, int new_next_id, int new
 	m_Info.p_MaxIndex = new_max_index;
 	m_Info.p_NextId = new_next_id;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::SwapInputOutputSSBOs(void) {
@@ -249,11 +258,11 @@ QString GPUEntity::GetDebugInfo(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
-
 	const int entity_size = m_NumDataFloats * sizeof(float);
-	const int size = m_Info.p_MaxIndex * entity_size;
+	const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
+	const int size = m_MaxItems * entity_size + offset_size;
 	unsigned char* ptr = new unsigned char[size];
-	MakeCopyIn(ptr, ENTITY_OFFSET_INTS * sizeof(int), size);
+	MakeCopyIn(ptr, 0, size);
 	auto result = std::shared_ptr<unsigned char[]>(ptr);
 	return result;
 }
