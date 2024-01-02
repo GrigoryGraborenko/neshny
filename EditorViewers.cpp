@@ -414,17 +414,24 @@ void BufferViewer::ICheckpoint(QString name, QString stage, SSBO& buffer, int co
 
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
-	std::shared_ptr<unsigned char[]> mem = nullptr;
-	if (Core::IsBufferEnabled(buffer.GetName())) {
-		mem = buffer.MakeCopy();
+	if (!Core::IsBufferEnabled(buffer.GetName())) {
+		return;
 	}
 #if defined(NESHNY_GL)
+	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopy();
 	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 #elif defined(NESHNY_WEBGPU)
-	int max_index = mem ? ((int*)mem.get())[3] : 0;
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), max_index, Core::GetTicks(), true, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
-#endif
 
+	int ticks = Core::GetTicks();
+	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, int item_count) {
+		unsigned char* copy = new unsigned char[size_bytes];
+		memcpy(copy, data, size_bytes);
+		std::shared_ptr<unsigned char[]> mem(copy);
+		BufferViewer::Singleton().UpdateCheckpoint(buffer_name, ticks, item_count, mem);
+	});
+	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -461,6 +468,21 @@ void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const Str
 	existing->second.p_Frames.push_front(data);
 	while (existing->second.p_Frames.size() > max_frames) {
 		existing->second.p_Frames.pop_back();
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, std::shared_ptr<unsigned char[]> new_data) {
+	auto existing = m_Frames.find(name);
+	if (existing == m_Frames.end()) {
+		return;
+	}
+	for (auto iter = existing->second.p_Frames.begin(); iter != existing->second.p_Frames.end(); iter++) {
+		if (iter->p_Tick == tick) {
+			iter->p_Count = new_count;
+			iter->p_Data = new_data;
+			return;
+		}
 	}
 }
 

@@ -217,6 +217,7 @@ protected:
 
 	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
 	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }
+	void					UpdateCheckpoint	( QString name, int tick, int new_count, std::shared_ptr<unsigned char[]> new_data );
 
 	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
 	QString										m_HighlightName;

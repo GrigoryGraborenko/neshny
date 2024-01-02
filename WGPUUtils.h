@@ -49,13 +49,31 @@ class WebGPUBuffer {
 
 public:
 
+	struct AsyncToken {
+		void Wait();
+		bool IsFinished() { return m_Internals->m_Finished; }
+		bool IsError() { return m_Internals->m_Error; }
+	private:
+		struct Internals {
+			bool					m_Finished = false;
+			bool					m_Error = false;
+			std::shared_ptr<void>	m_Payload = nullptr;
+		};
+		AsyncToken() : m_Internals(new Internals{}) {}
+		AsyncToken(AsyncToken& other): m_Internals(other.m_Internals) {}
+		std::shared_ptr<Internals>	m_Internals = nullptr;
+		friend class WebGPUBuffer;
+	};
+
 													WebGPUBuffer			( WGPUBufferUsageFlags flags, int size = 0 );
 													WebGPUBuffer			( WGPUBufferUsageFlags flags, unsigned char* data, int size );
 			 										~WebGPUBuffer			( void );
 
 	void											EnsureSizeBytes			( int size_bytes, bool clear_after = true );
 	void											ClearBuffer				( void );
-	void											Read					( unsigned char* buffer, int offset = 0, int size = -1 );
+	void											ReadSync				( unsigned char* buffer, int offset = 0, int size = -1 );
+
+	AsyncToken										Read					( int offset, int size, std::function<std::shared_ptr<void>(unsigned char* data, int size)>&& callback );
 	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 
@@ -79,7 +97,7 @@ public:
 	template<class T>
 	inline T										GetSingleValue(int index) {
 		T result;
-		Read((unsigned char*)&result, index * sizeof(T), sizeof(T));
+		ReadSync((unsigned char*)&result, index * sizeof(T), sizeof(T));
 		return result;
 	}
 
@@ -89,7 +107,7 @@ public:
 			return;
 		}
 		items.resize(count);
-		Read((unsigned char*)&(items[0]), offset * sizeof(T), count * sizeof(T));
+		ReadSync((unsigned char*)&(items[0]), offset * sizeof(T), count * sizeof(T));
 	}
 
 protected:

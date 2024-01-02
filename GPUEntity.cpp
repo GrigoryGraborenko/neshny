@@ -255,7 +255,7 @@ QString GPUEntity::GetDebugInfo(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
+std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
 	const int size = m_MaxItems * entity_size + offset_size;
@@ -263,6 +263,20 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopy(void) {
 	MakeCopyIn(ptr, 0, size);
 	auto result = std::shared_ptr<unsigned char[]>(ptr);
 	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
+
+	m_SSBO->Read(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size) -> std::shared_ptr<void> {
+		int max_index = ((int*)data)[3];
+		const int entity_size = m_NumDataFloats * sizeof(int);
+		const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
+		const int useful_size = max_index * entity_size + offset_size;
+
+		callback(data, useful_size, max_index);
+		return nullptr;
+	});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +290,7 @@ void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
 	glCopyNamedBufferSubData(m_SSBO->Get(), m_CopyBuffer->Get(), offset, 0, size);
 	glGetNamedBufferSubData(m_CopyBuffer->Get(), 0, size, ptr);
 #elif defined(NESHNY_WEBGPU)
-	m_SSBO->Read(ptr, offset, size);
+	m_SSBO->ReadSync(ptr, offset, size);
 #endif
 
 }

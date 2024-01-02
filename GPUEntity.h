@@ -307,6 +307,7 @@ public:
 	~GPUEntity(void) { Destroy(); }
 
 	template <typename T> void ExtractMultiple(std::vector<T>& items, int count) {
+		// does this still make sense? should there be an offset?
 		if (count <= 0) {
 			return;
 		}
@@ -349,7 +350,8 @@ public:
 	void						DeleteInstance			( int index );
 
 	QString						GetDebugInfo			( void );
-	std::shared_ptr<unsigned char[]> MakeCopy			( void );
+	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
+	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback);
 
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
