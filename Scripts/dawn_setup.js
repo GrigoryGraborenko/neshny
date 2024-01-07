@@ -158,7 +158,7 @@ function copyAllFilesStructureTo(file_obj_list, dest_dir) {
     });
 }
 
-async function run(all_libs = false) {
+async function run(all_libs, update_existing) {
     try {
         await exec("git --version");
     } catch (err) {
@@ -179,32 +179,40 @@ async function run(all_libs = false) {
         console.log(`Making new directory for Dawn at ${dawn_path}`);
         fs.mkdirSync(dawn_path, { recursive: true });
     }
+	let build = false;
     if (fs.statSync(`${dawn_path}/dawn/.git`, { throwIfNoEntry: false }) === undefined) {
         console.log("Cloning dawn repo...");
         await exec("git clone https://dawn.googlesource.com/dawn", { cwd: dawn_path });
         dawn_path += "/dawn";
-    } else {
+		build = true;
+    } else if (update_existing) {
         console.log("Found existing dawn repo, updating...");
         dawn_path += "/dawn";
         await exec("git pull", { cwd: dawn_path });
-    }
-
-    console.log("Fetching dependencies...");
-    await exec(`python tools/fetch_dawn_dependencies.py --use-test-deps`, { cwd: dawn_path });
-
-    console.log("Running cmake...");
-    if (is_windows) {
-        await exec(`cmake . -B build-debug -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
-        await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+		build = true;
     } else {
-        await exec(`cmake . -B build-debug -G "Unix Makefiles"`, { cwd: dawn_path });
-        await exec(`cmake . -B build-release -G "Unix Makefiles"`, { cwd: dawn_path });
-    }
+        console.log("Found existing dawn repo");
+        dawn_path += "/dawn";
+	}
 
-    console.log("Building debug...");
-    await exec(`cmake --build build-debug --config=DEBUG`, { cwd: dawn_path });
-    console.log("Building release...");
-    await exec(`cmake --build build-release --config=RELEASE`, { cwd: dawn_path });
+	if (build) {
+		console.log("Fetching dependencies...");
+		await exec(`python tools/fetch_dawn_dependencies.py --use-test-deps`, { cwd: dawn_path });
+
+        console.log("Running cmake...");
+        if (is_windows) {
+            await exec(`cmake . -B build-debug -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+            await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+        } else {
+            await exec(`cmake . -B build-debug -G "Unix Makefiles"`, { cwd: dawn_path });
+            await exec(`cmake . -B build-release -G "Unix Makefiles"`, { cwd: dawn_path });
+        }
+
+		console.log("Building debug...");
+		await exec(`cmake --build build-debug --config=DEBUG`, { cwd: dawn_path });
+		console.log("Building release...");
+		await exec(`cmake --build build-release --config=RELEASE`, { cwd: dawn_path });
+	}
 
     fs.mkdirSync('./external/WebGPU/lib/Debug', { recursive: true });
     fs.mkdirSync('./external/WebGPU/lib/Release', { recursive: true });
@@ -235,7 +243,7 @@ async function run(all_libs = false) {
 
 module.exports = () => {
     const copy_all = (process.argv.length > 2) && (process.argv[2] === '-all');
-    run(copy_all).then(() => {
+    run(copy_all, false).then(() => { // TODO: make update a command line arg
         console.log("Completed Successfully");
     }).catch(err => {
         console.error("Error!");
