@@ -270,6 +270,7 @@ bool Core::LoopInit(IEngine* engine) {
 
 	if (!engine->Init()) {
 		qDebug() << "Could not init engine";
+		return false;
 	}
 	m_Ticks = 0;
 	return true;
@@ -355,6 +356,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 	m_Window = window;
 	if (!LoopInit(engine)) {
+		m_SyncLock.lock();
 		return false;
 	}
 
