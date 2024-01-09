@@ -418,7 +418,7 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 		return;
 	}
 #if defined(NESHNY_GL)
-	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopy();
+	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopySync();
 	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 #elif defined(NESHNY_WEBGPU)
 

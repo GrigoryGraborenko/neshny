@@ -351,7 +351,9 @@ public:
 
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
+#if defined(NESHNY_WEBGPU)
 	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback);
+#endif
 
 	inline QString				GetName					( void ) const { return m_Name; }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }

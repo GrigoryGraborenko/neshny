@@ -265,6 +265,7 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 	return result;
 }
 
+#if defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
 
@@ -278,6 +279,7 @@ void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_byte
 		return nullptr;
 	});
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
