@@ -225,7 +225,7 @@ void WebGPUBuffer::AsyncToken::Wait() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUBuffer::AsyncToken WebGPUBuffer::Read(int offset, int size, std::function<std::shared_ptr<void>(unsigned char*, int)>&& callback) {
+WebGPUBuffer::AsyncToken WebGPUBuffer::Read(int offset, int size, std::function<std::shared_ptr<void>(unsigned char*, int, AsyncToken)>&& callback) {
 	if ((offset + size) > m_Size) {
 		throw std::invalid_argument("Attempt to read past end of buffer");
 	}
@@ -242,7 +242,7 @@ WebGPUBuffer::AsyncToken WebGPUBuffer::Read(int offset, int size, std::function<
 
 	struct AsyncInfo {
 		WGPUBuffer p_Buffer;
-		std::function<std::shared_ptr<void>(unsigned char*, int)> p_Callback;
+		std::function<std::shared_ptr<void>(unsigned char*, int, AsyncToken)> p_Callback;
 		int p_Size;
 		AsyncToken p_Token;
 	};
@@ -262,7 +262,7 @@ WebGPUBuffer::AsyncToken WebGPUBuffer::Read(int offset, int size, std::function<
 
 		if (status == WGPUBufferMapAsyncStatus_Success) {
 			auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
-			info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size);
+			info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
  			wgpuBufferUnmap(info->p_Buffer);
 		} else {
 			info->p_Token.m_Internals->m_Error = true;

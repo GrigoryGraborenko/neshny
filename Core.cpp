@@ -935,6 +935,9 @@ void Core::IRenderEditor(void) {
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
 	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
 	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);
+
+	Scrapbook2D::Clear();
+	Scrapbook3D::Clear();
 #endif
 
 #ifdef NESHNY_TESTING

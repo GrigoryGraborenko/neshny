@@ -270,6 +270,8 @@ public:
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
+    static inline void			Clear					( void ) { Singleton().IClear(); }
+
 private:
 
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
@@ -303,6 +305,8 @@ public:
 	static inline void			Controls					( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static void					RenderImGui					( InterfaceScrapbook3D& data ) { Singleton().IRenderImGui(data); }
+
+    static inline void			Clear						( void ) { Singleton().IClear(); }
 
 private:
 

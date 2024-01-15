@@ -346,13 +346,18 @@ public:
 	void						Clear					( void );
 
 	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
+#if defined(NESHNY_GL)
 	int							AddInstance				( void* data, int* index = nullptr );
+#endif
 	void						DeleteInstance			( int index );
 
 	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
 #if defined(NESHNY_WEBGPU)
 	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback);
+	void						QueueInfoRead			( void );
+	inline int					GetLastKnownCount		( void ) const { return m_LastKnownInfo.p_Count; }
+	inline int					GetCountSync			( void ) { SyncInfo(); return m_LastKnownInfo.p_Count; }
 #endif
 
 	inline QString				GetName					( void ) const { return m_Name; }
@@ -387,10 +392,12 @@ public:
 protected:
 
 	void						AddInstancesInternal	( unsigned char* data, int item_count, int item_size );
-
 	void						MakeCopyIn				( unsigned char* ptr, int offset, int size );
-
 	void						Destroy					( void );
+
+#if defined(NESHNY_WEBGPU)
+	void						SyncInfo				( void );
+#endif
 
 	DeleteMode					m_DeleteMode;
 	QString						m_Name;
@@ -410,7 +417,12 @@ protected:
 	SSBO*						m_FreeList = nullptr;
 	SSBO*						m_CopyBuffer = nullptr;
 
+#if defined(NESHNY_GL)
 	EntityInfo					m_Info;
+#elif defined(NESHNY_WEBGPU)
+	EntityInfo					m_LastKnownInfo;
+	std::deque<WebGPUBuffer::AsyncToken>	m_Pending;
+#endif
 };
 
 } // namespace Neshny

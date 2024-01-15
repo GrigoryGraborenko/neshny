@@ -53,6 +53,9 @@ public:
 		void Wait();
 		bool IsFinished() { return m_Internals->m_Finished; }
 		bool IsError() { return m_Internals->m_Error; }
+		std::shared_ptr<void> GetPayload(void) { return m_Internals ? (m_Internals->m_Payload ? m_Internals->m_Payload : nullptr) : nullptr; }
+		AsyncToken(const AsyncToken& other): m_Internals(other.m_Internals) {}
+		bool operator==(const AsyncToken& other) const { return other.m_Internals.get() == m_Internals.get(); }
 	private:
 		struct Internals {
 			bool					m_Finished = false;
@@ -60,7 +63,6 @@ public:
 			std::shared_ptr<void>	m_Payload = nullptr;
 		};
 		AsyncToken() : m_Internals(new Internals{}) {}
-		AsyncToken(AsyncToken& other): m_Internals(other.m_Internals) {}
 		std::shared_ptr<Internals>	m_Internals = nullptr;
 		friend class WebGPUBuffer;
 	};
@@ -73,7 +75,7 @@ public:
 	void											ClearBuffer				( void );
 	void											ReadSync				( unsigned char* buffer, int offset = 0, int size = -1 );
 
-	AsyncToken										Read					( int offset, int size, std::function<std::shared_ptr<void>(unsigned char* data, int size)>&& callback );
+	AsyncToken										Read					( int offset, int size, std::function<std::shared_ptr<void>(unsigned char* data, int size, AsyncToken token)>&& callback );
 	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 

@@ -33,13 +33,18 @@ bool GPUEntity::Init(int expected_max_count) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::Clear(void) {
+#if defined(NESHNY_GL)
 	m_Info.p_Count = 0;
 	m_Info.p_MaxIndex = 0;
 	m_Info.p_NextId = 0;
 	m_Info.p_FreeCount = 0;
-#if defined(NESHNY_WEBGPU)
+#elif defined(NESHNY_WEBGPU)
+	m_LastKnownInfo.p_Count = 0;
+	m_LastKnownInfo.p_MaxIndex = 0;
+	m_LastKnownInfo.p_NextId = 0;
+	m_LastKnownInfo.p_FreeCount = 0;
 	if (m_SSBO) {
-		m_SSBO->Write((unsigned char*)&m_Info, 0, sizeof(EntityInfo));
+		m_SSBO->Write((unsigned char*)&m_LastKnownInfo, 0, sizeof(EntityInfo));
 	}
 #endif
 }
@@ -123,6 +128,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 #endif
 }
 
+#if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 int GPUEntity::AddInstance(void* data, int* index) {
 
@@ -149,12 +155,12 @@ int GPUEntity::AddInstance(void* data, int* index) {
 	m_Info.p_NextId++;
 	return id;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::DeleteInstance(int index) {
 
-	// TODO: needs webgpu conversion
-
+#if defined(NESHNY_GL)
 	int size_item = m_NumDataFloats * sizeof(float);
 	if (m_DeleteMode == DeleteMode::STABLE_WITH_GAPS) {
 
@@ -185,10 +191,16 @@ void GPUEntity::DeleteInstance(int index) {
 	}
 
 	m_Info.p_Count--;
+#elif defined(NESHNY_WEBGPU)
+
+	// TODO: needs webgpu conversion
+#pragma msg("make a shader-based version of this")
+
+#endif
+
 }
 
 #if defined(NESHNY_GL)
-
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::ProcessMoveDeaths(int death_count) {
 
@@ -251,7 +263,11 @@ void GPUEntity::SwapInputOutputSSBOs(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 QString GPUEntity::GetDebugInfo(void) {
+#if defined(NESHNY_GL)
 	return QString("# %1 mx %2 id %3 free %4").arg(m_Info.p_Count).arg(m_Info.p_MaxIndex).arg(m_Info.p_NextId).arg(m_Info.p_FreeCount);
+#else
+	return QString("# %1 mx %2 id %3 free %4").arg(m_LastKnownInfo.p_Count).arg(m_LastKnownInfo.p_MaxIndex).arg(m_LastKnownInfo.p_NextId).arg(m_LastKnownInfo.p_FreeCount);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +285,7 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
 
-	m_SSBO->Read(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size) -> std::shared_ptr<void> {
+	m_SSBO->Read(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size, WebGPUBuffer::AsyncToken token) -> std::shared_ptr<void> {
 		int max_index = ((int*)data)[3];
 		const int entity_size = m_NumDataFloats * sizeof(int);
 		const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
@@ -279,6 +295,35 @@ void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_byte
 		return nullptr;
 	});
 }
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::QueueInfoRead() {
+
+	m_Pending.push_back(m_SSBO->Read(0, sizeof(EntityInfo), [this](unsigned char* data, int size, WebGPUBuffer::AsyncToken token) -> std::shared_ptr<void> {
+		EntityInfo* result = new EntityInfo();
+		memcpy((unsigned char*)result, data, sizeof(EntityInfo));
+
+		while (!m_Pending.empty() && (m_Pending.front().IsFinished() || (m_Pending.front() == token))) {
+			auto payload = m_Pending.front().GetPayload();
+			if (payload.get()) {
+				memcpy((unsigned char*)(&m_LastKnownInfo), (unsigned char*)payload.get(), sizeof(EntityInfo));
+			} else if (m_Pending.front() == token) {
+				memcpy((unsigned char*)(&m_LastKnownInfo), data, sizeof(EntityInfo));
+			}
+			m_Pending.pop_front();
+		}
+		return std::shared_ptr<void>(result);
+	}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::SyncInfo() {
+	while (!m_Pending.empty()) {
+		m_Pending.front().Wait();
+		m_Pending.pop_front();
+	}
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -26,7 +26,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
-	m_Entities.push_back({ entity, false });
+	m_Entities.push_back({ &entity, false });
 	if (cache) {
 		cache->Bind(*this);
 	}
@@ -35,7 +35,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
-	m_Entities.push_back({ entity, true });
+	m_Entities.push_back({ &entity, true });
 	if (cache) {
 		cache->Bind(*this);
 	}
@@ -218,7 +218,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	std::vector<EntityControl> entity_controls;
 	entity_controls.reserve(m_Entities.size()); // reserve to avoid reallocations, so you can have pointers to it
 	for (int e = 0; e < m_Entities.size(); e++) {
-		GPUEntity& entity = m_Entities[e].p_Entity;
+		GPUEntity& entity = *m_Entities[e].p_Entity; // assume this is set
 		QString name = entity.GetName();
 		insertion += QString("//////////////// Entity %1").arg(name);
 		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
@@ -411,10 +411,10 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	}
 
 	for (int e = 0; e < m_Entities.size(); e++) {
-		if (!m_Entities[e].p_Creatable) {
+		if ((!m_Entities[e].p_Creatable) || (!m_Entities[e].p_Entity)) {
 			continue;
 		}
-		GPUEntity& entity = m_Entities[e].p_Entity;
+		GPUEntity& entity = *m_Entities[e].p_Entity;
 		if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			entity.ProcessStableCreates(entity_controls[e].p_MaxIndex, entity_controls[e].p_NextId, entity_controls[e].p_FreeCount);
 		} else {
@@ -494,12 +494,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	result->m_Entity = m_Entity;
 	result->m_Buffer = m_Buffer;
 	result->m_Cache = m_Cache;
-	result->m_Entities = {};
-	for (auto& entity : m_Entities) {
-		if (entity.p_Creatable) {
-			result->m_Entities.push_back(&entity.p_Entity);
-		}
-	}
+	result->m_Entities = m_Entities;
 
 	result->m_Pipeline = new WebGPUPipeline();
 
@@ -674,7 +669,10 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	//}
 
 	for (auto& entity_spec : m_Entities) {
-		GPUEntity& entity = entity_spec.p_Entity;
+		if (!entity_spec.p_Entity) {
+			continue;
+		}
+		GPUEntity& entity = *entity_spec.p_Entity;
 		QString name = entity.GetName();
 		insertion += QString("//////////////// Entity %1").arg(name);
 
@@ -823,8 +821,6 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	if (m_Entity) {
 		iterations = m_Entity->GetMaxCount();
-		//iterations = m_Entity->GetMaxIndex();
-
 	}
 
 	if (entity_processing) {
@@ -845,10 +841,9 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 
-	for (int e = 0; e < m_Entities.size(); e++) {
-		GPUEntity* entity = m_Entities[e];
-		if (entity->IsDoubleBuffering()) {
-			m_Pipeline->ReplaceBuffer(*entity->GetOuputSSBO(), *entity->GetSSBO());
+	for(auto& pair: m_Entities) {
+		if (pair.p_Entity && pair.p_Entity->IsDoubleBuffering()) {
+			m_Pipeline->ReplaceBuffer(*pair.p_Entity->GetOuputSSBO(), *pair.p_Entity->GetSSBO());
 		}
 	}
 	
@@ -922,6 +917,14 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_TemporaryFrame.get());
 		}
 		rtt->Render(m_Pipeline, iterations);
+	}
+	if (entity_processing) {
+		m_Entity->QueueInfoRead();
+	}
+	for (auto& pair: m_Entities) {
+		if (pair.p_Entity && pair.p_Creatable) {
+			pair.p_Entity->QueueInfoRead();
+		}
 	}
 
 	////////////////////////////////////////////////////

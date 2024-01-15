@@ -26,6 +26,11 @@ public:
 #endif
 	};
 
+	struct AddedEntity {
+		GPUEntity*	p_Entity;
+		bool		p_Creatable = false;
+	};
+
 #if defined(NESHNY_WEBGPU)
 	class Prepared {
 		RunType						m_RunType;
@@ -38,7 +43,7 @@ public:
 		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
 		class BaseCache*			m_Cache = nullptr; // not owned, do not delete
 		QStringList					m_VarNames;
-		std::vector<GPUEntity*>		m_Entities;
+		std::vector<AddedEntity>	m_Entities;
 		bool						m_UsingRandom;
 		bool						m_ReadRequired = false;
 		std::shared_ptr<SSBO>		m_TemporaryFrame; // used for time travel feature
@@ -194,11 +199,6 @@ protected:
 
 	std::unique_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
 #endif
-
-	struct AddedEntity {
-		GPUEntity&	p_Entity;
-		bool		p_Creatable = false;
-	};
 
 	struct AddedInOut {
 		QString		p_Name;
