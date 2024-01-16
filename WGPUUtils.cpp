@@ -941,6 +941,7 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 			color_desc.clearValue.g = 0.0f;
 			color_desc.clearValue.b = 0.0f;
 			color_desc.clearValue.a = 1.0f;
+			color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 		}
 
 		m_PassDescriptor.colorAttachmentCount = num_color_tex;
@@ -981,6 +982,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 		color_desc.clearValue.g = 0.0f;
 		color_desc.clearValue.b = 0.0f;
 		color_desc.clearValue.a = 1.0f;
+		color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 	}
 
 	m_PassDescriptor.colorAttachmentCount = num_color_tex;

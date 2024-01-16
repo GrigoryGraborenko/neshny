@@ -533,22 +533,23 @@ void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, 
 	}
 #else
 
-	dawn::native::Instance instance;
+	WGPUInstanceDescriptor instanceDescriptor{};
+	instanceDescriptor.features.timedWaitAnyEnable = true;
+	dawn::native::Instance instance(&instanceDescriptor);
 
-    wgpu::RequestAdapterOptions options = {};
-    options.backendType = backend;
+	wgpu::RequestAdapterOptions options = {};
+	options.backendType = backend;
 
-    // Get the first adapter for the correct backend
-    auto adapters = instance.EnumerateAdapters(&options);
+	// Get the first adapter for the correct backend
+	auto adapters = instance.EnumerateAdapters(&options);
 	if (adapters.empty()) {
 		throw "No adapters found for this backend";
 	}
 	dawn::native::Adapter backendAdapter = adapters[0];
-
-	//wgpu::DawnAdapterPropertiesPowerPreference power_props{};
- //   wgpu::AdapterProperties adapterProperties{};
- //   adapterProperties.nextInChain = &power_props;
- //   backendAdapter.GetProperties(&adapterProperties);
+	wgpu::DawnAdapterPropertiesPowerPreference power_props{};
+	wgpu::AdapterProperties adapterProperties{};
+	adapterProperties.nextInChain = &power_props;
+	backendAdapter.GetProperties(&adapterProperties);
 
 	WGPUSupportedLimits supported;
 	supported.nextInChain = nullptr;
@@ -604,6 +605,7 @@ void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, 
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
 
+/*
 	// void* layer = MacOSInitSurface(wmInfo.info.cocoa.window);
 	// NSWindow* cocoa_win = wmInfo.info.cocoa.window;
 
@@ -615,15 +617,20 @@ void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, 
 	// SDL_GetWindowWMInfo(window, );
 	// SurfaceDescriptorFromMetalLayer
 
-	// std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
-	//surfaceChainedDesc->hwnd = hwnd;
-	std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
-	surfaceChainedDesc->layer = nullptr;
-	//surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
+	surfaceChainedDesc->hwnd = hwnd;
+	//std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
+	//surfaceChainedDesc->layer = nullptr;
+	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+*/
+
+	HWND hwnd = wmInfo.info.win.window;
+	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
+	surfaceChainedDesc->hwnd = hwnd;
+	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
 
 	WGPUSurfaceDescriptor surfaceDesc;
-	//surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
-	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&surfaceChainedDesc);
+	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);
 
@@ -731,6 +738,7 @@ void Core::SDLLoopInner() {
 	color_desc.clearValue.g = 0.0f;
 	color_desc.clearValue.b = 0.0f;
 	color_desc.clearValue.a = 1.0f;
+	color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 	WGPURenderPassDepthStencilAttachment depth_desc = {};
 	depth_desc.view = m_DepthTex->GetTextureView();
 	depth_desc.depthClearValue = 1.0f;
