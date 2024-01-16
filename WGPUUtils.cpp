@@ -281,6 +281,7 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 			case WGPUVertexFormat_Sint32x2: item.p_Size = sizeof(int) * 2; break;
 			case WGPUVertexFormat_Sint32x3: item.p_Size = sizeof(int) * 3; break;
 			case WGPUVertexFormat_Sint32x4: item.p_Size = sizeof(int) * 4; break;
+			case WGPUVertexFormat_Unorm10_10_10_2:
 			case WGPUVertexFormat_Force32:
 			case WGPUVertexFormat_Undefined: item.p_Size = 0; break;
 		}

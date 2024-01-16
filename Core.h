@@ -474,11 +474,8 @@ public:
 	bool								QTLoop						( QOpenGLWindow* window, IEngine* engine );
 #endif
 #ifdef SDL_WEBGPU_LOOP
-	enum class WebGPUNativeBackend {
-		D3D12, Metal, Vulkan, OpenGL, OpenGLES
-	};
 	void								SDLLoopInner				( void );
-	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height );
+	bool								WebGPUSDLLoop				( wgpu::BackendType backend, SDL_Window* window, IEngine* engine, int width, int height );
 	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
 	void								SyncResolution				( void );
 #endif
@@ -488,7 +485,7 @@ public:
 	static GLShader*					GetComputeShader			( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 #elif defined(NESHNY_WEBGPU)
-	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height );
+	void								InitWebGPU					( wgpu::BackendType backend, SDL_Window* window, int width, int height );
 	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
@@ -505,7 +502,7 @@ public:
 
 #endif
 
-	template<class T, typename P = T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
+	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource(QString path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(path, params); }
 
 	static inline bool					IsBufferEnabled				( QString name ) { return Singleton().IIsBufferEnabled(name); }
@@ -628,7 +625,7 @@ private:
 	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
 #endif
 
-	template<class T, typename P = T::Params>
+	template<class T, typename P = typename T::Params>
 	inline const ResourceResult<T>		IGetResource				( QString path, const P& params ) {
 
 		QString key = path;

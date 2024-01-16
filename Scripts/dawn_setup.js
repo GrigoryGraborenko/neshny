@@ -2,8 +2,14 @@
 const util = require('util');
 const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
+const os = require('os');
 
 const search_str = "DAWN_PATH";
+
+// https://nodejs.org/api/os.html#os_os_type
+const is_windows = os.type() == "Windows_NT";
+const is_mac = os.type() == "Darwin";
+const is_linux = os.type() == "Linux";
 
 const required_files = [
     "SPIRV-Tools-opt.lib",
@@ -15,6 +21,10 @@ const required_files = [
     "absl_strings.lib",
     "absl_strings_internal.lib",
     "absl_throw_delegate.lib",
+	"absl_city.lib",
+	"absl_hash.lib",
+	"absl_low_level_hash.lib",
+	"absl_raw_hash_set.lib",
     "dawn_common.lib",
     "dawn_headers.lib",
     "dawn_native.lib",
@@ -45,6 +55,8 @@ const required_files = [
     "tint_lang_spirv_reader_ast_lower.lib",
     "tint_lang_spirv_reader_ast_parser.lib",
     "tint_lang_spirv_reader_common.lib",
+	"tint_lang_spirv_reader_parser.lib",
+	"tint_lang_spirv_validate.lib",
     "tint_lang_spirv_type.lib",
     "tint_lang_spirv_writer.lib",
     "tint_lang_spirv_writer_ast_printer.lib",
@@ -71,6 +83,7 @@ const required_files = [
     "tint_lang_wgsl_writer_ir_to_program.lib",
     "tint_lang_wgsl_writer_raise.lib",
     "tint_lang_wgsl_writer_syntax_tree_printer.lib",
+	"tint_lang_wgsl_features.lib",
     "tint_utils_debug.lib",
     "tint_utils_diagnostic.lib",
     "tint_utils_generator.lib",
@@ -85,6 +98,11 @@ const required_files = [
     "webgpu_dawn.lib"
 ];
 
+if (is_mac) {
+    for(var i = 0; i < required_files.length; i++) {
+        required_files.splice(i, 1, "lib" + required_files[i].replaceAll('.lib', '.a'));
+    }
+}
 
 function crawlExtensionFiles(file_list, ext, dir, root_dir = undefined) {
     if (!root_dir) {
@@ -175,8 +193,13 @@ async function run(all_libs = false) {
     await exec(`python tools/fetch_dawn_dependencies.py --use-test-deps`, { cwd: dawn_path });
 
     console.log("Running cmake...");
-    await exec(`cmake . -B build-debug -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
-    await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+    if (is_windows) {
+        await exec(`cmake . -B build-debug -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+        await exec(`cmake . -B build-release -G "Visual Studio 17 2022" -A x64`, { cwd: dawn_path });
+    } else {
+        await exec(`cmake . -B build-debug -G "Unix Makefiles"`, { cwd: dawn_path });
+        await exec(`cmake . -B build-release -G "Unix Makefiles"`, { cwd: dawn_path });
+    }
 
     console.log("Building debug...");
     await exec(`cmake --build build-debug --config=DEBUG`, { cwd: dawn_path });

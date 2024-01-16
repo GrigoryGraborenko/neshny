@@ -511,7 +511,7 @@ WGPULimits Core::GetDefaultLimits(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
+void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, int height) {
 #ifdef __EMSCRIPTEN__
 	m_Device = emscripten_webgpu_get_device();
 	m_Queue = wgpuDeviceGetQueue(m_Device);
@@ -534,32 +534,21 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 #else
 
 	dawn::native::Instance instance;
-	instance.DiscoverDefaultAdapters();
 
-	// Get an adapter for the backend to use, and create the device.
-	dawn::native::Adapter backendAdapter;
-	wgpu::AdapterProperties properties;
-	{
-		std::vector<dawn::native::Adapter> adapters = instance.GetAdapters();
-		auto adapterIt = std::find_if(adapters.begin(), adapters.end(),
-			[&](const dawn::native::Adapter& adapter) -> bool {
-				adapter.GetProperties(&properties);
+    wgpu::RequestAdapterOptions options = {};
+    options.backendType = backend;
 
-				if (backend == WebGPUNativeBackend::D3D12) {
-					return properties.backendType == wgpu::BackendType::D3D12;
-				} else if (backend == WebGPUNativeBackend::Metal) {
-					return properties.backendType == wgpu::BackendType::Metal;
-				} else if (backend == WebGPUNativeBackend::Vulkan) {
-					return properties.backendType == wgpu::BackendType::Vulkan;
-				} else if (backend == WebGPUNativeBackend::OpenGL) {
-					return properties.backendType == wgpu::BackendType::OpenGL;
-				} else if (backend == WebGPUNativeBackend::OpenGLES) {
-					return properties.backendType == wgpu::BackendType::OpenGLES;
-				}
-				return false;
-			});
-		backendAdapter = *adapterIt;
+    // Get the first adapter for the correct backend
+    auto adapters = instance.EnumerateAdapters(&options);
+	if (adapters.empty()) {
+		throw "No adapters found for this backend";
 	}
+	dawn::native::Adapter backendAdapter = adapters[0];
+
+	//wgpu::DawnAdapterPropertiesPowerPreference power_props{};
+ //   wgpu::AdapterProperties adapterProperties{};
+ //   adapterProperties.nextInChain = &power_props;
+ //   backendAdapter.GetProperties(&adapterProperties);
 
 	WGPUSupportedLimits supported;
 	supported.nextInChain = nullptr;
@@ -614,14 +603,27 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	SDL_SysWMinfo wmInfo;
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
-	HWND hwnd = wmInfo.info.win.window;
 
-	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
-	surfaceChainedDesc->hwnd = hwnd;
-	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+	// void* layer = MacOSInitSurface(wmInfo.info.cocoa.window);
+	// NSWindow* cocoa_win = wmInfo.info.cocoa.window;
+
+	//auto surfaceChainedDesc = MacOSInitSurface(cocoa_win);
+	// cocoa_win->contentView;
+	// HWND hwnd = wmInfo.info.win.window;
+
+	// SDL_SysWMinfo window_info
+	// SDL_GetWindowWMInfo(window, );
+	// SurfaceDescriptorFromMetalLayer
+
+	// std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
+	//surfaceChainedDesc->hwnd = hwnd;
+	std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
+	surfaceChainedDesc->layer = nullptr;
+	//surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
 
 	WGPUSurfaceDescriptor surfaceDesc;
-	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
+	//surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
+	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&surfaceChainedDesc);
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);
 
@@ -773,9 +775,10 @@ void Core::SDLLoopInner() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height) {
+bool Core::WebGPUSDLLoop(wgpu::BackendType backend, SDL_Window* window, IEngine* engine, int width, int height) {
 	m_Window = window;
 	m_Engine = engine;
+
 	InitWebGPU(backend, m_Window, width, height);
 
 	if (!LoopInit(engine)) {
@@ -1380,7 +1383,7 @@ void Core::WaitForCommandsToFinish(void) {
 
 #ifndef __EMSCRIPTEN__
 	std::optional<WGPUQueueWorkDoneStatus> status_result;
-	wgpuQueueOnSubmittedWorkDone(self.m_Queue, 0, [](WGPUQueueWorkDoneStatus status, void* user_data) {
+	wgpuQueueOnSubmittedWorkDone(self.m_Queue, [](WGPUQueueWorkDoneStatus status, void* user_data) {
 		auto info = (std::optional<WGPUQueueWorkDoneStatus>*)user_data;
 		*info = status;
 		}, &status_result);
