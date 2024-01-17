@@ -670,6 +670,12 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	depth_state.stencilWriteMask = 0;
 	depth_state.stencilFront.compare = WGPUCompareFunction_Always;
 	depth_state.stencilBack.compare = WGPUCompareFunction_Always;
+	depth_state.stencilFront.failOp = WGPUStencilOperation_Keep;
+	depth_state.stencilFront.depthFailOp = WGPUStencilOperation_Keep;
+	depth_state.stencilFront.passOp = WGPUStencilOperation_Keep;
+	depth_state.stencilBack.failOp = WGPUStencilOperation_Keep;
+	depth_state.stencilBack.depthFailOp = WGPUStencilOperation_Keep;
+	depth_state.stencilBack.passOp = WGPUStencilOperation_Keep;
 
 	{
 		WGPUFragmentState fragment = {};

@@ -656,6 +656,14 @@ bool ImGui_ImplWGPU_CreateDeviceObjects()
     depth_stencil_state.stencilFront.compare = WGPUCompareFunction_Always;
     depth_stencil_state.stencilBack.compare = WGPUCompareFunction_Always;
 
+    // added by GG
+    depth_stencil_state.stencilFront.failOp = WGPUStencilOperation_Keep;
+    depth_stencil_state.stencilFront.depthFailOp = WGPUStencilOperation_Keep;
+    depth_stencil_state.stencilFront.passOp = WGPUStencilOperation_Keep;
+    depth_stencil_state.stencilBack.failOp = WGPUStencilOperation_Keep;
+    depth_stencil_state.stencilBack.depthFailOp = WGPUStencilOperation_Keep;
+    depth_stencil_state.stencilBack.passOp = WGPUStencilOperation_Keep;
+
     // Configure disabled depth-stencil state
     graphics_pipeline_desc.depthStencil = (bd->depthStencilFormat == WGPUTextureFormat_Undefined) ? nullptr :  &depth_stencil_state;
 
