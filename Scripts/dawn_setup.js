@@ -4,6 +4,8 @@ const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 const os = require('os');
 
+const DAWN_VERSION = `chromium/6251`;
+const DAWN_URL = `https://dawn.googlesource.com/dawn`;
 const search_str = "DAWN_PATH";
 
 // https://nodejs.org/api/os.html#os_os_type
@@ -158,7 +160,7 @@ function copyAllFilesStructureTo(file_obj_list, dest_dir) {
     });
 }
 
-async function run(all_libs, update_existing) {
+async function run(all_libs, update_existing, only_copy) {
     try {
         await exec("git --version");
     } catch (err) {
@@ -182,16 +184,18 @@ async function run(all_libs, update_existing) {
 	let build = false;
     if (fs.statSync(`${dawn_path}/dawn/.git`, { throwIfNoEntry: false }) === undefined) {
         console.log("Cloning dawn repo...");
-        await exec("git clone https://dawn.googlesource.com/dawn", { cwd: dawn_path });
+        await exec(`git clone ${DAWN_URL}`, { cwd: dawn_path });
+        await exec(`git checkout ${DAWN_VERSION}`, { cwd: dawn_path });
         dawn_path += "/dawn";
 		build = true;
-    } else if (update_existing) {
+    } else if (update_existing && (!only_copy)) {
         console.log("Found existing dawn repo, updating...");
         dawn_path += "/dawn";
-        await exec("git pull", { cwd: dawn_path });
+        await exec(`git fetch`, { cwd: dawn_path });
+        await exec(`git checkout ${DAWN_VERSION}`, { cwd: dawn_path });
 		build = true;
     } else {
-        console.log("Found existing dawn repo");
+        console.log("Found existing dawn repo (run with -update to ensure version)");
         dawn_path += "/dawn";
 	}
 
@@ -241,9 +245,51 @@ async function run(all_libs, update_existing) {
     copyAllFilesStructureTo(all_header_list, "./external/WebGPU");
 }
 
+const commands = [
+    {
+        arg: "-help",
+        desc: "List commands",
+        opt: "help"
+    },
+    {
+        arg: "-all",
+        desc: "Copy all libraries instead of just the required ones. Use if still getting missing function linker errors.",
+        opt: "all"
+    },
+    {
+        arg: "-update",
+        desc: "Update the repo",
+        opt: "update"
+    },
+    {
+        arg: "-copy-only",
+        desc: "Only copy, do not build",
+        opt: "copy"
+    },
+];
+
 module.exports = () => {
-    const copy_all = (process.argv.length > 2) && (process.argv[2] === '-all');
-    run(copy_all, false).then(() => { // TODO: make update a command line arg
+
+    const args = process.argv.slice(2);
+
+    const arg_commands = {};
+    commands.forEach(command => {
+        if(args.includes(command.arg)) {
+            arg_commands[command.opt] = true;
+        }
+    });
+    
+    if (arg_commands.help) {
+        console.log("\nCommands available:\n");
+        commands.forEach(command => {
+            console.log(`\n\t${command.arg}`);
+            console.log(`\t${command.desc}`);
+        });
+        console.log("\n");
+        return;
+    }
+
+    run(arg_commands.all, arg_commands.update, arg_commands.copy).then(() => { // TODO: make update a command line arg
         console.log("Completed Successfully");
     }).catch(err => {
         console.error("Error!");
