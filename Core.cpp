@@ -1366,19 +1366,6 @@ WebGPUSampler* Core::IGetSampler(WGPUAddressMode mode, WGPUFilterMode filter, bo
 	return new_sampler;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-void Core::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder) {
-	auto& self = Core::Singleton();
-	WGPUCommandEncoder encoder = existing_encoder ? existing_encoder : wgpuDeviceCreateCommandEncoder(self.m_Device, nullptr);
-	wgpuCommandEncoderCopyBufferToBuffer(encoder, source, source_offset_bytes, destination, dest_offset_bytes, size);
-	if (!existing_encoder) {
-		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
-		wgpuCommandEncoderRelease(encoder);
-		wgpuQueueSubmit(self.m_Queue, 1, &commands);
-		wgpuCommandBufferRelease(commands);
-	}
-}
-
 #ifdef __EMSCRIPTEN__
 EM_ASYNC_JS(void, await_device_queue, (), {
 	const device = webgpu["preinitializedWebGPUDevice"];

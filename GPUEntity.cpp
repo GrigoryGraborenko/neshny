@@ -285,7 +285,7 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
 
-	m_SSBO->Read(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size, WebGPUBuffer::AsyncToken token) -> std::shared_ptr<void> {
+	m_SSBO->Read<void>(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size, WebGPUBuffer::AsyncToken<void> token) -> std::shared_ptr<void> {
 		int max_index = ((int*)data)[3];
 		const int entity_size = m_NumDataFloats * sizeof(int);
 		const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
@@ -299,7 +299,7 @@ void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_byte
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::QueueInfoRead() {
 
-	m_Pending.push_back(m_SSBO->Read(0, sizeof(EntityInfo), [this](unsigned char* data, int size, WebGPUBuffer::AsyncToken token) -> std::shared_ptr<void> {
+	m_Pending.push_back(m_SSBO->Read<EntityInfo>(0, sizeof(EntityInfo), [this](unsigned char* data, int size, WebGPUBuffer::AsyncToken<EntityInfo> token) -> std::shared_ptr<EntityInfo> {
 		EntityInfo* result = new EntityInfo();
 		memcpy((unsigned char*)result, data, sizeof(EntityInfo));
 
@@ -312,7 +312,7 @@ void GPUEntity::QueueInfoRead() {
 			}
 			m_Pending.pop_front();
 		}
-		return std::shared_ptr<void>(result);
+		return std::shared_ptr<EntityInfo>(result);
 	}));
 }
 

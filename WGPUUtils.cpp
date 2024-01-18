@@ -3,6 +3,10 @@
 
 namespace Neshny {
 
+WGPUDevice GlobalWebGPUDevice() {
+	return Core::Singleton().GetWebGPUDevice();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUShader::WebGPUShader(void) :
 	m_Shader	( nullptr )
@@ -195,7 +199,7 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 	desc.label = nullptr;
 	desc.mappedAtCreation = false;
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
-	Core::CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
+	CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
 
 	std::optional<WGPUBufferMapAsyncStatus> status;
 	// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
@@ -214,65 +218,15 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUBuffer::AsyncToken::Wait() {
-	while (!m_Internals->m_Finished) {
-#ifndef __EMSCRIPTEN__
-		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
-#else
-		emscripten_sleep(0);
-#endif
+void WebGPUBuffer::CopyBufferToBuffer(WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder) {
+	WGPUCommandEncoder encoder = existing_encoder ? existing_encoder : wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+	wgpuCommandEncoderCopyBufferToBuffer(encoder, source, source_offset_bytes, destination, dest_offset_bytes, size);
+	if (!existing_encoder) {
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+		wgpuCommandBufferRelease(commands);
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
-WebGPUBuffer::AsyncToken WebGPUBuffer::Read(int offset, int size, std::function<std::shared_ptr<void>(unsigned char*, int, AsyncToken)>&& callback) {
-	if ((offset + size) > m_Size) {
-		throw std::invalid_argument("Attempt to read past end of buffer");
-	}
-
-	DebugTiming debug_func("WebGPUBuffer::Read");
-	WGPUBufferDescriptor desc = {};
-	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
-	desc.size = size;
-	desc.nextInChain = nullptr;
-	desc.label = nullptr;
-	desc.mappedAtCreation = false;
-	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
-	Core::CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
-
-	struct AsyncInfo {
-		WGPUBuffer p_Buffer;
-		std::function<std::shared_ptr<void>(unsigned char*, int, AsyncToken)> p_Callback;
-		int p_Size;
-		AsyncToken p_Token;
-	};
-
-	AsyncToken token;
-
-	AsyncInfo* info = new AsyncInfo{
-		copy_buffer,
-		std::move(callback),
-		size,
-		token
-	};
-
-	// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
-	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
-		auto info = (AsyncInfo*)user_data;
-
-		if (status == WGPUBufferMapAsyncStatus_Success) {
-			auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
-			info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
- 			wgpuBufferUnmap(info->p_Buffer);
-		} else {
-			info->p_Token.m_Internals->m_Error = true;
-		}
-
-		wgpuBufferDestroy(info->p_Buffer);
-		info->p_Token.m_Internals->m_Finished = true;
-		delete info;
-	}, info);
-	return token;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

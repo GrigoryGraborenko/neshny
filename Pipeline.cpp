@@ -442,6 +442,17 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 }
 #elif defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
+bool PipelineStage::OutputResults::GetValue(QString name, int& value) const {
+	for (const auto& result : p_Results) {
+		if (result.first == name) {
+			value = result.second;
+			return true;
+		}
+	}
+	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QString& count_var, QString& offset_var) {
 
 	QStringList insertion;
@@ -808,7 +819,7 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations, RTT* rtt) {
+PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
@@ -817,20 +828,17 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		throw std::invalid_argument("Render requires an RTT");
 	}
 
-	int entity_deaths = 0;
-
 	if (m_Entity) {
 		iterations = m_Entity->GetMaxCount();
 	}
-
 	if (entity_processing) {
-		variables.push_back({ "ioEntityDeaths", &entity_deaths });
+		variables.push_back({ "ioEntityDeaths", 0 });
 	}
 
 	int rand_seed_val = 0;
 	if (m_UsingRandom) {
 		rand_seed_val = rand();
-		variables.push_back({ "ioRandSeed", &rand_seed_val });
+		variables.push_back({ "ioRandSeed", rand_seed_val });
 	}
 
 	m_TemporaryFrame = nullptr;
@@ -847,22 +855,21 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 		}
 	}
 	
-	auto fill_var_data = [this, &variables] (QString name, std::pair<int, int*>& pair) {
-
+	auto fill_var_data = [this, &variables] (QString name, int& value) {
 		for (const auto& var: variables) {
 			if (var.first == name) {
-				pair = { var.second ? *var.second : 0, var.second };
+				value = var.second;
 				return;
 			}
 		}
 		int offset = m_VarNames.size();
 		for (const auto& vect : m_DataVectors) {
 			if (vect.m_CountVar == name) {
-				pair.first = vect.m_SizeInts;
+				value = vect.m_SizeInts;
 				return;
 			}
 			if (vect.m_OffsetVar == name) {
-				pair.first = offset;
+				value = offset;
 				return;
 			}
 			offset += vect.m_SizeInts;
@@ -870,7 +877,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	};
 
 	int death_count_index = -1;
-	std::vector<std::pair<int, int*>> var_vals(m_VarNames.size(), { 0, nullptr });
+	std::vector<int> var_vals(m_VarNames.size(), 0);
 	for (int i = 0; i < m_VarNames.size(); i++) {
 		if (m_VarNames[i] == "ioEntityDeaths") {
 			death_count_index = i;
@@ -880,10 +887,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 
 	if (m_ControlSSBO && !var_vals.empty()) {
 
-		std::vector<int> values;
-		for (auto var : var_vals) {
-			values.push_back(var.first);
-		}
+		std::vector<int> values = var_vals;
 		int control_size = (int)var_vals.size();
 
 		// allocate some space for vectors on the control buffer and copy data over
@@ -895,7 +899,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 			memcpy((unsigned char*)&(values[offset]), data_vect.m_Data, sizeof(int) * data_size);
 		}
 
-		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int));
+		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int), false);
 		m_ControlSSBO->SetValues(values);
 	}
 
@@ -930,7 +934,7 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	////////////////////////////////////////////////////
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
-		Core::CopyBufferToBuffer(m_Entity->GetSSBO()->Get(), m_Entity->GetOuputSSBO()->Get(), 0, 0, sizeof(EntityInfo));
+		WebGPUBuffer::CopyBufferToBuffer(m_Entity->GetSSBO()->Get(), m_Entity->GetOuputSSBO()->Get(), 0, 0, sizeof(EntityInfo));
 		m_Pipeline->ReplaceBuffer(*m_Entity->GetOuputSSBO(), *m_Entity->GetSSBO());
 		m_Pipeline->ReplaceBuffer(*m_Entity->GetSSBO(), *m_Entity->GetOuputSSBO());
 		m_Entity->SwapInputOutputSSBOs();
@@ -940,24 +944,27 @@ void PipelineStage::Prepared::Run(unsigned char* uniform, int uniform_bytes, std
 	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
 		BufferViewer::Checkpoint(QString("%1 Death").arg(m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
-#endif
-
-	if (m_ControlSSBO && m_ReadRequired) {
-		std::vector<int> control_values;
-		m_ControlSSBO->GetValues<int>(control_values, (int)var_vals.size());
-		for (int v = 0; v < var_vals.size(); v++) {
-			if (var_vals[v].second) {
-				*var_vals[v].second = control_values[v];
-			}
-		}
-	}
-
-#ifdef NESHNY_ENTITY_DEBUG
 	if (entity_processing) {
 		BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity->GetName()), "PostRun", *m_ControlSSBO, MemberSpec::Type::T_INT);
 		BufferViewer::Checkpoint(QString("%1 Free").arg(m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity->GetFreeCount());
 	}
 #endif
+
+	if (m_ControlSSBO && m_ReadRequired) {
+		m_ControlSSBO->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
+			OutputResults* results = new OutputResults();
+			int* int_data = (int*)data;
+			for (int i = 0; i < var_names.size(); i++) {
+				results->p_Results.push_back({ var_names[i], int_data[i] });
+			}
+			if (result_callback.has_value()) {
+				result_callback.value()(*results);
+			}
+			return std::shared_ptr<OutputResults>(results);
+		});
+	}
+
+	return AsyncOutputResults::Empty();
 }
 
 #endif
@@ -1150,7 +1157,6 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 			.Prepare<Grid2DCacheUniform>();
 	}
 
-	int alloc_count = 0;
 	Grid2DCacheUniform uniform{
 		grid_size
 		,grid_min
@@ -1158,7 +1164,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	};
 
 	m_CacheIndex->Run(uniform);
-	m_CacheAlloc->Run(uniform, {{ "AllocationCount", &alloc_count }});
+	m_CacheAlloc->Run(uniform, { { "AllocationCount", 0 } }, std::nullopt);
 	m_CacheAlloc->Run(uniform);
 	m_CacheFill->Run(uniform);
 

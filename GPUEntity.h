@@ -421,7 +421,7 @@ protected:
 	EntityInfo					m_Info;
 #elif defined(NESHNY_WEBGPU)
 	EntityInfo					m_LastKnownInfo;
-	std::deque<WebGPUBuffer::AsyncToken>	m_Pending;
+	std::deque<WebGPUBuffer::AsyncToken<EntityInfo>> m_Pending;
 #endif
 };
 

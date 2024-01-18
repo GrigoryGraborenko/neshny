@@ -5,6 +5,9 @@
 
 namespace Neshny {
 
+// TODO: create global state for device, etc rather than using core
+WGPUDevice GlobalWebGPUDevice();
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,18 +52,29 @@ class WebGPUBuffer {
 
 public:
 
+	template<typename T>
 	struct AsyncToken {
-		void Wait();
+		static AsyncToken Empty() { AsyncToken token; token.m_Internals->m_Finished = true; return token; }
+
 		bool IsFinished() { return m_Internals->m_Finished; }
 		bool IsError() { return m_Internals->m_Error; }
-		std::shared_ptr<void> GetPayload(void) { return m_Internals ? (m_Internals->m_Payload ? m_Internals->m_Payload : nullptr) : nullptr; }
+		std::shared_ptr<T> GetPayload(void) { return m_Internals ? (m_Internals->m_Payload ? m_Internals->m_Payload : nullptr) : nullptr; }
 		AsyncToken(const AsyncToken& other): m_Internals(other.m_Internals) {}
 		bool operator==(const AsyncToken& other) const { return other.m_Internals.get() == m_Internals.get(); }
+		void Wait() {
+			while (!m_Internals->m_Finished) {
+#ifndef __EMSCRIPTEN__
+				wgpuDeviceTick(GlobalWebGPUDevice());
+#else
+				emscripten_sleep(0);
+#endif
+			}
+		}
 	private:
 		struct Internals {
 			bool					m_Finished = false;
 			bool					m_Error = false;
-			std::shared_ptr<void>	m_Payload = nullptr;
+			std::shared_ptr<T>		m_Payload = nullptr;
 		};
 		AsyncToken() : m_Internals(new Internals{}) {}
 		std::shared_ptr<Internals>	m_Internals = nullptr;
@@ -75,7 +89,52 @@ public:
 	void											ClearBuffer				( void );
 	void											ReadSync				( unsigned char* buffer, int offset = 0, int size = -1 );
 
-	AsyncToken										Read					( int offset, int size, std::function<std::shared_ptr<void>(unsigned char* data, int size, AsyncToken token)>&& callback );
+	static void										CopyBufferToBuffer		( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder = nullptr );
+
+	template<typename T>
+	AsyncToken<T>									Read					( int offset, int size, std::function<std::shared_ptr<T>(unsigned char* data, int size, AsyncToken<T> token)>&& callback ) {
+		if ((offset + size) > m_Size) {
+			throw std::invalid_argument("Attempt to read past end of buffer");
+		}
+		WGPUBufferDescriptor desc = {};
+		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+		desc.size = size;
+		desc.nextInChain = nullptr;
+		desc.label = nullptr;
+		desc.mappedAtCreation = false;
+		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
+		CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
+
+		struct AsyncInfo {
+			WGPUBuffer p_Buffer;
+			std::function<std::shared_ptr<T>(unsigned char*, int, AsyncToken<T>)> p_Callback;
+			int p_Size;
+			AsyncToken<T> p_Token;
+		};
+		AsyncToken<T> token;
+		AsyncInfo* info = new AsyncInfo{
+			copy_buffer,
+			std::move(callback),
+			size,
+			token
+		};
+
+		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
+		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
+			auto info = (AsyncInfo*)user_data;
+			if (status == WGPUBufferMapAsyncStatus_Success) {
+				auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
+				info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
+ 				wgpuBufferUnmap(info->p_Buffer);
+			} else {
+				info->p_Token.m_Internals->m_Error = true;
+			}
+			wgpuBufferDestroy(info->p_Buffer);
+			info->p_Token.m_Internals->m_Finished = true;
+			delete info;
+		}, info);
+		return token;
+	}
 	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 

@@ -497,7 +497,6 @@ public:
 	static WebGPUShader*				GetShader					( QString name, QByteArray start_insert = QByteArray(), QByteArray end_insert = QByteArray()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
-	static void							CopyBufferToBuffer			( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder = nullptr);
 	static void							WaitForCommandsToFinish		( void );
 
 #endif

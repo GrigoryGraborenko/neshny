@@ -274,7 +274,9 @@ namespace Test {
 		Uniform uniform{ 0, in_value };
 		executable
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				results.GetValue("uCheckVal", uCheckVal);
+			}).Wait();
 #endif
 
 		int parent_index = 0;
@@ -330,7 +332,9 @@ namespace Test {
 		uniform.p_Value = float(data_items.size());
 		executable
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				results.GetValue("uCheckVal", uCheckVal);
+			}).Wait();
 
 		auto other_executable = Neshny::PipelineStage::ModifyEntity(other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
@@ -339,7 +343,9 @@ namespace Test {
 			.Prepare<Uniform>();
 		other_executable
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				results.GetValue("uCheckVal", uCheckVal);
+			}).Wait();
 
 #endif
 
@@ -386,7 +392,9 @@ namespace Test {
 		uniform.p_Value = div_val;
 		executable
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", &uCheckVal } });
+			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				results.GetValue("uCheckVal", uCheckVal);
+			}).Wait();
 #endif
 
 		if(mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS) {

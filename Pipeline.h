@@ -32,6 +32,14 @@ public:
 	};
 
 #if defined(NESHNY_WEBGPU)
+
+	struct OutputResults {
+		bool GetValue(QString name, int& value) const;
+		std::vector<std::pair<QString, int>> p_Results;
+	};
+
+	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
+
 	class Prepared {
 		RunType						m_RunType;
 		WebGPUPipeline*				m_Pipeline = nullptr;
@@ -75,19 +83,20 @@ public:
 		}
 
 		template <class UniformSpec>
-		void				Render		( RTT& rtt, const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt); }
+		void						Render		( RTT& rtt, const UniformSpec& uniform ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt, std::nullopt); }
 		template <class UniformSpec>
-		void				Render		( RTT& rtt, const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt); }
+		void						Render		( RTT& rtt, const UniformSpec& uniform, int iterations ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt, std::nullopt); }
 		template <class UniformSpec>
-		void				Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1, &rtt); }
+		void						Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<QString, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int>>>(variables), 1, &rtt, std::nullopt); }
 
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr); }
+		AsyncOutputResults			Run			( const UniformSpec& uniform ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr, std::nullopt); }
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform, int iterations ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr); }
+		AsyncOutputResults			Run			( const UniformSpec& uniform, int iterations ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr, std::nullopt); }
 		template <class UniformSpec>
-		void				Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int*>>&& variables ) { Run((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int*>>>(variables), 1, nullptr); }
-		void				Run			( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int*>>&& variables, int iterations, RTT* rtt );
+		AsyncOutputResults			Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int>>>(variables), 1, nullptr, std::move(callback)); }
+	private:
+		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 #endif
 
