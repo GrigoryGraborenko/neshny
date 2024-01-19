@@ -34,8 +34,16 @@
 #include "Serialization.h"
 #include "Core.h"
 #include "Resources.h"
-#include "GPUEntity.h"
+#ifdef NESHNY_WEBGPU
+    #include "EntityWebGPU.h"
+#elif defined(NESHNY_GL)
+    #include "EntityGL.h"
+#endif
 #include "EditorViewers.h"
-#include "Pipeline.h"
+#ifdef NESHNY_WEBGPU
+    #include "PipelineWebGPU.h"
+#elif defined(NESHNY_GL)
+    #include "PipelineGL.h"
+#endif
 #include "Geometry.h"
 #include "Testing.h"

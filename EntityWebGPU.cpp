@@ -1,0 +1,188 @@
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma once
+
+namespace Neshny {
+
+////////////////////////////////////////////////////////////////////////////////
+bool GPUEntity::Init(int expected_max_count) {
+
+	Destroy();
+	m_MaxItems = expected_max_count;
+
+	int max_size = (expected_max_count * m_NumDataFloats + ENTITY_OFFSET_INTS) * sizeof(int);
+	m_SSBO = new SSBO(WGPUBufferUsage_Storage, max_size);
+	if (m_DoubleBuffering) {
+		m_OutputSSBO = new SSBO(WGPUBufferUsage_Storage, max_size);
+	}
+
+	m_ControlSSBO = new SSBO(WGPUBufferUsage_Storage, sizeof(int)); // prevent zero sized buffer error
+	m_FreeList = new SSBO(WGPUBufferUsage_Storage, expected_max_count * sizeof(int));
+
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::Clear(void) {
+	m_LastKnownInfo.p_Count = 0;
+	m_LastKnownInfo.p_MaxIndex = 0;
+	m_LastKnownInfo.p_NextId = 0;
+	m_LastKnownInfo.p_FreeCount = 0;
+	if (m_SSBO) {
+		m_SSBO->Write((unsigned char*)&m_LastKnownInfo, 0, sizeof(EntityInfo));
+	}
+	m_Pending.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::Destroy(void) {
+	Clear();
+	if (m_SSBO) {
+		delete m_SSBO;
+		m_SSBO = nullptr;
+	}
+	if (m_OutputSSBO) {
+		delete m_OutputSSBO;
+		m_OutputSSBO = nullptr;
+	}
+	if (m_ControlSSBO) {
+		delete m_ControlSSBO;
+		m_ControlSSBO = nullptr;
+	}
+	if (m_FreeList) {
+		delete m_FreeList;
+		m_FreeList = nullptr;
+	}
+	if (m_CopyBuffer) {
+		delete m_CopyBuffer;
+		m_CopyBuffer = nullptr;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
+
+	int data_size = item_count * item_size;
+
+	struct CreatePipeObjects {
+		CreatePipeObjects(int size) : p_Data(WGPUBufferUsage_Storage, size) {}
+		WebGPUPipeline	p_Pipe;
+		WebGPUBuffer	p_Data;
+	};
+
+	// global per-thread object since this will get reused many times
+	static thread_local CreatePipeObjects* create_obj = nullptr; // leaks at end of run, not important
+	if (!create_obj) {
+		create_obj = new CreatePipeObjects(data_size + sizeof(int));
+		create_obj->p_Pipe
+			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
+			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
+			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
+			.FinalizeCompute("EntityCreation", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
+	}
+
+	struct Info {
+		int p_Count;
+		int p_ItemInts;
+		int m_IdOffsetInts;
+	};
+	Info info = {
+		item_count,
+		item_size / (int)sizeof(int),
+		m_IdOffset / (int)sizeof(int)
+	};
+
+	create_obj->p_Data.EnsureSizeBytes(sizeof(Info) + data_size);
+
+	// TODO: collapse to one write command
+	create_obj->p_Data.Write((unsigned char*)&info, 0, sizeof(Info));
+	create_obj->p_Data.Write(data, sizeof(Info), data_size);
+
+	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
+	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
+	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
+	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::DeleteInstance(int index) {
+
+	// TODO: needs webgpu conversion
+#pragma msg("make a shader-based version of this")
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::SwapInputOutputSSBOs(void) {
+	if (!m_DoubleBuffering) {
+		return;
+	}
+	SSBO* tmp = m_SSBO;
+	m_SSBO = m_OutputSSBO;
+	m_OutputSSBO = tmp;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+QString GPUEntity::GetDebugInfo(void) {
+	return QString("# %1 mx %2 id %3 free %4").arg(m_LastKnownInfo.p_Count).arg(m_LastKnownInfo.p_MaxIndex).arg(m_LastKnownInfo.p_NextId).arg(m_LastKnownInfo.p_FreeCount);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
+	const int entity_size = m_NumDataFloats * sizeof(float);
+	const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
+	const int size = m_MaxItems * entity_size + offset_size;
+	unsigned char* ptr = new unsigned char[size];
+	MakeCopyIn(ptr, 0, size);
+	auto result = std::shared_ptr<unsigned char[]>(ptr);
+	return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
+
+	m_SSBO->Read<void>(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size, WebGPUBuffer::AsyncToken<void> token) -> std::shared_ptr<void> {
+		int max_index = ((int*)data)[3];
+		const int entity_size = m_NumDataFloats * sizeof(int);
+		const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
+		const int useful_size = max_index * entity_size + offset_size;
+
+		callback(data, useful_size, max_index);
+		return nullptr;
+	});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::QueueInfoRead() {
+
+	m_Pending.push_back(m_SSBO->Read<EntityInfo>(0, sizeof(EntityInfo), [this](unsigned char* data, int size, WebGPUBuffer::AsyncToken<EntityInfo> token) -> std::shared_ptr<EntityInfo> {
+		EntityInfo* result = new EntityInfo();
+		memcpy((unsigned char*)result, data, sizeof(EntityInfo));
+
+		while (!m_Pending.empty() && (m_Pending.front().IsFinished() || (m_Pending.front() == token))) {
+			auto payload = m_Pending.front().GetPayload();
+			if (payload.get()) {
+				memcpy((unsigned char*)(&m_LastKnownInfo), (unsigned char*)payload.get(), sizeof(EntityInfo));
+			} else if (m_Pending.front() == token) {
+				memcpy((unsigned char*)(&m_LastKnownInfo), data, sizeof(EntityInfo));
+			}
+			m_Pending.pop_front();
+		}
+		return std::shared_ptr<EntityInfo>(result);
+	}));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::SyncInfo() {
+	while (!m_Pending.empty()) {
+		m_Pending.front().Wait();
+		m_Pending.pop_front();
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::MakeCopyIn(unsigned char* ptr, int offset, int size) {
+	m_SSBO->ReadSync(ptr, offset, size);
+}
+
+} // namespace Neshny

@@ -12,13 +12,15 @@
 #include "Preprocessor.cpp"
 #include "NeshnyUtils.cpp"
 #ifdef NESHNY_WEBGPU
-#include "WGPUUtils.cpp"
+    #include "WGPUUtils.cpp"
+    #include "EntityWebGPU.cpp"
+    #include "PipelineWebGPU.cpp"
 #elif defined(NESHNY_GL)
-#include "GLUtils.cpp"
+    #include "GLUtils.cpp"
+    #include "EntityGL.cpp"
+    #include "PipelineGL.cpp"
 #endif
-#include "GPUEntity.cpp"
 #include "Core.cpp"
 #include "EditorViewers.cpp"
-#include "Pipeline.cpp"
 #include "Geometry.cpp"
 #include "Testing.cpp"

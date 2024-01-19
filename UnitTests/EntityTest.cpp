@@ -204,12 +204,16 @@ namespace Test {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
-	void GPUEntityTest(Neshny::GPUEntity::DeleteMode mode) {
+	void GPUEntityTest(bool moving_compact_mode) {
 
 #if defined(NESHNY_GL)
+		Neshny::GPUEntity::DeleteMode mode = moving_compact_mode ? Neshny::GPUEntity::DeleteMode::MOVING_COMPACT : Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS;
 		Neshny::GPUEntity entities("Thing", mode, &GPUThing::p_Id, "Id");
 		Neshny::GPUEntity other_entities("Other", mode, &GPUOther::p_Id, "Id");
 #elif defined(NESHNY_WEBGPU)
+		if (moving_compact_mode) {
+			return;
+		}
 		Neshny::GPUEntity entities("Thing", &GPUThing::p_Id, "Id");
 		Neshny::GPUEntity other_entities("Other", &GPUOther::p_Id, "Id");
 #endif
@@ -358,7 +362,7 @@ namespace Test {
 				item.p_Id = -1;
 			}
 		}
-		if (mode == Neshny::GPUEntity::DeleteMode::MOVING_COMPACT) {
+		if (moving_compact_mode) {
 			for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
 				for (auto iter = other_expected.begin(); iter != other_expected.end(); iter++) {
 					if (iter->p_Id < 0) {
@@ -397,7 +401,7 @@ namespace Test {
 			}).Wait();
 #endif
 
-		if(mode == Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
+		if(!moving_compact_mode) {
 			for (auto& item : expected) {
 				if (item.p_Int % div_val == 0) {
 					item.p_Id = -1;
@@ -453,14 +457,12 @@ namespace Test {
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_GPUEntityStable(void) {
-		GPUEntityTest(Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS);
+		GPUEntityTest(false);
     }
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_GPUEntityMoving(void) {
-#ifdef NESHNY_GL
-		GPUEntityTest(Neshny::GPUEntity::DeleteMode::MOVING_COMPACT);
-#endif
+		GPUEntityTest(true);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
