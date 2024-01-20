@@ -297,7 +297,9 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 			case WGPUVertexFormat_Sint32x2: item.p_Size = sizeof(int) * 2; break;
 			case WGPUVertexFormat_Sint32x3: item.p_Size = sizeof(int) * 3; break;
 			case WGPUVertexFormat_Sint32x4: item.p_Size = sizeof(int) * 4; break;
+#ifndef __EMSCRIPTEN__
 			case WGPUVertexFormat_Unorm10_10_10_2:
+#endif
 			case WGPUVertexFormat_Force32:
 			case WGPUVertexFormat_Undefined: item.p_Size = 0; break;
 		}
@@ -963,7 +965,9 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 			color_desc.clearValue.g = 0.0f;
 			color_desc.clearValue.b = 0.0f;
 			color_desc.clearValue.a = 1.0f;
+#ifndef __EMSCRIPTEN__
 			color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+#endif
 		}
 
 		m_PassDescriptor.colorAttachmentCount = num_color_tex;
@@ -1004,7 +1008,9 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 		color_desc.clearValue.g = 0.0f;
 		color_desc.clearValue.b = 0.0f;
 		color_desc.clearValue.a = 1.0f;
+#ifndef __EMSCRIPTEN__
 		color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+#endif
 	}
 
 	m_PassDescriptor.colorAttachmentCount = num_color_tex;

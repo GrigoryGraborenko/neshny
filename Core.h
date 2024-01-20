@@ -473,9 +473,12 @@ public:
 #ifdef QT_LOOP
 	bool								QTLoop						( QOpenGLWindow* window, IEngine* engine );
 #endif
-#ifdef SDL_WEBGPU_LOOP
+#ifdef NESHNY_WEBGPU
+	enum class WebGPUNativeBackend {
+		D3D12, Metal, Vulkan, OpenGL, OpenGLES
+	};
 	void								SDLLoopInner				( void );
-	bool								WebGPUSDLLoop				( wgpu::BackendType backend, SDL_Window* window, IEngine* engine, int width, int height );
+	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height );
 	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
 	void								SyncResolution				( void );
 #endif
@@ -485,7 +488,7 @@ public:
 	static GLShader*					GetComputeShader			( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 #elif defined(NESHNY_WEBGPU)
-	void								InitWebGPU					( wgpu::BackendType backend, SDL_Window* window, int width, int height );
+	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height );
 	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }

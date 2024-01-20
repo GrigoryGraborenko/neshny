@@ -511,7 +511,7 @@ WGPULimits Core::GetDefaultLimits(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, int height) {
+void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
 #ifdef __EMSCRIPTEN__
 	m_Device = emscripten_webgpu_get_device();
 	m_Queue = wgpuDeviceGetQueue(m_Device);
@@ -538,7 +538,14 @@ void Core::InitWebGPU(wgpu::BackendType backend, SDL_Window* window, int width, 
 	dawn::native::Instance instance(&instanceDescriptor);
 
 	wgpu::RequestAdapterOptions options = {};
-	options.backendType = backend;
+	options.backendType = wgpu::BackendType::Null;
+	switch (backend) {
+		case WebGPUNativeBackend::D3D12: options.backendType = wgpu::BackendType::D3D12; break;
+		case WebGPUNativeBackend::Metal: options.backendType = wgpu::BackendType::Metal; break;
+		case WebGPUNativeBackend::Vulkan: options.backendType = wgpu::BackendType::Vulkan; break;
+		case WebGPUNativeBackend::OpenGL: options.backendType = wgpu::BackendType::OpenGL; break;
+		case WebGPUNativeBackend::OpenGLES: options.backendType = wgpu::BackendType::OpenGLES; break;
+	};
 
 	// Get the first adapter for the correct backend
 	auto adapters = instance.EnumerateAdapters(&options);
@@ -738,7 +745,9 @@ void Core::SDLLoopInner() {
 	color_desc.clearValue.g = 0.0f;
 	color_desc.clearValue.b = 0.0f;
 	color_desc.clearValue.a = 1.0f;
+#ifndef __EMSCRIPTEN__
 	color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+#endif
 	WGPURenderPassDepthStencilAttachment depth_desc = {};
 	depth_desc.view = m_DepthTex->GetTextureView();
 	depth_desc.depthClearValue = 1.0f;
@@ -783,7 +792,7 @@ void Core::SDLLoopInner() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::WebGPUSDLLoop(wgpu::BackendType backend, SDL_Window* window, IEngine* engine, int width, int height) {
+bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height) {
 	m_Window = window;
 	m_Engine = engine;
 
