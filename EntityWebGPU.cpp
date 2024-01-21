@@ -123,11 +123,6 @@ void GPUEntity::SwapInputOutputSSBOs(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString GPUEntity::GetDebugInfo(void) {
-	return QString("# %1 mx %2 id %3 free %4").arg(m_LastKnownInfo.p_Count).arg(m_LastKnownInfo.p_MaxIndex).arg(m_LastKnownInfo.p_NextId).arg(m_LastKnownInfo.p_FreeCount);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 	const int entity_size = m_NumDataFloats * sizeof(float);
 	const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
@@ -139,15 +134,16 @@ std::shared_ptr<unsigned char[]> GPUEntity::MakeCopySync(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback) {
+void GPUEntity::AccessData(std::function<void(unsigned char* data, int size_bytes, EntityInfo item_info)>&& callback) {
 
 	m_SSBO->Read<void>(0, m_SSBO->GetSizeBytes(), [this, callback](unsigned char* data, int size, WebGPUBuffer::AsyncToken<void> token) -> std::shared_ptr<void> {
-		int max_index = ((int*)data)[3];
+		EntityInfo info;
+		memcpy((unsigned char*)&info, data, sizeof(EntityInfo));
 		const int entity_size = m_NumDataFloats * sizeof(int);
 		const int offset_size = ENTITY_OFFSET_INTS * sizeof(int);
-		const int useful_size = max_index * entity_size + offset_size;
+		const int useful_size = info.p_MaxIndex * entity_size + offset_size;
 
-		callback(data, useful_size, max_index);
+		callback(data, useful_size, info);
 		return nullptr;
 	});
 }

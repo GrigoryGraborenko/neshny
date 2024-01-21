@@ -238,9 +238,8 @@ public:
 	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
 	void						DeleteInstance			( int index );
 
-	QString						GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
-	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, int item_count)>&& callback);
+	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, EntityInfo item_info)>&& callback);
 	void						QueueInfoRead			( void );
 	inline int					GetLastKnownCount		( void ) const { return m_LastKnownInfo.p_Count; }
 	inline int					GetCountSync			( void ) { SyncInfo(); return m_LastKnownInfo.p_Count; }

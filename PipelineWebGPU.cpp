@@ -441,6 +441,7 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 		variables.push_back({ "ioRandSeed", rand_seed_val });
 	}
 
+	bool previously_using_temp_frame = m_TemporaryFrame.get();
 	m_TemporaryFrame = nullptr;
 	if (!compute && m_Entity) {
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
@@ -514,11 +515,10 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 		if (!m_Buffer) {
 			throw std::invalid_argument("Render buffer not found");
 		}
-		if (m_Entity && m_Entity->IsDoubleBuffering()) {
-			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_Entity->GetSSBO());
-		}
 		if (m_TemporaryFrame.get()) {
 			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_TemporaryFrame.get());
+		} else if (m_Entity && (m_Entity->IsDoubleBuffering() || previously_using_temp_frame)) {
+			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_Entity->GetSSBO());
 		}
 		rtt->Render(m_Pipeline, iterations);
 	}

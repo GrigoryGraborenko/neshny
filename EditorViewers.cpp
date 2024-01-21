@@ -423,13 +423,15 @@ void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
 #elif defined(NESHNY_WEBGPU)
 
 	int ticks = Core::GetTicks();
-	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, int item_count) {
+	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {
 		unsigned char* copy = new unsigned char[size_bytes];
 		memcpy(copy, data, size_bytes);
 		std::shared_ptr<unsigned char[]> mem(copy);
-		BufferViewer::Singleton().UpdateCheckpoint(buffer_name, ticks, item_count, mem);
+
+		QString new_info = QString("# %1 mx %2 id %3 free %4").arg(info.p_Count).arg(info.p_MaxIndex).arg(info.p_NextId).arg(info.p_FreeCount);
+		BufferViewer::Singleton().UpdateCheckpoint(buffer_name, ticks, info.p_MaxIndex, new_info, mem);
 	});
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(buffer.GetName(), { stage, QString(), 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 
 #endif
 }
@@ -445,9 +447,9 @@ std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, in
 		if (frame.p_Tick == tick) {
 			count = frame.p_Count;
 #if defined(NESHNY_GL)
-			return std::make_shared<SSBO>(existing->second.p_StructSize * frame.p_Count, frame.p_Data.get()); // TODO: cache this if it's not performant
+			return std::make_shared<SSBO>(existing->second.p_StructSize * frame.p_Count + sizeof(int) * ENTITY_OFFSET_INTS, frame.p_Data.get()); // TODO: cache this if it's not performant
 #elif defined(NESHNY_WEBGPU)
-			return std::make_shared<SSBO>(WGPUBufferUsage_Storage, frame.p_Data.get(), existing->second.p_StructSize * frame.p_Count); // TODO: cache this if it's not performant
+			return std::make_shared<SSBO>(WGPUBufferUsage_Storage, frame.p_Data.get(), existing->second.p_StructSize * frame.p_Count + (int)sizeof(int) * ENTITY_OFFSET_INTS); // TODO: cache this if it's not performant
 #endif
 		}
 	}
@@ -472,7 +474,7 @@ void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const Str
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, std::shared_ptr<unsigned char[]> new_data) {
+void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, QString new_info, std::shared_ptr<unsigned char[]> new_data) {
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
 		return;
@@ -481,6 +483,7 @@ void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, std::
 		if (iter->p_Tick == tick) {
 			iter->p_Count = new_count;
 			iter->p_Data = new_data;
+			iter->p_Info = new_info;
 			return;
 		}
 	}
