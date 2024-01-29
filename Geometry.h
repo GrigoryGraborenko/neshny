@@ -111,6 +111,26 @@ public:
 
 	void	Reset			( void ) { for(auto& cell: p_Cells) { cell.clear(); } }
 
+	bool	AnyWithin		( Vec2 pos, double radius ) {
+		auto min_g = GetGridPos(pos - Vec2(radius, radius));
+		auto max_g = GetGridPos(pos + Vec2(radius, radius));
+		double rad_sqr = radius * radius;
+		for (int x = min_g.x; x <= max_g.x; x++) {
+			for (int y = min_g.y; y <= max_g.y; y++) {
+				int index = y * p_GridRange.x + x;
+				auto& cell = p_Cells[index];
+				for (auto& item : cell) {
+					Vec2 item_pos = p_GetPosFunc(*item);
+					double dist_sqr = (pos - item_pos).LengthSquared();
+					if (dist_sqr < rad_sqr) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	void	Iterate			( Vec2 from_pos, Vec2 to_pos, std::function<void(T* item)> item_callback ) {
 		auto min_g = GetGridPos(from_pos);
 		auto max_g = GetGridPos(to_pos);

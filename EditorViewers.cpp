@@ -447,7 +447,7 @@ std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, in
 		if (frame.p_Tick == tick) {
 			count = frame.p_Count;
 #if defined(NESHNY_GL)
-			return std::make_shared<SSBO>(existing->second.p_StructSize * frame.p_Count + sizeof(int) * ENTITY_OFFSET_INTS, frame.p_Data.get()); // TODO: cache this if it's not performant
+			return std::make_shared<SSBO>(existing->second.p_StructSize * frame.p_Count + (int)sizeof(int) * ENTITY_OFFSET_INTS, frame.p_Data.get()); // TODO: cache this if it's not performant
 #elif defined(NESHNY_WEBGPU)
 			return std::make_shared<SSBO>(WGPUBufferUsage_Storage, frame.p_Data.get(), existing->second.p_StructSize * frame.p_Count + (int)sizeof(int) * ENTITY_OFFSET_INTS); // TODO: cache this if it's not performant
 #endif
