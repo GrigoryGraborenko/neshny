@@ -59,6 +59,12 @@ protected:
 		bool p_Filled = false;
 	};
 
+	struct DebugText {
+		QByteArray p_Text;
+		Vec2 p_Pos;
+		Vec4 p_Col;
+	};
+
 #if defined(NESHNY_WEBGPU)
 	void										IRender3DDebug		( WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #elif defined(NESHNY_GL)
@@ -260,6 +266,7 @@ public:
 	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, Vec4 color ) { Singleton().AddTriangle(a.ToVec3(), b.ToVec3(), c.ToVec3(), color); }
 	static inline void          Circle					( Vec2 pos, double radius, Vec4 color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
 	static inline void          Square					( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { Singleton().AddSquare(min_pos, max_pos, color, filled); }
+	static inline void          Text					( QByteArray text, Vec2 pos, Vec4 color ) { Singleton().AddText(text, pos, color); }
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
@@ -270,10 +277,11 @@ public:
 
 	static void					RenderImGui				( InterfaceScrapbook2D& data ) { Singleton().IRenderImGui(data); }
 
-    static inline void			Clear					( void ) { Singleton().IClear(); }
+    static inline void			Clear					( void ) { Singleton().IClear(); Singleton().m_Texts.clear(); }
 
 private:
 
+	void						AddText					( QByteArray text, Vec2 pos, Vec4 color ) { m_Texts.push_back(DebugText{ text, pos, color }); }
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
 	RTT							m_RTT;
@@ -285,6 +293,7 @@ private:
 	fMatrix4					m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
+	std::vector<DebugText>										m_Texts;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
