@@ -1126,7 +1126,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 
 	for (auto& text : m_Texts) {
 		auto screen_pos = data.p_Cam.WorldToScreen(text.p_Pos, m_Width, m_Height);
-		ImGui::SetCursorPos(ImVec2(screen_pos.x, screen_pos.y));
+		ImGui::SetCursorPos(ImVec2(screen_pos.x + im_pos.x, screen_pos.y + im_pos.y));
 		ImGui::TextColored(ImVec4(text.p_Col.x, text.p_Col.y, text.p_Col.z, text.p_Col.w), text.p_Text.data());
 	}
 	m_Texts.clear();
