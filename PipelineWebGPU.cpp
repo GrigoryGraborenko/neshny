@@ -155,9 +155,9 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
 	}
 
-	if (is_render) {
+	if (m_Entity && is_render) {
 		insertion += QString("#define Get_ioMaxIndex (b_%1[3])").arg(m_Entity->GetName());
-	} else {
+	} else if (m_Entity) {
 		insertion += QString("#define Get_ioMaxIndex (atomicLoad(&b_%1[3]))").arg(m_Entity->GetName());
 	}
 	if (entity_processing) {

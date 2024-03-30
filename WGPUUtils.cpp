@@ -744,6 +744,9 @@ void WebGPUPipeline::FinalizeCompute(QString shader_name, QByteArray insertion, 
 
 	CreateBindGroupLayout();
 	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
+	if (!shader) {
+		throw std::logic_error("Could not load shader");
+	}
 
 	WGPUPipelineLayoutDescriptor layout_desc = {};
 	layout_desc.bindGroupLayoutCount = 1;
