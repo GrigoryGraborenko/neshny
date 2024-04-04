@@ -289,14 +289,24 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 		insertion += QString("#define io%1Count b_%1[0]").arg(entity.GetName());
 
-		insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_%2: array<atomic<i32>>;").arg(insertion_buffers.size()).arg(entity.GetName());
-		result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
+		bool read_only_entity = is_render;
+		if (read_only_entity) {
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read> b_%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, true);
 
-		insertion += entity.GetGPUInsertion();
-		// replace non-atomic getters and setters with atomic ones
-		insertion += QString("#define %1_LOOKUP(base, index) (atomicLoad(&b_%1[(base) + (index)]))").arg(name);
-		insertion += QString("#define %1_SET(base, index, value) atomicStore(&b_%1[(base) + (index)], (value))").arg(name);
-		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
+			insertion += entity.GetGPUInsertion();
+			insertion += QString(entity.GetSpecs().p_GPUReadOnlyInsertion).arg(name);
+
+		} else {
+			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_%2: array<atomic<i32>>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
+
+			insertion += entity.GetGPUInsertion();
+			// replace non-atomic getters and setters with atomic ones
+			insertion += QString("#define %1_LOOKUP(base, index) (atomicLoad(&b_%1[(base) + (index)]))").arg(name);
+			insertion += QString("#define %1_SET(base, index, value) atomicStore(&b_%1[(base) + (index)], (value))").arg(name);
+			insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
+		}
 
 		if (entity_spec.p_Creatable) {
 
