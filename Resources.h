@@ -122,7 +122,7 @@ public:
 		return true;
 	}
 
-	const WebGPUTexture&	Get						( void ) const { m_Texture; }
+	const WebGPUTexture&	Get						( void ) const { return m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
 
 	virtual qint64			GetMemoryEstimate		( void ) const { return 0; }

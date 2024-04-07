@@ -275,10 +275,6 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		result->m_Pipeline->AddBuffer(ssbo_spec.p_Buffer, vis_flags, read_only);
 	}
 
-	//for (const auto& tex : m_Textures) {
-	//	insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
-	//}
-
 	for (auto& entity_spec : m_Entities) {
 		if (!entity_spec.p_Entity) {
 			continue;
@@ -340,6 +336,15 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		}
 	}
 	
+	for (const auto& tex : m_Textures) {
+		insertion_buffers += QString("@group(0) @binding(%1) var %2: texture_2d<f32>;").arg(insertion_buffers.size()).arg(tex.p_Name);
+		result->m_Pipeline->AddTexture(*tex.p_Tex);
+	}
+	for (const auto& sampler : m_Samplers) {
+		insertion_buffers += QString("@group(0) @binding(%1) var %2: sampler;").arg(insertion_buffers.size()).arg(sampler.p_Name);
+		result->m_Pipeline->AddSampler(*sampler.p_Sampler);
+	}
+
 	if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
 		result->m_ControlSSBO->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
 	}

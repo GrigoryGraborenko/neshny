@@ -128,8 +128,8 @@ public:
 
 	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name, true }); return *this; }
 	PipelineStage&				AddInputVar			( QString name ) { m_Vars.push_back({ name, false }); return *this; }
-	PipelineStage&				AddTexture			( QString name, WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
-	PipelineStage&				AddSampler			( QString name, WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
+	PipelineStage&				AddTexture			( QString name, const WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
+	PipelineStage&				AddSampler			( QString name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
 
 	template <class T>
 	PipelineStage&				AddStructBuffer		( QString name, QString struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
@@ -187,12 +187,12 @@ protected:
 	};
 
 	struct AddedTexture {
-		QString				p_Name;
-		WebGPUTexture*		p_Tex;
+		QString					p_Name;
+		const WebGPUTexture*	p_Tex;
 	};
 	struct AddedSampler {
-		QString				p_Name;
-		WebGPUSampler*		p_Sampler;
+		QString					p_Name;
+		const WebGPUSampler*	p_Sampler;
 	};
 
 	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, QString& count_var, QString& offset_var );
