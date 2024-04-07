@@ -164,7 +164,7 @@ public:
 	inline static void							RenderImGui			( InterfaceLogViewer& data ) { Singleton().IRenderImGui(data); }
 
 	inline void									Clear				( void ) { m_Logs.clear(); };
-	inline void									Log					( LogEntry&& entry ) { m_Logs.emplace_back(entry); }
+	inline void									Log					( LogEntry&& entry ) { std::lock_guard<std::mutex> lock(m_Lock); m_Logs.emplace_back(entry); }
 
 protected:
 
@@ -172,6 +172,7 @@ protected:
 
 	void										IRenderImGui		( InterfaceLogViewer& data );
 
+	std::mutex									m_Lock;
 	std::vector<LogEntry>						m_Logs;
 };
 
