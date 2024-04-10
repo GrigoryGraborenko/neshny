@@ -138,6 +138,10 @@ WebGPUBuffer::~WebGPUBuffer(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::EnsureSizeBytes(int size_bytes, bool clear_after) {
 
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt1("WebGPUBuffer::EnsureSizeBytes");
+#endif
+
 	// ensure size doubles each time
 	size_bytes = RoundUpPowerTwo(size_bytes);
 
@@ -853,6 +857,10 @@ void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	if (instances <= 0) {
 		return;
 	}
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPUPipeline::Render");
+#endif
+
 	CheckBuffersUpToDate();
 	wgpuRenderPassEncoderSetPipeline(pass, m_RenderPipeline);
 	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_BindGroup, 0, nullptr);
@@ -868,6 +876,10 @@ void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std::function<void(WGPUCommandEncoder encoder)>> pre_execute) {
+
+#ifdef NESHNY_WEBGPU_PROFILE
+	DebugTiming dt0("WebGPUPipeline::Compute");
+#endif
 
 	CheckBuffersUpToDate();
 

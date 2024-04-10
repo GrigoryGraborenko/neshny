@@ -540,7 +540,7 @@ namespace Test {
 		if (use_cursor) {
 			shader_defines.push_back("USE_CURSOR");
 		}
-		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, shader_defines)
+		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, std::move(shader_defines))
 			.AddEntity(prey_entities, &cache)
 			.Prepare<Uniform>();
 		Uniform uniform{ 0, find_radius };

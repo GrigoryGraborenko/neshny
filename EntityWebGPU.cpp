@@ -91,7 +91,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 		m_IdOffset / (int)sizeof(int)
 	};
 
-	create_obj->p_Data.EnsureSizeBytes(sizeof(Info) + data_size);
+	create_obj->p_Data.EnsureSizeBytes(sizeof(Info) + data_size, false);
 
 	// TODO: collapse to one write command
 	create_obj->p_Data.Write((unsigned char*)&info, 0, sizeof(Info));
@@ -100,9 +100,9 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
 	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
 	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
+
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::DeleteInstance(int index) {
