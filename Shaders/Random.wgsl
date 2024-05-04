@@ -99,19 +99,3 @@ fn AddHashFloat(hash: vec2u, item: f32) -> vec2u {
 	let int_val: u32 = bitcast<u32>(item);
 	return AdvanceSeedState(vec2u(hash.x ^ int_val, hash.y ^ int_val));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-fn TrigHashSingle(num: f32) -> f32 {
-	return fract(sin(num * 0.01 + 0.45) + cos(num * 1.04573 + 0.1) + sin(num * 11.32523 + 1.674) + sin(num * 1076.043 + 563.50));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-fn TrigHash(num: f32) -> f32 {
-	return TrigHashSingle(TrigHashSingle(TrigHashSingle(TrigHashSingle(num))));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// TODO: profile if this are faster than the proper RNG and good enough for use
-fn GetTrigRandom(min_val: f32, max_val: f32, seed: f32) -> f32 {
-    return TrigHash(seed) * (max_val - min_val) + min_val;
-}

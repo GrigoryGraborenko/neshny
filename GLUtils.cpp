@@ -116,7 +116,11 @@ GLuint GLShader::CreateProgram(QString& err_msg, const std::function<QByteArray(
 	GLint linked = GL_FALSE;
 	glGetProgramiv(program, GL_LINK_STATUS, &linked);
 	if (!linked) {
-		err_msg = "Could not link program";
+		char err_buff[512];
+		int len;
+		glGetProgramInfoLog(program, 512, &len, err_buff);
+		err_msg = "Could not link program: " + QString(QByteArray(err_buff, len));
+		this->m_Sources[0].m_Error = err_msg;
 		return 0;
 	}
 
