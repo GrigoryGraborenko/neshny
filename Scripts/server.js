@@ -48,6 +48,7 @@ function crawlFiles(file_list, dir, prefix) {
                 file_obj.content_type = "application/wasm";
                 file_obj.encoding = "binary";
                 file_obj.file = file;
+                file_obj.cache_control = "no-cache";
             } else {
                 file_obj.content_type = "text/script";
                 file_obj.file = file + "";
