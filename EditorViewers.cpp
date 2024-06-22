@@ -1150,6 +1150,11 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 	}
 
 	ImGui::Begin("3D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+
+	if (ImGui::Button("Reset Camera")) {
+		data.p_Cam = Camera3DOrbit{ Vec3(), 100, 30, 30 };
+	}
+
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 	ImVec2 min_available = ImGui::GetWindowContentRegionMin();
 	const int size_banner = 120;

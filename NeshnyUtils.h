@@ -71,11 +71,11 @@ void Shuffle(std::vector<T>& vect) {
 	std::vector<std::pair<int, int>> indices;
 	indices.reserve(s);
 	for (int i = 0; i < s; i++) {
-		indices.push_back({ i, rand() + rand() * RAND_MAX });
+		indices.push_back({ i, RandomInt(0, 10000000) });
 	}
 	std::sort(indices.begin(), indices.end(), [&indices](const std::pair<int, int>& a, const std::pair<int, int>& b) -> bool {
 		return a.second < b.second;
-		});
+	});
 
 	std::vector<T> output;
 	output.reserve(s);
