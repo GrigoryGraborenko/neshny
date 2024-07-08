@@ -795,9 +795,9 @@ struct BaseMatrix4 {
 		return ma;
 	}
 
-	static BaseMatrix4<T> Perspective(T vertical_angle, T aspect_ratio, T near_plane, T far_plane) {
+	static BaseMatrix4<T> Perspective(T vertical_angle_degrees, T aspect_ratio, T near_plane, T far_plane) {
 		BaseMatrix4<T> ma;
-		const T radians = vertical_angle * 0.5 * DEGREES_TO_RADIANS;
+		const T radians = vertical_angle_degrees * 0.5 * DEGREES_TO_RADIANS;
 		const T sin_rad = sin(radians);
 		const T cotan = cos(radians) / sin_rad;
 		const T inv_clip = 1.0 / (far_plane - near_plane);

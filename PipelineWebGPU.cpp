@@ -53,36 +53,62 @@ bool PipelineStage::OutputResults::GetValue(QString name, int& value) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QString& count_var, QString& offset_var) {
+QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QString& count_var, QString& offset_var, bool read_only) {
 
 	QStringList insertion;
 	insertion += QString("struct %1 {").arg(data_vect.p_Name);
 
 	QStringList function(QString("fn Get%1(base_index: i32) -> %1 {\n\tvar item: %1;").arg(data_vect.p_Name));
 	QStringList members;
-	function += QString("\tlet index = Get_io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+	if (read_only) {
+		function += QString("\tlet index = io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+	} else {
+		function += QString("\tlet index = Get_io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+	}
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
 		members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
 
 		QString name = member.p_Name;
-		if (member.p_Type == MemberSpec::T_INT) {
-			function += QString("\titem.%1 = atomicLoad(&b_Control[index + %2]);").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_FLOAT) {
-			function += QString("\titem.%1 = bitcast<f32>(atomicLoad(&b_Control[index + %2]));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_VEC2) {
-			function += QString("\titem.%1 = vec2f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_VEC3) {
-			function += QString("\titem.%1 = vec3f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_VEC4) {
-			function += QString("\titem.%1 = vec4f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 3])));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_IVEC2) {
-			function += QString("\titem.%1 = vec2i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_IVEC3) {
-			function += QString("\titem.%1 = vec3i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
-		} else if (member.p_Type == MemberSpec::T_IVEC4) {
-			function += QString("\titem.%1 = vec4i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]), atomicLoad(&b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+		if (read_only) {
+
+			if (member.p_Type == MemberSpec::T_INT) {
+				function += QString("\titem.%1 = b_Control[index + %2];").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_FLOAT) {
+				function += QString("\titem.%1 = bitcast<f32>(b_Control[index + %2]);").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC2) {
+				function += QString("\titem.%1 = vec2f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC3) {
+				function += QString("\titem.%1 = vec3f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]), bitcast<f32>(b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC4) {
+				function += QString("\titem.%1 = vec4f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]), bitcast<f32>(b_Control[index + %2 + 2]), bitcast<f32>(b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC2) {
+				function += QString("\titem.%1 = vec2i(b_Control[index + %2], b_Control[index + %2 + 1]);").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC3) {
+				function += QString("\titem.%1 = vec3i(b_Control[index + %2], b_Control[index + %2 + 1], b_Control[index + %2 + 2]);").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC4) {
+				function += QString("\titem.%1 = vec4i(b_Control[index + %2], b_Control[index + %2 + 1], b_Control[index + %2 + 2], b_Control[index + %2 + 3]);").arg(name).arg(pos_index);
+			}
+
+		} else {
+			if (member.p_Type == MemberSpec::T_INT) {
+				function += QString("\titem.%1 = atomicLoad(&b_Control[index + %2]);").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_FLOAT) {
+				function += QString("\titem.%1 = bitcast<f32>(atomicLoad(&b_Control[index + %2]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC2) {
+				function += QString("\titem.%1 = vec2f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC3) {
+				function += QString("\titem.%1 = vec3f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_VEC4) {
+				function += QString("\titem.%1 = vec4f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 3])));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC2) {
+				function += QString("\titem.%1 = vec2i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC3) {
+				function += QString("\titem.%1 = vec3i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
+			} else if (member.p_Type == MemberSpec::T_IVEC4) {
+				function += QString("\titem.%1 = vec4i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]), atomicLoad(&b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+			}
 		}
 		pos_index += member.p_Size / sizeof(int);
 	}
@@ -171,7 +197,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		for (const auto& data_vect : m_DataVectors) {
 			QString count_var;
 			QString offset_var;
-			end_insertion += GetDataVectorStructCode(data_vect, count_var, offset_var);
+			end_insertion += GetDataVectorStructCode(data_vect, count_var, offset_var, is_render);
 			m_Vars.push_back({ count_var });
 			m_Vars.push_back({ offset_var });
 			result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, nullptr, 0 });

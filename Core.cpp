@@ -1021,7 +1021,7 @@ GLShader* Core::IGetComputeShader(QString name, QString insertion) {
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
-		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0);; // security is no concern, only speed and lack of collisions
+		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
 		lookup_name += "_" + hash_val;
 	}
 

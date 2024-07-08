@@ -195,7 +195,7 @@ protected:
 		const WebGPUSampler*	p_Sampler;
 	};
 
-	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, QString& count_var, QString& offset_var );
+	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, QString& count_var, QString& offset_var, bool read_only );
 	RunType							m_RunType;
 	GPUEntity*						m_Entity = nullptr;
 	RenderableBuffer*				m_Buffer = nullptr;

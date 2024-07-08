@@ -674,10 +674,10 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	WGPUBlendState blend = {};
 	blend.color.operation = WGPUBlendOperation_Add;
 	blend.color.srcFactor = WGPUBlendFactor_One;
-	blend.color.dstFactor = WGPUBlendFactor_One;
+	blend.color.dstFactor = WGPUBlendFactor_Zero;
 	blend.alpha.operation = WGPUBlendOperation_Add;
 	blend.alpha.srcFactor = WGPUBlendFactor_One;
-	blend.alpha.dstFactor = WGPUBlendFactor_One;
+	blend.alpha.dstFactor = WGPUBlendFactor_Zero;
 
 	WGPUColorTargetState color_target = {};
 	color_target.format = WGPUTextureFormat_BGRA8Unorm;
