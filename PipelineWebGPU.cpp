@@ -5,7 +5,7 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo, int iterations) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
@@ -15,6 +15,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 	,m_ShaderDefines	( shader_defines )
 	,m_Iterations		( iterations )
 	,m_ControlSSBO		( control_ssbo )
+	,m_RenderParams		( render_params )
 {
 	if (cache) {
 		cache->Bind(*this);
@@ -445,7 +446,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if (is_render) {
-		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, insertion_str, end_insertion_str);
+		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
 	} else {
 		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
 	}

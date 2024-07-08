@@ -194,7 +194,6 @@ public:
 		QString				p_TypeName;
 	};
 
-
 													WebGPURenderBuffer		( void ) {}
 
 	void											Init					( WGPUVertexFormat attribute, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data = {} ) { Init(std::vector<WGPUVertexFormat>{ attribute }, topology, vertex_data, vertex_data_size, index_data); }
@@ -354,6 +353,24 @@ public:
 		COMPUTE
 	};
 
+	struct RenderParams {
+		WGPUBlendComponent		p_ColorBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
+		WGPUBlendComponent		p_AlphaBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
+		bool					p_DepthWriteEnabled = true;
+
+		WGPUCompareFunction		p_DepthCompare = WGPUCompareFunction_Less;
+		WGPUStencilFaceState	p_StencilFront = { WGPUCompareFunction_Always, WGPUStencilOperation_Keep, WGPUStencilOperation_Keep, WGPUStencilOperation_Keep };
+		WGPUStencilFaceState	p_StencilBack = { WGPUCompareFunction_Always, WGPUStencilOperation_Keep, WGPUStencilOperation_Keep, WGPUStencilOperation_Keep };
+		uint32_t				p_StencilReadMask = 0;
+		uint32_t				p_StencilWriteMask = 0;
+		int32_t					p_DepthBias = 0;
+		float					p_DepthBiasSlopeScale = 0;
+		float					p_DepthBiasClamp = 0;
+
+		WGPUFrontFace			p_FrontFace = WGPUFrontFace_CCW;
+		WGPUCullMode			p_CullMode = WGPUCullMode_None;
+	};
+
 								WebGPUPipeline			( void ) : m_Type(Type::UNKNOWN) {}
 								~WebGPUPipeline			( void );
 	void						Reset					( void );
@@ -362,7 +379,7 @@ public:
 	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
+	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						FinalizeCompute			( QString shader_name, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						RefreshBindings			( void );
 	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );

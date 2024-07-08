@@ -627,7 +627,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, QByteArray insertion, QByteArray end_insertion) {
+void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, QByteArray insertion, QByteArray end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -669,35 +669,30 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	vertex_buffer_layout.attributeCount = (int)formats.size();
 	vertex_buffer_layout.attributes = &formats[0];
 
-#pragma msg("param blend and depth state as well")
 	// Fragment state
 	WGPUBlendState blend = {};
-	blend.color.operation = WGPUBlendOperation_Add;
-	blend.color.srcFactor = WGPUBlendFactor_One;
-	blend.color.dstFactor = WGPUBlendFactor_Zero;
-	blend.alpha.operation = WGPUBlendOperation_Add;
-	blend.alpha.srcFactor = WGPUBlendFactor_One;
-	blend.alpha.dstFactor = WGPUBlendFactor_Zero;
+	blend.color.operation = params.p_ColorBlend.operation;
+	blend.color.srcFactor = params.p_ColorBlend.srcFactor;
+	blend.color.dstFactor = params.p_ColorBlend.dstFactor;
+	blend.alpha.operation = params.p_AlphaBlend.operation;
+	blend.alpha.srcFactor = params.p_AlphaBlend.srcFactor;
+	blend.alpha.dstFactor = params.p_AlphaBlend.dstFactor;
 
 	WGPUColorTargetState color_target = {};
+	color_target.nextInChain = nullptr;
 	color_target.format = WGPUTextureFormat_BGRA8Unorm;
 	color_target.blend = &blend;
 	color_target.writeMask = WGPUColorWriteMask_All;
 
 	WGPUDepthStencilState depth_state = {};
-	depth_state.depthCompare = WGPUCompareFunction_Less;
-	depth_state.depthWriteEnabled = true;
+	depth_state.nextInChain = nullptr;
+	depth_state.depthCompare = params.p_DepthCompare;
+	depth_state.depthWriteEnabled = params.p_DepthWriteEnabled;
 	depth_state.format = WGPUTextureFormat_Depth24Plus;
 	depth_state.stencilReadMask = 0;
 	depth_state.stencilWriteMask = 0;
-	depth_state.stencilFront.compare = WGPUCompareFunction_Always;
-	depth_state.stencilBack.compare = WGPUCompareFunction_Always;
-	depth_state.stencilFront.failOp = WGPUStencilOperation_Keep;
-	depth_state.stencilFront.depthFailOp = WGPUStencilOperation_Keep;
-	depth_state.stencilFront.passOp = WGPUStencilOperation_Keep;
-	depth_state.stencilBack.failOp = WGPUStencilOperation_Keep;
-	depth_state.stencilBack.depthFailOp = WGPUStencilOperation_Keep;
-	depth_state.stencilBack.passOp = WGPUStencilOperation_Keep;
+	depth_state.stencilFront = params.p_StencilFront;
+	depth_state.stencilBack = params.p_StencilBack;
 
 	{
 		WGPUFragmentState fragment = {};
@@ -722,9 +717,8 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 		desc.multisample.mask = 0xFFFFFFFF;
 		desc.multisample.alphaToCoverageEnabled = false;
 
-#pragma msg("culling mode needs to be parameterized")
-		desc.primitive.frontFace = WGPUFrontFace_CCW;
-		desc.primitive.cullMode = WGPUCullMode_None;
+		desc.primitive.frontFace = params.p_FrontFace;
+		desc.primitive.cullMode = params.p_CullMode;
 		desc.primitive.topology = render_buffer.GetTopology();
 		desc.primitive.stripIndexFormat = WGPUIndexFormat_Undefined;
 

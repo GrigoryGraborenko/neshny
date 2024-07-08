@@ -106,14 +106,14 @@ public:
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, std::vector<QString>&& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
-	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, bool replace_main, RenderableBuffer* buffer, std::vector<QString>&& shader_defines = {}) {
-		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, shader_defines);
+	static PipelineStage RenderEntity(GPUEntity& entity, QString shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, std::vector<QString>&& shader_defines = {}) {
+		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, shader_defines, nullptr, 0, render_params);
 	}
 	static PipelineStage IterateEntity(GPUEntity& entity, QString shader_name, bool replace_main, std::vector<QString>&& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
-	static PipelineStage RenderBuffer(QString shader_name, RenderableBuffer* buffer, std::vector<QString>&& shader_defines = {}, SSBO* control_ssbo = nullptr) {
-		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, shader_defines, control_ssbo);
+	static PipelineStage RenderBuffer(QString shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, std::vector<QString>&& shader_defines = {}, SSBO* control_ssbo = nullptr) {
+		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, shader_defines, control_ssbo, 0, render_params);
 	}
 	static PipelineStage Compute(QString shader_name, int iterations, SSBO* control_ssbo, std::vector<QString>&& shader_defines = {}) {
 		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, shader_defines, control_ssbo, iterations);
@@ -163,7 +163,14 @@ public:
 
 protected:
 
-								PipelineStage		( RunType type, GPUEntity* entity, RenderableBuffer* buffer, class BaseCache* cache, QString shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo = nullptr, int iterations = 0);
+								PipelineStage		(	RunType type,
+														GPUEntity* entity,
+														RenderableBuffer* buffer,
+														class BaseCache* cache,
+														QString shader_name, bool replace_main,
+														const std::vector<QString>& shader_defines,
+														SSBO* control_ssbo = nullptr, int iterations = 0,
+														WebGPUPipeline::RenderParams render_params = {} );
 
 	struct AddedDataVector {
 		QString					p_Name;
@@ -207,6 +214,7 @@ protected:
 	int								m_Iterations = 0;
 	SSBO*							m_ControlSSBO = nullptr;
 	QString							m_ExtraCode;
+	WebGPUPipeline::RenderParams	m_RenderParams;
 
 	std::vector<AddedEntity>		m_Entities;
 	std::vector<AddedSSBO>			m_SSBOs;
