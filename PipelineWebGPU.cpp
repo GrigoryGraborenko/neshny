@@ -364,7 +364,22 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 	
 	for (const auto& tex : m_Textures) {
-		insertion_buffers += QString("@group(0) @binding(%1) var %2: texture_2d<f32>;").arg(insertion_buffers.size()).arg(tex.p_Name);
+		auto dim = tex.p_Tex->GetViewDimension();
+		QString tex_spec;
+		if (dim == WGPUTextureViewDimension_1D) {
+			tex_spec = "texture_1d<f32>";
+		} else if (dim == WGPUTextureViewDimension_2D) {
+			tex_spec = "texture_2d<f32>";
+		} else if (dim == WGPUTextureViewDimension_2DArray) {
+			tex_spec = "texture_2d_array<f32>";
+		} else if (dim == WGPUTextureViewDimension_Cube) {
+			tex_spec = "texture_cube<f32>";
+		} else if (dim == WGPUTextureViewDimension_CubeArray) {
+			tex_spec = "texture_cube_array<f32>";
+		} else if (dim == WGPUTextureViewDimension_3D) {
+			tex_spec = "texture_3d<f32>";
+		}
+		insertion_buffers += QString("@group(0) @binding(%1) var %2: %3;").arg(insertion_buffers.size()).arg(tex.p_Name).arg(tex_spec);
 		result->m_Pipeline->AddTexture(*tex.p_Tex);
 	}
 	for (const auto& sampler : m_Samplers) {
