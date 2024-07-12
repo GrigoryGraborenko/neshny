@@ -183,7 +183,7 @@ struct GridStep3DCursor {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-fn StartGridStep3D(start: vec3f, end: vec3f) {
+fn StartGridStep3D(start: vec3f, end: vec3f) -> GridStep3DCursor {
 	var cursor: GridStep3DCursor;
     let grid_pos = vec3i(floor(start));
 	cursor.p_Start = start;
@@ -194,6 +194,7 @@ fn StartGridStep3D(start: vec3f, end: vec3f) {
 	cursor.p_Left = max((vec3f(grid_pos) - start) * inv_delta, (vec3f(grid_pos + vec3i(1)) - start) * inv_delta);
 	cursor.p_CurrentFrac = 0;
 	cursor.p_CurrentGrid = grid_pos;
+	return cursor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
