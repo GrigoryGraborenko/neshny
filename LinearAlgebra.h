@@ -875,10 +875,20 @@ struct BaseMatrix4 {
 	}
 
 	void Translate(BaseVec3<T> vect) {
-		m[0][3] += m[0][0] * vect.x + m[0][1] * vect.y + m[0][2] * vect.z;
-		m[1][3] += m[1][0] * vect.x + m[1][1] * vect.y + m[1][2] * vect.z;
-		m[2][3] += m[2][0] * vect.x + m[2][1] * vect.y + m[2][2] * vect.z;
-		m[3][3] += m[3][0] * vect.x + m[3][1] * vect.y + m[3][2] * vect.z;
+		m[0][3] += vect.x;
+		m[1][3] += vect.y;
+		m[2][3] += vect.z;
+	}
+
+	void Scale(BaseVec3<T> vect) {
+		// TODO: calculate directly for efficiency
+		BaseMatrix4<T> mult(
+			vect.x, 0, 0, 0
+			,0, vect.y, 0, 0
+			,0, 0, vect.z, 0
+			,0, 0, 0, 1
+		);
+		*this = mult * (*this);
 	}
 
 	T SubDeterminant2x2(const T m[4][4], int col0, int col1, int row0, int row1) const {

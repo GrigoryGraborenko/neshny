@@ -599,7 +599,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 		WGPUTextureBindingLayout buff_texture;
 		buff_texture.nextInChain = nullptr;
 		buff_texture.multisampled = false;
-		buff_texture.viewDimension = tex->GetViewDimension();
+		buff_texture.viewDimension = tex.p_Dimensions;
 		buff_texture.sampleType = WGPUTextureSampleType_Float;
 
 		layout_entry.texture = buff_texture;
@@ -795,15 +795,17 @@ void WebGPUPipeline::RefreshBindings(void) {
 		entry.buffer = buffer.p_Buffer->Get();
 		binding_num++;
 	}
-	for (auto tex : m_Textures) {
+#pragma msg("don't use same binding numbers for textures - waste of buffer nums, they are orthogonal to each other")
+	for (auto& tex : m_Textures) {
+		tex.p_LastSeenTextureView = tex.p_TextureView;
 		WGPUBindGroupEntry& entry = entries[binding_num];
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
 		entry.offset = 0;
-		entry.textureView = tex->GetTextureView();
+		entry.textureView = tex.p_TextureView;
 		binding_num++;
 	}
-	for (auto sampler : m_Samplers) {
+	for (auto& sampler : m_Samplers) {
 		WGPUBindGroupEntry& entry = entries[binding_num];
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
@@ -826,6 +828,9 @@ void WebGPUPipeline::CheckBuffersUpToDate(void) {
 	for (auto& buffer : m_Buffers) {
 		needs_refresh = needs_refresh || (buffer.p_LastSeenBuffer != buffer.p_Buffer->Get());
 	}
+	for (auto& texture : m_Textures) {
+		needs_refresh = needs_refresh || (texture.p_LastSeenTextureView != texture.p_TextureView);
+	}
 	if (needs_refresh) {
 		RefreshBindings();
 	}
@@ -844,6 +849,21 @@ void WebGPUPipeline::ReplaceBuffer(WebGPUBuffer& original, WebGPUBuffer& replace
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::ReplaceBuffer(int index, WebGPUBuffer& replacement) {
 	m_Buffers[index].p_Buffer = &replacement;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::ReplaceTexture(WGPUTextureView original, WGPUTextureView replacement) {
+	for (auto& tex : m_Textures) {
+		if (original == tex.p_TextureView) {
+			tex.p_TextureView = replacement;
+			return;
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::ReplaceTexture(int index, WGPUTextureView replacement) {
+	m_Textures[index].p_TextureView = replacement;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

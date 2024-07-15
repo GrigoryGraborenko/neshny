@@ -21,7 +21,7 @@ BaseDebugRender::~BaseDebugRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	struct RenderPoint {
 		fVec4	p_Pos;
@@ -30,6 +30,13 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 	std::vector<RenderPoint> debug_lines;
 	std::vector<RenderPoint> debug_circles;
 	std::vector<RenderPoint> debug_squares;
+
+	for (WebGPUBuffer* prev_buffer : m_PreviousFrameBuffers) {
+		delete prev_buffer;
+	}
+	m_PreviousFrameBuffers.clear();
+
+	auto gpu_vp = view_perspective.ToGPU();
 	
 	debug_lines.reserve(m_Lines.size() * 2);
 	debug_circles.reserve(m_Circles.size());
@@ -58,7 +65,7 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 		if (it->p_Str.size() <= 0) {
 			continue;
 		}
-		fVec3 result = view_perspective * fVec3(dpos.x, dpos.y, dpos.z);
+		fVec3 result = gpu_vp * fVec3(dpos.x, dpos.y, dpos.z);
 		if (result.z > 1) {
 			continue;
 		}
@@ -91,6 +98,11 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_SquareBuffer, WGPUShaderStage_Vertex, true)
 			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("SquareOutline"));
+		m_TexturePipline
+			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.AddTexture(WGPUTextureViewDimension_2D, nullptr)
+			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
+			.FinalizeRender("DebugTexture", *Core::GetBuffer("Square"), {});
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(debug_circles);
@@ -98,11 +110,36 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const fMatrix4& view_perspe
 	m_SquareBuffer->EnsureSizeBytes((int)debug_squares.size() * sizeof(RenderPoint));
 	m_SquareBuffer->SetValues(debug_squares);
 
-	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &view_perspective, sizeof(fMatrix4));
+	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &gpu_vp, sizeof(fMatrix4));
 
 	rtt.Render(&m_LinePipline);
 	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
 	rtt.Render(&m_SquarePipline, (int)m_Squares.size());
+
+	for (const auto& tex : m_Textures) {
+		auto texture = Core::GetResource<Texture2D>(tex.p_Filename);
+		if (!texture.IsValid()) {
+			return;
+		}
+		Matrix4 modded = Matrix4::Identity();
+
+		Vec2 center = (tex.p_MaxPos + tex.p_MinPos) * 0.5;
+		Vec2 size = (tex.p_MaxPos - tex.p_MinPos) * 0.5;
+
+		modded.Scale(Vec3(size.x, size.y, 1.0));
+		modded.Translate(Vec3(center.x, center.y, 0.0));
+		modded = view_perspective * modded;
+		auto new_gpu = modded.ToGPU();
+
+		WebGPUBuffer* uniform_mat = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
+		wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), uniform_mat->Get(), 0, &new_gpu, sizeof(fMatrix4));
+
+		m_PreviousFrameBuffers.push_back(uniform_mat);
+
+		m_TexturePipline.ReplaceTexture(0, texture->GetTextureView());
+		m_TexturePipline.ReplaceBuffer(0, *uniform_mat);
+		rtt.Render(&m_TexturePipline);
+	}
 }
 
 #elif defined(NESHNY_GL)
@@ -1070,7 +1107,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height).ToGPU();
+	m_CachedViewPerspective = data.p_Cam.Get4x4Matrix(m_Width, m_Height);
 
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);
@@ -1174,7 +1211,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 
 	m_Width = space_available.x - 8;
 	m_Height = space_available.y - size_banner;
-	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height).ToGPU();
+	m_CachedViewPerspective = data.p_Cam.GetViewPerspectiveMatrix(m_Width, m_Height);
 
 	ImVec2 im_pos(8, size_banner);
 	ImVec2 im_size(m_Width, m_Height);

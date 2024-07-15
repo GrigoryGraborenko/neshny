@@ -364,6 +364,8 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 	
 	for (const auto& tex : m_Textures) {
+
+#pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern")
 		auto dim = tex.p_Tex->GetViewDimension();
 		QString tex_spec;
 		if (dim == WGPUTextureViewDimension_1D) {
@@ -380,7 +382,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			tex_spec = "texture_3d<f32>";
 		}
 		insertion_buffers += QString("@group(0) @binding(%1) var %2: %3;").arg(insertion_buffers.size()).arg(tex.p_Name).arg(tex_spec);
-		result->m_Pipeline->AddTexture(*tex.p_Tex);
+		result->m_Pipeline->AddTexture(tex.p_Tex->GetViewDimension(), tex.p_Tex->GetTextureView());
 	}
 	for (const auto& sampler : m_Samplers) {
 		insertion_buffers += QString("@group(0) @binding(%1) var %2: sampler;").arg(insertion_buffers.size()).arg(sampler.p_Name);

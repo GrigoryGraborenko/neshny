@@ -23,6 +23,7 @@ public:
     inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
     inline void									AddCircle			( Vec2 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(DebugCircle{a, radius, color, filled}); }
     inline void									AddSquare			( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(DebugSquare{min_pos, max_pos, color, filled}); }
+    inline void									AddTexture			( Vec2 min_pos, Vec2 max_pos, QString filename ) { m_Textures.push_back(DebugTexture{min_pos, max_pos, filename }); }
 
     //static inline void                          AddString           ( const QString& str ) { Singleton().m_Strings.push_back(str); }
     //static inline void                          AddPersistString    ( QString key, QString val ) { Singleton().m_PersistStrings.insert_or_assign(key, val); }
@@ -65,12 +66,18 @@ protected:
 		Vec4 p_Col;
 	};
 
+	struct DebugTexture {
+		Vec2 p_MinPos;
+		Vec2 p_MaxPos;
+		QString p_Filename;
+	};
+
 #if defined(NESHNY_WEBGPU)
-	void										IRender3DDebug		( WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+	void										IRender3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #elif defined(NESHNY_GL)
 	void										IRender3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #endif
-	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); }
+	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); m_Textures.clear(); }
 
 												BaseDebugRender		( void );
 												~BaseDebugRender	( void );
@@ -80,6 +87,8 @@ protected:
     std::vector<DebugTriangle>					m_Triangles;
 	std::vector<DebugCircle>					m_Circles;
 	std::vector<DebugSquare>					m_Squares;
+	std::vector<DebugTexture>					m_Textures;
+	
     //std::vector<QString> 						m_Strings;
 	//std::unordered_map<QString, QString>		m_PersistStrings;
 
@@ -91,6 +100,10 @@ protected:
 	WebGPUBuffer*								m_CircleBuffer = nullptr;
 	WebGPUPipeline								m_SquarePipline;
 	WebGPUBuffer*								m_SquareBuffer = nullptr;
+
+	WebGPUPipeline								m_TexturePipline;
+	std::vector<WebGPUBuffer*>					m_PreviousFrameBuffers;
+
 #endif
 
 };
@@ -105,7 +118,7 @@ public:
 	static inline DebugRender&					Singleton			( void ) { static DebugRender instance; return instance; }
 
 #if defined(NESHNY_WEBGPU)
-	static inline void							Render3DDebug		( WebGPURTT& rtt, const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
+	static inline void							Render3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
 #else
 	static inline void							Render3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
 #endif
@@ -118,6 +131,7 @@ public:
 	static inline void                          Triangle			( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { Singleton().AddTriangle(a, b, c, color); }
 	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
 	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { Singleton().AddSquare(min_pos, max_pos, color, filled); }
+	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, QString filename ) { Singleton().AddTexture(min_pos, max_pos, filename); }
 protected:
 												DebugRender			( void ) {}
 };
@@ -291,7 +305,7 @@ private:
 	std::optional<Vec2>			m_LastMousePos = std::nullopt;
 	bool						m_NeedsReset = true;
 
-	fMatrix4					m_CachedViewPerspective;
+	Matrix4						m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
 	std::vector<DebugText>										m_Texts;
@@ -306,7 +320,7 @@ public:
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }
 
 	static Token				ActivateRTT					( void );
-	static fMatrix4				GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
+	static Matrix4				GetViewPerspectiveMatrix	( void ) { auto& self = Singleton(); return self.m_CachedViewPerspective; }
 
 	static inline void			Line						( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a, b, color, on_top); }
 	static inline void			Point						( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
@@ -327,7 +341,7 @@ private:
 	int							m_Height = 32;
 	bool						m_NeedsReset = true;
 
-	fMatrix4					m_CachedViewPerspective;
+	Matrix4						m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
 };

@@ -199,7 +199,7 @@ fn StartGridStep3D(start: vec3f, end: vec3f) -> GridStep3DCursor {
 
 ////////////////////////////////////////////////////////////////////////////////
 fn HasNextGridStep3D(cursor: ptr<function, GridStep3DCursor>) -> bool {
-	return (*cursor).p_CurrentFrac < 1.0;
+	return (*cursor).p_CurrentFrac <= 1.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

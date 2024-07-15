@@ -345,6 +345,12 @@ class WebGPUPipeline {
 		WGPUBuffer				p_LastSeenBuffer = nullptr;
 	};
 
+	struct Texture {
+		WGPUTextureViewDimension	p_Dimensions;
+		WGPUTextureView				p_TextureView = nullptr;
+		WGPUTextureView				p_LastSeenTextureView = nullptr;
+	};
+
 public:
 
 	enum class Type {
@@ -376,7 +382,7 @@ public:
 	void						Reset					( void );
 
 	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
-	WebGPUPipeline&				AddTexture				( const WebGPUTexture& texture ) { m_Textures.push_back(&texture); return *this; }
+	WebGPUPipeline&				AddTexture				( WGPUTextureViewDimension texture_dimension, WGPUTextureView view ) { m_Textures.push_back({ texture_dimension, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
 	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
@@ -384,6 +390,8 @@ public:
 	void						RefreshBindings			( void );
 	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );
 	void						ReplaceBuffer			( int index, WebGPUBuffer& replacement );
+	void						ReplaceTexture			( WGPUTextureView original, WGPUTextureView replacement );
+	void						ReplaceTexture			( int index, WGPUTextureView replacement );
 	void						Render					( WGPURenderPassEncoder pass, int instances = 1 );
 	void						Compute					( int calls, Neshny::iVec3 workgroup_size = Neshny::iVec3(-1, -1, -1), std::optional<std::function<void(WGPUCommandEncoder encoder)>> pre_execute = std::nullopt );
 
@@ -399,7 +407,8 @@ protected:
 	Type						m_Type;
 	WebGPURenderBuffer*			m_RenderBuffer = nullptr;
 	std::vector<Buffer>			m_Buffers;
-	std::vector<const WebGPUTexture*>	m_Textures;
+	std::vector<Texture>		m_Textures;
+	
 	std::vector<const WebGPUSampler*>	m_Samplers;
 
 	WGPURenderPipeline			m_RenderPipeline = nullptr;
