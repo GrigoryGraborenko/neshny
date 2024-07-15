@@ -75,7 +75,7 @@ protected:
 #if defined(NESHNY_WEBGPU)
 	void										IRender3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #elif defined(NESHNY_GL)
-	void										IRender3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+	void										IRender3DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #endif
 	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); m_Textures.clear(); }
 
@@ -120,7 +120,7 @@ public:
 #if defined(NESHNY_WEBGPU)
 	static inline void							Render3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
 #else
-	static inline void							Render3DDebug		( const fMatrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+	static inline void							Render3DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
 #endif
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }

@@ -1,5 +1,7 @@
 include(${BASE_DIR}/UserSettings.cmake)
 
+message(STATUS "Checking Unit Tests")
+
 function(create_unit_tests output_fname)
     # create empty output file
     file(WRITE ${output_fname} "")

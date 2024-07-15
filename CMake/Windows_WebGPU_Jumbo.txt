@@ -81,11 +81,8 @@ if (NOT EMSCRIPTEN)
 else()
 
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
-
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
-	
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
-
     set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s ASYNCIFY=1")
    
     # Linker flags to optimize for smallest output code size
@@ -98,27 +95,26 @@ message(STATUS "Embedding shaders and unit tests")
 if (NOT EMSCRIPTEN)
 
     # adds shaders to directory structure and embeds them
-    # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
     file(GLOB_RECURSE ShaderList CONFIGURE_DEPENDS ${SHADER_PATH}/*.*)
 
-    # this creates a near-empty project whose entire purpose is to rerun the embed script "CMakeEmbedded.txt" when the shaders change ONLY IN RELEASE BUILD
-    # it also runs "CMakeUnitTests.txt" when unit tests change
-    # a token file is required for this process - ".embedded_token" does nothing other than exist to signal that the embed step has run
-    add_custom_target(EMBEDDED_BUILD ALL DEPENDS ${CMAKE_BINARY_DIR}/.embedded_token ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
+    # this creates a near-empty project whose entire purpose is to rerun the embed scripts
+    # "EmbeddedShaders.txt" and "UnitTests.txt" when the shaders or unit tests change
+    add_custom_target(EMBEDDED_BUILD ALL DEPENDS OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
 
     # for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
     # for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime
 
+    # command that embeds shaders and their names into a cpp file
     add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/.embedded_token
-        COMMAND if $<CONFIG:Release> neq 0 ("${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
-        DEPENDS ${SHADER_PATH}/*.wgsl DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
+        OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp
+        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/EmbeddedShaders.txt
+        DEPENDS "${BASE_DIR}/${SHADER_PATH}/*.*" DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
     )
 
     # command that embeds list of unit tests and their names into a cpp file
     add_custom_command(
         OUTPUT ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp
-        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/CMakeUnitTests.txt
+        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/UnitTests.txt
         DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
         DEPENDS ${CMAKE_SOURCE_DIR}/src/UnitTests/*.cpp
     )
@@ -150,8 +146,8 @@ file(GLOB_RECURSE HeaderList CONFIGURE_DEPENDS src/*.h)
 file(GLOB_RECURSE SourceList CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
-# all files from neshny
-file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.*)
+# all files from neshny (webgpu shaders only)
+file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.wgsl)
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 

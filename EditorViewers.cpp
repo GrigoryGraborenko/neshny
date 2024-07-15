@@ -152,7 +152,9 @@ BaseDebugRender::~BaseDebugRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void BaseDebugRender::IRender3DDebug(const Matrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+
+	auto gpu_vp = view_perspective.ToGPU();
 
 	glDepthMask(GL_FALSE);
 	glDisable(GL_CULL_FACE);
@@ -162,7 +164,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int widt
 	GLBuffer* line_buffer = Core::GetBuffer("DebugLine");
 	line_buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, gpu_vp.Data());
 
 	for (auto it = m_Lines.begin(); it != m_Lines.end(); it++) {
 		if (it->p_OnTop) {
@@ -197,7 +199,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int widt
 		if (it->p_Str.size() <= 0) {
 			continue;
 		}
-		fVec3 result = view_perspective * fVec3(dpos.x, dpos.y, dpos.z);
+		fVec3 result = gpu_vp * fVec3(dpos.x, dpos.y, dpos.z);
 		if (result.z > 1) {
 			continue;
 		}
@@ -212,7 +214,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int widt
 	GLBuffer* buffer = Core::GetBuffer("DebugTriangle");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, gpu_vp.Data());
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -238,7 +240,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int widt
 	buffer = Core::GetBuffer("Circle");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, gpu_vp.Data());
 
 	Vec2 offset2d(offset.x, offset.y);
 	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
@@ -255,7 +257,7 @@ void BaseDebugRender::IRender3DDebug(const fMatrix4 & view_perspective, int widt
 	buffer = Core::GetBuffer("DebugSquare");
 	buffer->UseBuffer(debug_prog);
 
-	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, view_perspective.Data());
+	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, gpu_vp.Data());
 
 	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
 
