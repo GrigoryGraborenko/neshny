@@ -53,6 +53,7 @@ struct BaseVec3 {
 	inline BaseVec3<T>	Sign			( void ) const { return BaseVec3<T>(SIGN(x), SIGN(y), SIGN(z)); };
 	inline BaseVec3<T>	Step			( T step ) const { return BaseVec3<T>(STEP(x, step), STEP(y, step), STEP(z, step)); }
 	inline BaseVec3<T>	Step			( BaseVec3<T> step ) const { return BaseVec3<T>(STEP(x, step.x), STEP(y, step.y), STEP(z, step.z)); }
+	inline BaseVec3<T>	Clamped			( BaseVec3<T> min_val, BaseVec3<T> max_val) const { return BaseVec3<T>(GETCLAMP(x, min_val.x, max_val.x), GETCLAMP(y, min_val.y, max_val.y), GETCLAMP(z, min_val.z, max_val.z)); }
 
 	inline T			LengthSquared	( void ) const { return x * x + y * y + z * z; }
 	inline T			Length			( void ) const { return sqrt(x * x + y * y + z * z); }
@@ -216,6 +217,7 @@ struct BaseVec2 {
 	inline BaseVec2<T>	Sign			( void ) const { return BaseVec2<T>(SIGN(x), SIGN(y)); };
 	inline BaseVec2<T>	Step			( T step ) const { return BaseVec2<T>(STEP(x, step), STEP(y, step)); }
 	inline BaseVec2<T>	Step			( BaseVec2<T> step ) const { return BaseVec2<T>(STEP(x, step.x), STEP(y, step.y)); }
+	inline BaseVec2<T>	Clamped			( BaseVec2<T> min_val, BaseVec2<T> max_val) const { return BaseVec2<T>(GETCLAMP(x, min_val.x, max_val.x), GETCLAMP(y, min_val.y, max_val.y)); }
 
 	inline T			LengthSquared	( void ) const { return x * x + y * y; }
 	inline T			Length			( void ) const { return sqrt(x * x + y * y); }
@@ -352,6 +354,7 @@ struct BaseVec4 {
 	inline BaseVec4<T>	Sign(void) const { return BaseVec4<T>(SIGN(x), SIGN(y), SIGN(z), SIGN(w)); };
 	inline BaseVec4<T>	Step(T step) const { return BaseVec4<T>(STEP(x, step), STEP(y, step), STEP(z, step), STEP(w, step)); }
 	inline BaseVec4<T>	Step(BaseVec4<T> step) const { return BaseVec4<T>(STEP(x, step.x), STEP(y, step.y), STEP(z, step.z), STEP(w, step.w)); }
+	inline BaseVec4<T>	Clamped(BaseVec4<T> min_val, BaseVec3<T> max_val) const { return BaseVec4<T>(GETCLAMP(x, min_val.x, max_val.x), GETCLAMP(y, min_val.y, max_val.y), GETCLAMP(z, min_val.z, max_val.z), GETCLAMP(w, min_val.w, max_val.w)); }
 
 	inline T			LengthSquared(void) const { return x * x + y * y + z * z + w * w; }
 	inline T			Length(void) const { return sqrt(x * x + y * y + z * z + w * w); }
