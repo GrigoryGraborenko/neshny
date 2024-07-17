@@ -78,7 +78,13 @@ fn GetPCGRandom(seed: ptr<function, vec2u>) -> u32 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-fn GetRandom(min_val: f32, max_val: f32, seed: u32) -> f32 {
+fn NextRandom(min_val: f32, max_val: f32, seed: ptr<function, vec2u>) -> f32 {
+	let zero_to_one: f32 = f32(GetPCGRandom(seed)) * 0.0000000002328306437;
+    return zero_to_one * (max_val - min_val) + min_val;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn GetRandomFromSeed(min_val: f32, max_val: f32, seed: u32) -> f32 {
 	let value: u32 = GetHash(AdvanceSeedState(vec2u(0x4d595df4, seed)));
 	let zero_to_one: f32 = f32(value) * 0.0000000002328306437;
     return zero_to_one * (max_val - min_val) + min_val;

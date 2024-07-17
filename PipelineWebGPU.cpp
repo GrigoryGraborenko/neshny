@@ -209,8 +209,8 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	if (result->m_UsingRandom) {
 		m_Vars.push_back({ "ioRandSeed" });
 		insertion += "#include \"Random.wgsl\"\n";
-		insertion += QString("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandom(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
-		insertion += QString("fn Random() -> f32 { return GetRandom(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
+		insertion += QString("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
+		insertion += QString("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
 	}
 
 	if(m_Entity) {
