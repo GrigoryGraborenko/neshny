@@ -127,7 +127,7 @@ if (NOT EMSCRIPTEN)
 
 else()
 
-    include(${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
+    include(${NESHNY_DIR}/CMake/EmbeddedShaders.txt)
     file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 endif()

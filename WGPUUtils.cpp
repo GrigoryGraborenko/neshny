@@ -725,8 +725,6 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 		m_RenderPipeline = wgpuDeviceCreateRenderPipeline(Core::Singleton().GetWebGPUDevice(), &desc);
 	}
 	wgpuPipelineLayoutRelease(pipeline_layout);
-
-	RefreshBindings();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -764,8 +762,6 @@ void WebGPUPipeline::FinalizeCompute(QString shader_name, QByteArray insertion, 
 	m_ComputePipeline = wgpuDeviceCreateComputePipeline(Core::Singleton().GetWebGPUDevice(), &desc);
 
 	wgpuPipelineLayoutRelease(pipeline_layout);
-
-	RefreshBindings();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,6 +789,8 @@ void WebGPUPipeline::RefreshBindings(void) {
 		entry.offset = 0;
 		entry.size = buffer.p_Buffer->GetSizeBytes();
 		entry.buffer = buffer.p_Buffer->Get();
+		entry.textureView = nullptr;
+		entry.sampler = nullptr;
 		binding_num++;
 	}
 #pragma msg("don't use same binding numbers for textures - waste of buffer nums, they are orthogonal to each other")
@@ -802,7 +800,9 @@ void WebGPUPipeline::RefreshBindings(void) {
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
 		entry.offset = 0;
+		entry.buffer = nullptr;
 		entry.textureView = tex.p_TextureView;
+		entry.sampler = nullptr;
 		binding_num++;
 	}
 	for (auto& sampler : m_Samplers) {
@@ -810,6 +810,8 @@ void WebGPUPipeline::RefreshBindings(void) {
 		entry.nextInChain = nullptr;
 		entry.binding = binding_num;
 		entry.offset = 0;
+		entry.buffer = nullptr;
+		entry.textureView = nullptr;
 		entry.sampler = sampler->Get();
 		binding_num++;
 	}
@@ -824,7 +826,7 @@ void WebGPUPipeline::RefreshBindings(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::CheckBuffersUpToDate(void) {
-	bool needs_refresh = false;
+	bool needs_refresh = m_BindGroup == nullptr;
 	for (auto& buffer : m_Buffers) {
 		needs_refresh = needs_refresh || (buffer.p_LastSeenBuffer != buffer.p_Buffer->Get());
 	}

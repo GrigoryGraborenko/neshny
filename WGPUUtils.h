@@ -360,6 +360,8 @@ public:
 	};
 
 	struct RenderParams {
+		RenderParams() {};
+
 		WGPUBlendComponent		p_ColorBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
 		WGPUBlendComponent		p_AlphaBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
 		bool					p_DepthWriteEnabled = true;
