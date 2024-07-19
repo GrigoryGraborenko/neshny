@@ -4,7 +4,7 @@ const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 const os = require('os');
 
-const DAWN_VERSION = `chromium/6251`;
+const DAWN_VERSION = `chromium/6604`;
 const DAWN_URL = `https://dawn.googlesource.com/dawn`;
 const search_str = "DAWN_PATH";
 
@@ -50,6 +50,16 @@ const required_files = [
     "tint_lang_hlsl_writer_ast_printer.lib",
     "tint_lang_hlsl_writer_ast_raise.lib",
     "tint_lang_hlsl_writer_common.lib",
+
+    "tint_lang_hlsl.lib",
+    "tint_lang_hlsl_intrinsic.lib",
+    "tint_lang_hlsl_type.lib",
+    "tint_lang_hlsl_ir.lib",
+    "tint_lang_hlsl_writer_raise.lib",
+    "tint_lang_hlsl_writer_printer.lib",
+    "tint_lang_core_ir_transform_common.lib",
+    "tint_lang_spirv_reader_lower.lib",
+
     "tint_lang_spirv.lib",
     "tint_lang_spirv_intrinsic.lib",
     "tint_lang_spirv_ir.lib",

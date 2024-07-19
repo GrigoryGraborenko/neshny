@@ -304,8 +304,7 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 #ifndef __EMSCRIPTEN__
 			case WGPUVertexFormat_Unorm10_10_10_2:
 #endif
-			case WGPUVertexFormat_Force32:
-			case WGPUVertexFormat_Undefined: item.p_Size = 0; break;
+			case WGPUVertexFormat_Force32: item.p_Size = 0; break;
 		}
 		vertex_bytes += item.p_Size;
 		m_Attributes.push_back(item);
@@ -447,7 +446,6 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	int hei = m_Height / mip_div;
 
 	WGPUImageCopyTexture tex_cpy;
-	tex_cpy.nextInChain = nullptr;
 	tex_cpy.mipLevel = mip_map;
 	tex_cpy.origin.x = 0;
 	tex_cpy.origin.y = 0;

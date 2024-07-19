@@ -637,6 +637,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
 
 	WGPUSurfaceDescriptor surfaceDesc;
+	surfaceDesc.label = nullptr;
 	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);
