@@ -510,6 +510,11 @@ WGPULimits Core::GetDefaultLimits(void) {
 	return limits;
 }
 
+#ifdef __APPLE__
+void PrintGLFWError(int code, const char* message) {
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
 #ifdef __EMSCRIPTEN__
@@ -537,14 +542,14 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	instanceDescriptor.features.timedWaitAnyEnable = true;
 	dawn::native::Instance instance(&instanceDescriptor);
 
-	wgpu::RequestAdapterOptions options = {};
-	options.backendType = wgpu::BackendType::Null;
+	::wgpu::RequestAdapterOptions options = {};
+	options.backendType = ::wgpu::BackendType::Null;
 	switch (backend) {
-		case WebGPUNativeBackend::D3D12: options.backendType = wgpu::BackendType::D3D12; break;
-		case WebGPUNativeBackend::Metal: options.backendType = wgpu::BackendType::Metal; break;
-		case WebGPUNativeBackend::Vulkan: options.backendType = wgpu::BackendType::Vulkan; break;
-		case WebGPUNativeBackend::OpenGL: options.backendType = wgpu::BackendType::OpenGL; break;
-		case WebGPUNativeBackend::OpenGLES: options.backendType = wgpu::BackendType::OpenGLES; break;
+		case WebGPUNativeBackend::D3D12: options.backendType = ::wgpu::BackendType::D3D12; break;
+		case WebGPUNativeBackend::Metal: options.backendType = ::wgpu::BackendType::Metal; break;
+		case WebGPUNativeBackend::Vulkan: options.backendType = ::wgpu::BackendType::Vulkan; break;
+		case WebGPUNativeBackend::OpenGL: options.backendType = ::wgpu::BackendType::OpenGL; break;
+		case WebGPUNativeBackend::OpenGLES: options.backendType = ::wgpu::BackendType::OpenGLES; break;
 	};
 
 	// Get the first adapter for the correct backend
@@ -553,8 +558,8 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 		throw "No adapters found for this backend";
 	}
 	dawn::native::Adapter backendAdapter = adapters[0];
-	wgpu::DawnAdapterPropertiesPowerPreference power_props{};
-	wgpu::AdapterProperties adapterProperties{};
+	::wgpu::DawnAdapterPropertiesPowerPreference power_props{};
+	::wgpu::AdapterProperties adapterProperties{};
 	adapterProperties.nextInChain = &power_props;
 	backendAdapter.GetProperties(&adapterProperties);
 
@@ -607,34 +612,55 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	};
 	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 
-	// WINDOWS SPECIFIC STUFF
-	SDL_SysWMinfo wmInfo;
-	SDL_VERSION(&wmInfo.version);
-	SDL_GetWindowWMInfo(window, &wmInfo);
+#ifdef __APPLE__
+    glfwSetErrorCallback(PrintGLFWError);
+    if (!glfwInit()) {
+		qWarning() << "Could not init glfw";
+        //return wgpu::Device();
+    }
+    // Create the test window with no client API.
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
+    auto glfw_window = glfwCreateWindow(400, 300, "glfw window", nullptr, nullptr);
+    if (!glfw_window) {
+        qWarning() << "Could not init glfw WINDOW";
+    }
 
-/*
+	// int v = GetTestThing(100, 1);
+
+    // auto surfaceChainedDesc = wgpu::glfw::SetupWindowAndGetSurfaceDescriptor(glfw_window);
+	// ::wgpu::SurfaceDescriptorFromMetalLayer* surfaceChainedDesc = SetupWindowAndGetSurfaceDescriptorCocoa(glfw_window);
+    ::wgpu::SurfaceDescriptorFromMetalLayer* surfaceChainedDesc = nullptr;
+
+    // WGPUSurfaceDescriptor surfaceDesc;
+    // surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
+
+	//NSWindow* cocoa_win = wmInfo.info.cocoa.window;
 	// void* layer = MacOSInitSurface(wmInfo.info.cocoa.window);
-	// NSWindow* cocoa_win = wmInfo.info.cocoa.window;
 
 	//auto surfaceChainedDesc = MacOSInitSurface(cocoa_win);
 	// cocoa_win->contentView;
-	// HWND hwnd = wmInfo.info.win.window;
-
-	// SDL_SysWMinfo window_info
-	// SDL_GetWindowWMInfo(window, );
 	// SurfaceDescriptorFromMetalLayer
 
-	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
-	surfaceChainedDesc->hwnd = hwnd;
 	//std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
 	//surfaceChainedDesc->layer = nullptr;
-	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
-*/
+	//surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+
+	//std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
+	//surfaceChainedDesc->layer = MacOSInitSurface(wmInfo.info.cocoa.window);
+
+#elif __WIN32__
+
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(window, &wmInfo);
 
 	HWND hwnd = wmInfo.info.win.window;
 	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
 	surfaceChainedDesc->hwnd = hwnd;
 	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
+
+#endif
 
 	WGPUSurfaceDescriptor surfaceDesc;
 	surfaceDesc.label = nullptr;
@@ -806,7 +832,16 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 	IMGUI_CHECKVERSION();
 	auto context = ImGui::CreateContext();
 	ImGui::SetCurrentContext(context);
-	ImGui_ImplSDL2_InitForD3D(window);
+
+#if __WIN32__
+	if (!ImGui_ImplSDL2_InitForD3D(window)) {
+		return false;
+	}
+#elif __APPLE__
+	if (!ImGui_ImplSDL2_InitForMetal(window)) {
+		return false;
+	}
+#endif
 	ImGui_ImplWGPU_Init(m_Device, 3, WGPUTextureFormat_BGRA8Unorm, WGPUTextureFormat_Depth24Plus);
 
 	SDL_SetRelativeMouseMode(SDL_FALSE);

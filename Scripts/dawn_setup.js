@@ -12,6 +12,7 @@ const search_str = "DAWN_PATH";
 const is_windows = os.type() == "Windows_NT";
 const is_mac = os.type() == "Darwin";
 const is_linux = os.type() == "Linux";
+const lib_ext = is_windows ? ".lib" : ".a";
 
 const required_files = [
     "SPIRV-Tools-opt.lib",
@@ -235,8 +236,8 @@ async function run(all_libs, update_existing, only_copy) {
     let release_lib_list = [];
     if (all_libs) {
         console.log("Copying all lib files...");
-        crawlExtensionFiles(debug_lib_list, ".lib", `${dawn_path}/build-debug`);
-        crawlExtensionFiles(release_lib_list, ".lib", `${dawn_path}/build-release`);
+        crawlExtensionFiles(debug_lib_list, lib_ext, `${dawn_path}/build-debug`);
+        crawlExtensionFiles(release_lib_list, lib_ext, `${dawn_path}/build-release`);
         copyAllFilesTo(debug_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Debug");
         copyAllFilesTo(release_lib_list.map(file_obj => file_obj.path), "./external/WebGPU/lib/Release");
     } else {
