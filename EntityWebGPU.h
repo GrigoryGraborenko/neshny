@@ -92,10 +92,10 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str) {
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
 		functions += QString("fn Get%3%2(index: i32) -> %1 {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg("%1") + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		if (member.p_Type == MemberSpec::Type::T_INT) {
-			functions += QString("// can use macro Access%2%1(index)\n").arg(member.p_Name).arg("%1");
+			functions += QString("// defined macro Access%2%1(index)\n").arg(member.p_Name).arg("%1");
 			functions += QString("#define Access%3%1(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index).arg("%1");
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
-			functions += QString("// can use macro Access%2%1_X/Y/Z/W(index)\n").arg(member.p_Name).arg("%1");
+			functions += QString("// defined macro Access%2%1_X/Y/Z/W(index)\n").arg(member.p_Name).arg("%1");
 			functions += QString("#define Access%3%1_X(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index).arg("%1");
 			functions += QString("#define Access%3%1_Y(index) (b_%3[(index) * FLOATS_PER_%3 + %2 + ENTITY_OFFSET_INTS])\n").arg(member.p_Name).arg(pos_index + 1).arg("%1");
 			if (member.p_Type != MemberSpec::Type::T_IVEC2) {

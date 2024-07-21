@@ -54,12 +54,12 @@ bool PipelineStage::OutputResults::GetValue(QString name, int& value) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QString& count_var, QString& offset_var, bool read_only) {
+QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, bool read_only) {
 
 	QStringList insertion;
 	insertion += QString("struct %1 {").arg(data_vect.p_Name);
 
-	QStringList function(QString("fn Get%1(base_index: i32) -> %1 {\n\tvar item: %1;").arg(data_vect.p_Name));
+	QStringList function(QString("fn Get%1(base_index: i32) -> %1 { // use io%1Num for count\n\tvar item: %1;").arg(data_vect.p_Name));
 	QStringList members;
 	if (read_only) {
 		function += QString("\tlet index = io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
@@ -119,8 +119,6 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 	insertion += "};";
 	insertion += function.join("\n");
 
-	count_var = QString("io%1Count").arg(data_vect.p_Name);
-	offset_var = QString("io%1Offset").arg(data_vect.p_Name);
 	return insertion.join("\n");
 }
 
@@ -196,12 +194,16 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
 		end_insertion += "//////////////// Data vector helpers";
 		for (const auto& data_vect : m_DataVectors) {
-			QString count_var;
-			QString offset_var;
-			end_insertion += GetDataVectorStructCode(data_vect, count_var, offset_var, is_render);
+
+			QString count_var = QString("io%1Count").arg(data_vect.p_Name);
+			QString offset_var = QString("io%1Offset").arg(data_vect.p_Name);
+			QString num_var = QString("io%1Num").arg(data_vect.p_Name);
+
+			end_insertion += GetDataVectorStructCode(data_vect, is_render);
 			m_Vars.push_back({ count_var });
 			m_Vars.push_back({ offset_var });
-			result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, nullptr, 0 });
+			m_Vars.push_back({ num_var });
+			result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, num_var, nullptr, 0 });
 		}
 	}
 
@@ -526,6 +528,10 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 		for (const auto& vect : m_DataVectors) {
 			if (vect.m_CountVar == name) {
 				value = vect.m_SizeInts;
+				return;
+			}
+			if (vect.m_NumVar == name) {
+				value = vect.m_NumItems;
 				return;
 			}
 			if (vect.m_OffsetVar == name) {

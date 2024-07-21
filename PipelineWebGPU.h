@@ -57,8 +57,10 @@ public:
 			QString			m_Name;
 			QString			m_CountVar;
 			QString			m_OffsetVar;
+			QString			m_NumVar;
 			unsigned char*	m_Data = nullptr;
 			int				m_SizeInts = 0;
+			int				m_NumItems = 0;
 		};
 		std::vector<DataVectorInfo>	m_DataVectors;
 
@@ -73,6 +75,7 @@ public:
 				if (vect.m_Name == name) {
 					vect.m_Data = (unsigned char*)items.data();
 					vect.m_SizeInts = ((int)items.size() * sizeof(T)) / sizeof(int);
+					vect.m_NumItems = (int)items.size();
 					break;
 				}
 			}
@@ -202,7 +205,7 @@ protected:
 		const WebGPUSampler*	p_Sampler;
 	};
 
-	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, QString& count_var, QString& offset_var, bool read_only );
+	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
 	RunType							m_RunType;
 	GPUEntity*						m_Entity = nullptr;
 	RenderableBuffer*				m_Buffer = nullptr;
