@@ -15,6 +15,10 @@ using namespace Neshny;
 #endif
 #include "EmbeddedDirectories.cpp"
 
+#ifdef __APPLE__
+extern void* MacOSGetWindowLayer(void* nsWindow);
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int, char**) {
@@ -50,7 +54,21 @@ int main(int, char**) {
 	Engine engine;
 	SDL_Init(SDL_INIT_VIDEO);
 	SDL_Window* sdl_window = SDL_CreateWindow("Test", 100, 100, engine.GetWidth(), engine.GetHeight(), SDL_WINDOW_RESIZABLE);
-	Core::Singleton().WebGPUSDLLoop(Core::WebGPUNativeBackend::D3D12, sdl_window, &engine, engine.GetWidth(), engine.GetHeight());
+
+	void* windowLayer = nullptr;
+	Core::WebGPUNativeBackend backend = Core::WebGPUNativeBackend::D3D12;
+#ifdef __APPLE__
+	backend = Core::WebGPUNativeBackend::Metal; // \/\/
+
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(sdl_window, &wmInfo);
+
+	NSWindow* cocoa_win = wmInfo.info.cocoa.window;
+	windowLayer = MacOSGetWindowLayer(cocoa_win);
+#endif
+
+	Core::Singleton().WebGPUSDLLoop(backend, sdl_window, &engine, engine.GetWidth(), engine.GetHeight(), windowLayer);
 
 	return 0;
 }
