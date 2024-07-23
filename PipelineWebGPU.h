@@ -99,13 +99,6 @@ public:
 		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 
-	struct AddedSSBO {
-		SSBO&					p_Buffer;
-		QString					p_Name;
-		MemberSpec::Type		p_Type;
-		BufferAccess			p_Access;
-	};
-
 	static PipelineStage ModifyEntity(GPUEntity& entity, QString shader_name, bool replace_main, std::vector<QString>&& shader_defines = {}, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, shader_defines);
 	}
@@ -175,6 +168,12 @@ protected:
 														SSBO* control_ssbo = nullptr, int iterations = 0,
 														WebGPUPipeline::RenderParams render_params = {} );
 
+	struct AddedSSBO {
+		SSBO& p_Buffer;
+		QString					p_Name;
+		MemberSpec::Type		p_Type;
+		BufferAccess			p_Access;
+	};
 	struct AddedDataVector {
 		QString					p_Name;
 		int						p_NumIntsPerItem;

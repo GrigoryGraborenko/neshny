@@ -510,13 +510,8 @@ WGPULimits Core::GetDefaultLimits(void) {
 	return limits;
 }
 
-#ifdef __APPLE__
-void PrintGLFWError(int code, const char* message) {
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
-void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height) {
+void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer) {
 #ifdef __EMSCRIPTEN__
 	m_Device = emscripten_webgpu_get_device();
 	m_Queue = wgpuDeviceGetQueue(m_Device);
@@ -613,41 +608,9 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 
 #ifdef __APPLE__
-    glfwSetErrorCallback(PrintGLFWError);
-    if (!glfwInit()) {
-		qWarning() << "Could not init glfw";
-        //return wgpu::Device();
-    }
-    // Create the test window with no client API.
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
-    auto glfw_window = glfwCreateWindow(400, 300, "glfw window", nullptr, nullptr);
-    if (!glfw_window) {
-        qWarning() << "Could not init glfw WINDOW";
-    }
 
-	// int v = GetTestThing(100, 1);
-
-    // auto surfaceChainedDesc = wgpu::glfw::SetupWindowAndGetSurfaceDescriptor(glfw_window);
-	// ::wgpu::SurfaceDescriptorFromMetalLayer* surfaceChainedDesc = SetupWindowAndGetSurfaceDescriptorCocoa(glfw_window);
-    ::wgpu::SurfaceDescriptorFromMetalLayer* surfaceChainedDesc = nullptr;
-
-    // WGPUSurfaceDescriptor surfaceDesc;
-    // surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
-
-	//NSWindow* cocoa_win = wmInfo.info.cocoa.window;
-	// void* layer = MacOSInitSurface(wmInfo.info.cocoa.window);
-
-	//auto surfaceChainedDesc = MacOSInitSurface(cocoa_win);
-	// cocoa_win->contentView;
-	// SurfaceDescriptorFromMetalLayer
-
-	//std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
-	//surfaceChainedDesc->layer = nullptr;
-	//surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
-
-	//std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
-	//surfaceChainedDesc->layer = MacOSInitSurface(wmInfo.info.cocoa.window);
+	std::unique_ptr<wgpu::SurfaceDescriptorFromMetalLayer> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromMetalLayer>();
+	surfaceChainedDesc->layer = layer;
 
 #elif __WIN32__
 
@@ -819,11 +782,11 @@ void Core::SDLLoopInner() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height) {
+bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height, void* layer) {
 	m_Window = window;
 	m_Engine = engine;
 
-	InitWebGPU(backend, m_Window, width, height);
+	InitWebGPU(backend, m_Window, width, height, layer);
 
 	if (!LoopInit(engine)) {
 		return false;

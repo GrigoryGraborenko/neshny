@@ -490,7 +490,7 @@ public:
 		D3D12, Metal, Vulkan, OpenGL, OpenGLES
 	};
 	void								SDLLoopInner				( void );
-	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height );
+	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height, void* layer = nullptr );
 	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
 	void								SyncResolution				( void );
 #endif
@@ -500,7 +500,7 @@ public:
 	static GLShader*					GetComputeShader			( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 #elif defined(NESHNY_WEBGPU)
-	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height );
+	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
 	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
