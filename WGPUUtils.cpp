@@ -636,6 +636,9 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 	m_RenderBuffer = &render_buffer;
 
 	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
+	if (shader == nullptr) {
+		throw std::logic_error("Cannot find shader");
+	}
 	CreateBindGroupLayout();
 
 	// pipeline layout (used by the render pipeline, released after its creation)

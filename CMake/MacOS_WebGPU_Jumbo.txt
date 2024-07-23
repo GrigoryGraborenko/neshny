@@ -73,28 +73,17 @@ target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}
 )
 
-find_library(SDL2_LIBRARY SDL2)
-if (NOT SDL2_LIBRARY)
-    message(FATAL_ERROR "framework not found")
+if(APPLE)
+    find_library(SDL2_LIBRARY SDL2)
+    if (NOT SDL2_LIBRARY)
+        message(FATAL_ERROR "framework not found")
+    endif()
+    target_link_libraries(${PROJECT_NAME}
+        ${SDL2_LIBRARY}
+        "-framework QuartzCore"
+        "-framework IOSurface"
+    )
 endif()
-
-# target_link_libraries(${PROJECT_NAME}
-#     ${SDL2_LIBRARY}
-# )
-
-target_link_libraries(${PROJECT_NAME}
-    ${SDL2_LIBRARY}
-    #"-framework Metal"
-    "-framework QuartzCore"
-    #"-framework CoreAudio"
-    #"-framework CoreVideo"
-    #"-framework CoreHaptics"
-    "-framework IOSurface"
-    #"-framework AudioToolbox"
-    #"-framework ForceFeedback"
-    #"-framework GameController"
-    # "-framework SDL2"
-)
 
 if (NOT EMSCRIPTEN)
 
@@ -123,11 +112,8 @@ if (NOT EMSCRIPTEN)
 else()
 
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
-
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
-
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
-
     set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s ASYNCIFY=1")
 
     # Linker flags to optimize for smallest output code size
@@ -175,7 +161,7 @@ if (NOT EMSCRIPTEN)
 
 else()
 
-    include(${NESHNY_DIR}/CMake/CMakeEmbedded.txt)
+    include(${NESHNY_DIR}/CMake/EmbeddedShaders.txt)
     file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 endif()
@@ -187,8 +173,6 @@ message(STATUS "Project Structure")
 target_precompile_headers(${PROJECT_NAME}
     PUBLIC
     ${CMAKE_SOURCE_DIR}/src/PreCompiledHeader.h
-    # ${CMAKE_SOURCE_DIR}/src/utils_metal.mm
-    # ${CMAKE_SOURCE_DIR}/src/macos.mm
 )
 
 # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
@@ -196,8 +180,8 @@ file(GLOB_RECURSE HeaderList CONFIGURE_DEPENDS src/*.h)
 file(GLOB_RECURSE SourceList CONFIGURE_DEPENDS src/*.cpp)
 file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
-# all files from neshny
-file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.*)
+# all files from neshny (webgpu shaders only)
+file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.wgsl)
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 
@@ -205,22 +189,17 @@ list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
 set_source_files_properties(${SourceList} ${NeshnyList} PROPERTIES
     HEADER_FILE_ONLY TRUE
 )
-
 # jumbo build specific - the only two files that get compiled
-set_source_files_properties(
-    # src/macos.mm
-    # src/utils_metal.mm
-    src/main.cpp
-    src/PreCompiledHeader.cpp
-    PROPERTIES
+set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
     HEADER_FILE_ONLY FALSE
 )
 
+if (APPLE)
+    list(APPEND NeshnyList ${NESHNY_DIR}/metal.mm)
+endif()
+
 target_sources(${PROJECT_NAME}
     PRIVATE
-    # ${CMAKE_SOURCE_DIR}/src/utils_metal.mm
-    # ${CMAKE_SOURCE_DIR}/src/macos.mm
-    ${NESHNY_DIR}/metal.mm
     ${HeaderList}
     ${SourceList}
     ${NeshnyList}
@@ -237,15 +216,18 @@ message(STATUS "Setting up file system")
 file(WRITE "dawn_setup.js" "const execute = require('${NESHNY_DIR}/Scripts/dawn_setup');\nexecute();")
 file(WRITE "server.js" "const execute = require('${NESHNY_DIR}/Scripts/server');\nexecute();")
 
-# copy over dlls required for execution
-#configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
+# copy over libraries required for execution
 
-#configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
-#configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
-#configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
-#configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+if (WIN32)
+    configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
 
-if (EMSCRIPTEN)
+    configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+elseif (APPLE)
+    # TODO
+elseif (EMSCRIPTEN)
     configure_file(src/index.html ${CMAKE_BINARY_DIR}/index.html COPYONLY)
 endif()
 

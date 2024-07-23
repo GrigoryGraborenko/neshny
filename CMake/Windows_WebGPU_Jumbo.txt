@@ -1,6 +1,7 @@
 ###############################################################################
 
 set(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 # startup project for VS
@@ -66,10 +67,22 @@ target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}
 )
 
+if(APPLE)
+    find_library(SDL2_LIBRARY SDL2)
+    if (NOT SDL2_LIBRARY)
+        message(FATAL_ERROR "framework not found")
+    endif()
+    target_link_libraries(${PROJECT_NAME}
+        ${SDL2_LIBRARY}
+        "-framework QuartzCore"
+        "-framework IOSurface"
+    )
+endif()
+
 if (NOT EMSCRIPTEN)
-    
-    target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU)
-    target_include_directories(${PROJECT_NAME} PRIVATE external/WebGPU/dawn)
+
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/external/WebGPU)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/external/WebGPU/dawn)
     target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
 
     if (WIN32)
@@ -84,7 +97,7 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
     set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s ASYNCIFY=1")
-   
+
     # Linker flags to optimize for smallest output code size
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
 endif()
@@ -138,7 +151,7 @@ message(STATUS "Project Structure")
 # precompiled header setup
 target_precompile_headers(${PROJECT_NAME}
     PUBLIC
-    src/PreCompiledHeader.h
+    ${CMAKE_SOURCE_DIR}/src/PreCompiledHeader.h
 )
 
 # remove CONFIGURE_DEPENDS if you are getting too many cmake reruns when files in this dir change
@@ -160,6 +173,10 @@ set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
     HEADER_FILE_ONLY FALSE
 )
 
+if (APPLE)
+    list(APPEND NeshnyList ${NESHNY_DIR}/metal.mm)
+endif()
+
 target_sources(${PROJECT_NAME}
     PRIVATE
     ${HeaderList}
@@ -178,15 +195,18 @@ message(STATUS "Setting up file system")
 file(WRITE "dawn_setup.js" "const execute = require('${NESHNY_DIR}/Scripts/dawn_setup');\nexecute();")
 file(WRITE "server.js" "const execute = require('${NESHNY_DIR}/Scripts/server');\nexecute();")
 
-# copy over dlls required for execution
-configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
+# copy over libraries required for execution
 
-configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
-configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+if (WIN32)
+    configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
 
-if (EMSCRIPTEN)
+    configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
+    configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+elseif (APPLE)
+    # TODO
+elseif (EMSCRIPTEN)
     configure_file(src/index.html ${CMAKE_BINARY_DIR}/index.html COPYONLY)
 endif()
 

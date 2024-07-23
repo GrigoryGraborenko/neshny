@@ -38,7 +38,7 @@ int main(int, char**) {
 	Core::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
 		QFile file;
 		for (auto prefix : g_ShaderBaseDirs) {
-			file.setFileName(QString("%1\\%2").arg(prefix.c_str()).arg(path));
+			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
 			if (file.open(QIODevice::ReadOnly)) {
 				break;
 			}

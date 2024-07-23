@@ -47,3 +47,4 @@ CMakeFiles/
 *.app
 
 *.recipe
+*.DS_Store
