@@ -43,18 +43,18 @@
     #include <SDL_syswm.h>
 #endif
 #include <SDL_mixer.h>
-#include <Metastuff\Meta.h>
+#include <Metastuff/Meta.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include <imgui\imgui_internal.h>
-#include <imgui\imconfig.h>
-#include <imgui\imgui.h>
-#include <imgui\imgui_stdlib.h>
-#include <imgui\imstb_rectpack.h>
-#include <imgui\imstb_textedit.h>
-#include <imgui\imstb_truetype.h>
-#include <imgui\imgui_impl_wgpu.h>
-#include <imgui\imgui_impl_sdl2.h>
+#include <imgui/imgui_internal.h>
+#include <imgui/imconfig.h>
+#include <imgui/imgui.h>
+#include <imgui/imgui_stdlib.h>
+#include <imgui/imstb_rectpack.h>
+#include <imgui/imstb_textedit.h>
+#include <imgui/imstb_truetype.h>
+#include <imgui/imgui_impl_wgpu.h>
+#include <imgui/imgui_impl_sdl2.h>
 
 #include <IncludeAll.h> // Neshny
 
