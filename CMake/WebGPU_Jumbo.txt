@@ -21,11 +21,13 @@ message(STATUS "Setting up compilation")
 # add the executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 
-if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
-else ()
-    set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x86")
-endif ()
+if (NOT APPLE)
+    if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
+        set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
+    else()
+        set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x86")
+    endif()
+endif()
 
 if (EMSCRIPTEN)
 
@@ -48,26 +50,32 @@ else()
         Qt6::Gui
     )
 
-    set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;")
+    if (NOT APPLE)
+        set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;")
+    endif()
 
 endif()
 
 # include files
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    external
-    src
+    ${CMAKE_SOURCE_DIR}/external
+    ${CMAKE_SOURCE_DIR}/src
     ${NESHNY_DIR}
     ${SDL2_DIR}/include
-    ${SDL2_MIXER_DIR}/include
 )
+if (APPLE)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${SDL2_MIXER_DIR}/include/SDL2)
+else()
+    target_include_directories(${PROJECT_NAME} PRIVATE ${SDL2_MIXER_DIR}/include)
+endif()
 
 # lib files
 target_link_libraries(${PROJECT_NAME}
     ${SDL2_LIBRARIES}
 )
 
-if(APPLE)
+if (APPLE)
     find_library(SDL2_LIBRARY SDL2)
     if (NOT SDL2_LIBRARY)
         message(FATAL_ERROR "framework not found")
@@ -83,12 +91,18 @@ if (NOT EMSCRIPTEN)
 
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/external/WebGPU)
     target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/external/WebGPU/dawn)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
 
     if (WIN32)
         # ensure visual studio compiles as a windowed project not command line
         set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
         set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
+        target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
+    elseif (APPLE)
+        message(STATUS "Including ${CMAKE_BUILD_TYPE} WebGPU libraries")
+        file(GLOB LIBS "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/${CMAKE_BUILD_TYPE}/*.a")
+        foreach(LIB ${LIBS})
+            target_link_libraries(${PROJECT_NAME} ${LIB})
+        endforeach()
     endif()
 
 else()
@@ -112,7 +126,7 @@ if (NOT EMSCRIPTEN)
 
     # this creates a near-empty project whose entire purpose is to rerun the embed scripts
     # "EmbeddedShaders.txt" and "UnitTests.txt" when the shaders or unit tests change
-    add_custom_target(EMBEDDED_BUILD ALL DEPENDS OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
+    add_custom_target(EMBEDDED_BUILD ALL DEPENDS ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp)
 
     # for release builds, we create a file called EmbeddedFiles.cpp that includes all shaders hardcoded inside it, thus embedding them in the exe.  
     # for debug builds, the files are loaded dynamically, allowing rapid reloading during runtime

@@ -1,10 +1,13 @@
 ###############################################################################
-# examples:
+# WINDOWS:
 # cmake . -B build -G "Visual Studio 17 2022" -A x64
-# cmake . -B build -G "Unix Makefiles"
+# 
+# MACOS: (different dirs for Debug/Release)
+# cmake . -B build -G "Unix Makefiles"-DCMAKE_BUILD_TYPE=Debug
+# cmake --build build
+# 
+# BROWSER:
 # emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-#
-# cmake --build build --config=DEBUG
 # cmake --build build-web
 # node server
 
@@ -21,10 +24,4 @@ else()
     project(${PROJECT_NAME})
 endif()
 
-if(WIN32)
-    include(${NESHNY_DIR}/CMake/Windows_WebGPU_Jumbo.txt)
-elseif(APPLE)
-    include(${NESHNY_DIR}/CMake/MacOS_WebGPU_Jumbo.txt)
-elseif(UNIX)
-    # TODO
-endif()
+include(${NESHNY_DIR}/CMake/WebGPU_Jumbo.txt)
