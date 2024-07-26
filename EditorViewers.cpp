@@ -6,18 +6,13 @@ namespace Neshny {
 #if defined(NESHNY_WEBGPU)
 
 ////////////////////////////////////////////////////////////////////////////////
-BaseDebugRender::BaseDebugRender(void) :
-	m_LinePipline		( )
-	,m_CirclePipline	( )
-	,m_SquarePipline	( )
-{
+BaseDebugRender::BaseDebugRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 BaseDebugRender::~BaseDebugRender(void) {
 	delete m_Uniforms;
 	delete m_CircleBuffer;
-	delete m_SquareBuffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +24,7 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 	};
 	std::vector<RenderPoint> debug_lines;
 	std::vector<RenderPoint> debug_circles;
-	std::vector<RenderPoint> debug_squares;
+	std::vector<RenderPoint> debug_triangles;
 
 	for (WebGPUBuffer* prev_buffer : m_PreviousFrameBuffers) {
 		delete prev_buffer;
@@ -37,14 +32,13 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 	m_PreviousFrameBuffers.clear();
 
 	auto gpu_vp = view_perspective.ToGPU();
-	
+
 	debug_lines.reserve(m_Lines.size() * 2);
 	debug_circles.reserve(m_Circles.size());
-	debug_squares.reserve(m_Squares.size());
 	Vec2 offset2d(offset.x, offset.y);
 	for (const auto& line : m_Lines) {
-		debug_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 0.0), line.p_Col.ToFloat4() });
-		debug_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 0.0), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		debug_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
 	}
 	for (const auto& circle : m_Circles) {
 		debug_circles.push_back({ fVec4((circle.p_Pos.x - offset.x) * scale, (circle.p_Pos.y - offset.y) * scale, circle.p_Radius * scale, circle.p_Radius * scale), circle.p_Col.ToFloat4() });
@@ -74,48 +68,68 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 		ImGui::SetCursorPos(ImVec2(x, y));
 		ImGui::Text(it->p_Str.c_str());
 	}
-	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
-		Vec2 mid_pos = ((it->p_MaxPos + it->p_MinPos) * 0.5 - offset2d) * scale;
-		Vec2 radius = (it->p_MaxPos - it->p_MinPos).Abs() * 0.5 * scale;
-		debug_squares.push_back({ fVec4(mid_pos.x, mid_pos.y, radius.x, radius.y), it->p_Col.ToFloat4() });
+	for (const auto& square: m_Squares) {
+		fVec4 col = square.p_Col.ToFloat4();
+		fVec4 pos_a = fVec4(((square.p_MinPos.ToVec3(0.0) - offset) * scale).ToFloat3(), 1.0);
+		fVec4 pos_c = fVec4(((square.p_MaxPos.ToVec3(0.0) - offset) * scale).ToFloat3(), 1.0);
+		fVec4 pos_b(pos_a.x, pos_c.y, 0.0, 1.0);
+		fVec4 pos_d(pos_c.x, pos_a.y, 0.0, 1.0);
+		if (square.p_Filled) {
+
+			debug_triangles.push_back({ pos_a, col });
+			debug_triangles.push_back({ pos_c, col });
+			debug_triangles.push_back({ pos_b, col });
+
+			debug_triangles.push_back({ pos_a, col });
+			debug_triangles.push_back({ pos_d, col });
+			debug_triangles.push_back({ pos_c, col });
+		} else {
+			debug_lines.push_back({ pos_a, col }); debug_lines.push_back({ pos_b, col });
+			debug_lines.push_back({ pos_b, col }); debug_lines.push_back({ pos_c, col });
+			debug_lines.push_back({ pos_c, col }); debug_lines.push_back({ pos_d, col });
+			debug_lines.push_back({ pos_d, col }); debug_lines.push_back({ pos_a, col });
+		}
+	}
+	for (const auto& triangle: m_Triangles) {
+		auto col = triangle.p_Col.ToFloat4();
+		debug_triangles.push_back({ fVec4(((triangle.p_A - offset) * scale).ToFloat3(), 1.0), col });
+		debug_triangles.push_back({ fVec4(((triangle.p_B - offset) * scale).ToFloat3(), 1.0), col });
+		debug_triangles.push_back({ fVec4(((triangle.p_C - offset) * scale).ToFloat3(), 1.0), col });
 	}
 
 	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)debug_lines.data(), (int)debug_lines.size() * sizeof(RenderPoint));
+	m_TriangleBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_TriangleList, (unsigned char*)debug_triangles.data(), (int)debug_triangles.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
 		// TODO: this throws an error for one frame due to buffers being empty at first
 		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
 		m_CircleBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
-		m_SquareBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
 		m_LinePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.FinalizeRender("DebugLine", m_LineBuffer);
+			.FinalizeRender("SimplePoint", m_LineBuffer);
 		m_CirclePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_CircleBuffer, WGPUShaderStage_Vertex, true)
 			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
-		m_SquarePipline
+		m_TrianglePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.AddBuffer(*m_SquareBuffer, WGPUShaderStage_Vertex, true)
-			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("SquareOutline"));
+			.FinalizeRender("SimplePoint", m_TriangleBuffer);
 		m_TexturePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddTexture(WGPUTextureViewDimension_2D, nullptr)
 			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
-			.FinalizeRender("DebugTexture", *Core::GetBuffer("Square"), {});
+			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {});
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(debug_circles);
 
-	m_SquareBuffer->EnsureSizeBytes((int)debug_squares.size() * sizeof(RenderPoint));
-	m_SquareBuffer->SetValues(debug_squares);
-
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &gpu_vp, sizeof(fMatrix4));
 
 	rtt.Render(&m_LinePipline);
+	rtt.Render(&m_TrianglePipline);
 	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
-	rtt.Render(&m_SquarePipline, (int)m_Squares.size());
 
+	// TODO: sort by texture name and render in batches
 	for (const auto& tex : m_Textures) {
 		auto texture = Core::GetResource<Texture2D>(tex.p_Filename);
 		if (!texture.IsValid()) {

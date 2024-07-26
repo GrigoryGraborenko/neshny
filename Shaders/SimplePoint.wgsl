@@ -15,7 +15,7 @@ struct Uniforms {
 @vertex
 fn vertex_main(input : VertexIn) -> VertexOut {
 	var output : VertexOut;
-	output.Position = uniforms.p_VP * vec4f(input.aPos.xyz, 1.0);
+	output.Position = uniforms.p_VP * input.aPos;
 	output.vCol = input.aCol;
 	return output;
 }

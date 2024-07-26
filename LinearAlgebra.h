@@ -186,10 +186,10 @@ struct BaseVec2 {
 
 	inline void			Set				( T e0, T e1 ) { x = e0; y = e1; }
 	template <typename G>
-	inline BaseVec3<G>	ToVec3			( G z = 0.0 ) { return BaseVec3<G>(x, y, z); }
-	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) { return BaseVec3<T>(x, y, z); }
-	inline BaseVec2<int>	ToIVec2		( void ) { return BaseVec2<int>(x, y); }
-	inline BaseVec2<double>	ToDoubleVec2	( void ) { return BaseVec2<double>(x, y); }
+	inline BaseVec3<G>	ToVec3			( G z = 0.0 ) const { return BaseVec3<G>(x, y, z); }
+	inline BaseVec3<T>	ToVec3			( T z = 0.0 ) const { return BaseVec3<T>(x, y, z); }
+	inline BaseVec2<int>	ToIVec2		( void ) const { return BaseVec2<int>(x, y); }
+	inline BaseVec2<double>	ToDoubleVec2	( void ) const { return BaseVec2<double>(x, y); }
 
 	inline void			operator=		( const BaseVec2<T>& t2 ) { x = t2.x; y = t2.y; }
 	inline BaseVec2<T>	operator+		( const BaseVec2<T>& t2 ) const { return BaseVec2<T>(x + t2.x, y + t2.y); }

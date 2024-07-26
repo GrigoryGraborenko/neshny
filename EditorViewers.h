@@ -94,12 +94,13 @@ protected:
 
 #if defined(NESHNY_WEBGPU)
 	WebGPUBuffer*								m_Uniforms = nullptr;
-	WebGPUPipeline								m_LinePipline;
 	WebGPURenderBuffer							m_LineBuffer;
+	WebGPURenderBuffer							m_TriangleBuffer;
+	WebGPUPipeline								m_LinePipline;
+	WebGPUPipeline								m_TrianglePipline;
+
 	WebGPUPipeline								m_CirclePipline;
 	WebGPUBuffer*								m_CircleBuffer = nullptr;
-	WebGPUPipeline								m_SquarePipline;
-	WebGPUBuffer*								m_SquareBuffer = nullptr;
 
 	WebGPUPipeline								m_TexturePipline;
 	std::vector<WebGPUBuffer*>					m_PreviousFrameBuffers;
