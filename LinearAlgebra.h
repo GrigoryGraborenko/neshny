@@ -205,8 +205,10 @@ struct BaseVec2 {
 	inline bool			operator==		( const  BaseVec2<T>& t2 ) const { return (x == t2.x) && (y == t2.y); }
 
 	inline T			Dot				( BaseVec2<T> t2 ) const { return x * t2.x + y * t2.y; }
+	inline T			Cross			( BaseVec2<T> t2 ) const { return (x * t2.y) - (y * t2.x); }
 
 	inline T			operator|		( const BaseVec2<T>& t2 ) const { return Dot(t2); }
+	inline T			operator^		( const BaseVec2<T>& t2 ) const { return Cross(t2); }
 
 	inline BaseVec2<T>	Round			( void ) const { return BaseVec2<T>(floor(x + (T)0.5), floor(y + (T)0.5)); };
 	inline BaseVec2<T>	Ceil			( void ) const { return BaseVec2<T>(ceil(x), ceil(y)); };
@@ -267,34 +269,88 @@ struct BaseVec2 {
 		return A + a_b * t;
 	}
 	
-	static bool			LineLineIntersect ( BaseVec2<T> a0, BaseVec2<T> a1, BaseVec2<T> b0, BaseVec2<T> b1, bool clamp, BaseVec2<T>& out_a, BaseVec2<T>& out_b, T* a_frac = nullptr, T* b_frac = nullptr ) {
-		BaseVec2<T> r = a1 - a0;
-		BaseVec2<T> s = b1 - b0;
+	static std::optional<BaseVec2<T>> LineLineIntersect ( BaseVec2<T> a0, BaseVec2<T> a1, BaseVec2<T> b0, BaseVec2<T> b1, T* a_frac = nullptr, T* b_frac = nullptr ) {
 
-		BaseVec2<T> qp = b0 - a0;
-		T numerator = qp ^ r;
+		BaseVec2<T> r = a0 - a1;
+		BaseVec2<T> s = b0 - b1;
+
 		T denominator = r ^ s;
 
 		// lines are parallel
 		if (denominator == 0) {
-			return false;
+			return std::nullopt;
 		}
+		
+		T a_cross = (a0 ^ a1);
+		T b_cross = (b0 ^ b1);
 
-		if ((numerator == 0) && (denominator == 0)) { // they are collinear
-			// TODO: check if the lines are overlapping
-			return false;
-		}
+		T x_numer = a_cross * s.x - r.x * b_cross;
+		T y_numer = a_cross * s.y - r.y * b_cross;
+		BaseVec2<T> result(x_numer, y_numer);
+		result *= (1.0 / denominator);
 
-		T u = numerator / denominator;
-		T t = (qp ^ s) / denominator;
 		if (a_frac) {
-			*a_frac = u;
+			if (r.x > 0) {
+				*a_frac = (result.x - a0.x) / -r.x;
+			} else {
+				*a_frac = (result.y - a0.y) / -r.y;
+			}
 		}
 		if (b_frac) {
-			*b_frac = t;
+			if (s.x > 0) {
+				*b_frac = (result.x - b0.x) / -s.x;
+			} else {
+				*b_frac = (result.y - b0.y) / -s.y;
+			}
 		}
 
-		return (t >= 0) && (t <= 1) && (u >= 0) && (u <= 1);
+		return result;
+	}
+
+	static double LineSegmentLineSegmentDistance ( BaseVec2<T> a0, BaseVec2<T> a1, BaseVec2<T> b0, BaseVec2<T> b1, BaseVec2<T>& out_a, BaseVec2<T>& out_b, T* a_frac_ptr = nullptr, T* b_frac_ptr = nullptr ) {
+
+		T a_frac, b_frac;
+		auto intersect = LineLineIntersect(a0, a1, b0, b1, &a_frac, &b_frac);
+		if (intersect.has_value() && (a_frac >= 0.0) && (b_frac >= 0.0) && (a_frac <= 1.0) && (b_frac <= 1.0)) {
+			out_a = *intersect;
+			out_b = *intersect;
+			if (a_frac_ptr) {
+				*a_frac_ptr = a_frac;
+			}
+			if (b_frac_ptr) {
+				*b_frac_ptr = b_frac;
+			}
+			return 0;
+		}
+		// TODO: some duplicated maths in NearestToLine, might be worth manually inlining and collapsing
+		T fracts_a[4] = { 0, 1, -1, -1 };
+		T fracts_b[4] = { -1, -1, 0, 1 };
+		std::pair<BaseVec2<T>, BaseVec2<T>> approaches[4] = {
+			{ a0, a0.NearestToLine(b0, b1, true, &(fracts_b[0])) },
+			{ a1, a1.NearestToLine(b0, b1, true, &(fracts_b[1])) },
+			{ b0, b0.NearestToLine(a0, a1, true, &(fracts_a[2])) },
+			{ b1, b1.NearestToLine(a0, a1, true, &(fracts_a[3])) }
+		};
+		double best_dist_sqr = -1;
+		int best_ind = -1;
+		for (int i = 0; i < 4; i++) {
+			const auto& approach = approaches[i];
+			double dist_sqr = (approach.first - approach.second).LengthSquared();
+			if ((best_dist_sqr < 0) || (dist_sqr < best_dist_sqr)) {
+				best_dist_sqr = dist_sqr;
+				out_a = approach.first;
+				out_b = approach.second;
+				best_ind = i;
+			}
+		}
+		if (a_frac_ptr) {
+			*a_frac_ptr = fracts_a[best_ind];
+		}
+		if (b_frac_ptr) {
+			*b_frac_ptr = fracts_b[best_ind];
+		}
+
+		return sqrt(best_dist_sqr);
 	}
 
 	inline static BaseVec2<T>	Min				( BaseVec2<T> a, BaseVec2<T> b ) { return BaseVec2<T>(std::min(a.x, b.x), std::min(a.y, b.y)); }
