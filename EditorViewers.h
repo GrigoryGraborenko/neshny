@@ -21,9 +21,9 @@ public:
     inline void									AddPoint            ( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(DebugPoint{pos, std::string(""), color, on_top}); }
     inline void									AddPoint            ( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { m_Points.push_back(DebugPoint{pos, text, color, on_top}); }
     inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
-    inline void									AddCircle			( Vec2 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(DebugCircle{a, radius, color, filled}); }
-    inline void									AddSquare			( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(DebugSquare{min_pos, max_pos, color, filled}); }
-    inline void									AddTexture			( Vec2 min_pos, Vec2 max_pos, QString filename ) { m_Textures.push_back(DebugTexture{min_pos, max_pos, filename }); }
+    inline void									AddCircle			( Vec3 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(DebugCircle{a, radius, color, filled}); }
+    inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(DebugSquare{min_pos, max_pos, color, filled}); }
+    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, QString filename ) { m_Textures.push_back(DebugTexture{min_pos, max_pos, filename }); }
 
     //static inline void                          AddString           ( const QString& str ) { Singleton().m_Strings.push_back(str); }
     //static inline void                          AddPersistString    ( QString key, QString val ) { Singleton().m_PersistStrings.insert_or_assign(key, val); }
@@ -47,15 +47,15 @@ protected:
 	};
 
 	struct DebugCircle {
-		Vec2 p_Pos;
+		Vec3 p_Pos;
 		double p_Radius;
 		Vec4 p_Col;
 		bool p_Filled = false;
 	};
 
 	struct DebugSquare {
-		Vec2 p_MinPos;
-		Vec2 p_MaxPos;
+		Vec3 p_MinPos;
+		Vec3 p_MaxPos;
 		Vec4 p_Col;
 		bool p_Filled = false;
 	};
@@ -67,8 +67,8 @@ protected:
 	};
 
 	struct DebugTexture {
-		Vec2 p_MinPos;
-		Vec2 p_MaxPos;
+		Vec3 p_MinPos;
+		Vec3 p_MaxPos;
 		QString p_Filename;
 	};
 
@@ -112,11 +112,39 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class DebugRender : public BaseDebugRender {
+class DebugRender2D : private BaseDebugRender {
 
 public:
 
-	static inline DebugRender&					Singleton			( void ) { static DebugRender instance; return instance; }
+	static inline DebugRender2D&				Singleton			( void ) { static DebugRender2D instance; return instance; }
+
+#if defined(NESHNY_WEBGPU)
+	static inline void							Render2DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec2 offset = Vec2(0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset.ToVec3(), scale); }
+#else
+	static inline void							Render2DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+#endif
+
+    static inline void					        Clear		        ( void ) { Singleton().IClear(); }
+
+	static inline void                          Line				( Vec2 a, Vec2 b, Vec4 color, double z_order = 0.0 ) { Singleton().AddLine(a.ToVec3(z_order), b.ToVec3(z_order), color); }
+	static inline void                          Point				( Vec2 pos, Vec4 color, double z_order = 0.0 ) { Singleton().AddPoint(pos.ToVec3(z_order), color); }
+	static inline void                          Point				( Vec2 pos, std::string text, Vec4 color, double z_order = 0.0 ) { Singleton().AddPoint(pos.ToVec3(z_order), text, color); }
+	static inline void                          Triangle			( Vec2 a, Vec2 b, Vec2 c, Vec4 color, double z_order = 0.0 ) { Singleton().AddTriangle(a.ToVec3(z_order), b.ToVec3(z_order), c.ToVec3(z_order), color); }
+	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
+	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
+	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, QString filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
+protected:
+												DebugRender2D		( void ) {}
+};
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class DebugRender3D : private BaseDebugRender {
+
+public:
+
+	static inline DebugRender3D&				Singleton			( void ) { static DebugRender3D instance; return instance; }
 
 #if defined(NESHNY_WEBGPU)
 	static inline void							Render3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
@@ -130,12 +158,10 @@ public:
 	static inline void                          Point				( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos, color, on_top); }
 	static inline void                          Point				( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void                          Triangle			( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { Singleton().AddTriangle(a, b, c, color); }
-	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
-	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { Singleton().AddSquare(min_pos, max_pos, color, filled); }
-	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, QString filename ) { Singleton().AddTexture(min_pos, max_pos, filename); }
 protected:
-												DebugRender			( void ) {}
+												DebugRender3D		( void ) {}
 };
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -276,12 +302,12 @@ public:
 
 	inline static Scrapbook2D&	Singleton				( void ) { static Scrapbook2D instance; return instance; }
 
-    static inline void			Line					( Vec2 a, Vec2 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddLine(a.ToVec3(), b.ToVec3(), color, on_top); }
-	static inline void			Point					( Vec2 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { Singleton().AddPoint(pos.ToVec3(), color, on_top); }
-	static inline void			Point					( Vec2 pos, std::string text, Vec4 color, bool on_top = true ) { Singleton().AddPoint(pos.ToVec3(), text, color, on_top); }
-	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, Vec4 color ) { Singleton().AddTriangle(a.ToVec3(), b.ToVec3(), c.ToVec3(), color); }
-	static inline void          Circle					( Vec2 pos, double radius, Vec4 color, bool filled = false ) { Singleton().AddCircle(pos, radius, color, filled); }
-	static inline void          Square					( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false ) { Singleton().AddSquare(min_pos, max_pos, color, filled); }
+    static inline void			Line					( Vec2 a, Vec2 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), double z_order = 0.0 ) { Singleton().AddLine(a.ToVec3(z_order), b.ToVec3(z_order), color, false); }
+	static inline void			Point					( Vec2 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), double z_order = 0.0 ) { Singleton().AddPoint(pos.ToVec3(z_order), color, false); }
+	static inline void			Point					( Vec2 pos, std::string text, Vec4 color, double z_order = 0.0 ) { Singleton().AddPoint(pos.ToVec3(), text, color, false); }
+	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, Vec4 color, double z_order = 0.0 ) { Singleton().AddTriangle(a.ToVec3(z_order), b.ToVec3(z_order), c.ToVec3(z_order), color); }
+	static inline void          Circle					( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
+	static inline void          Square					( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
 	static inline void          Text					( QByteArray text, Vec2 pos, Vec4 color ) { Singleton().AddText(text, pos, color); }
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 

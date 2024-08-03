@@ -70,8 +70,8 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 	}
 	for (const auto& square: m_Squares) {
 		fVec4 col = square.p_Col.ToFloat4();
-		fVec4 pos_a = fVec4(((square.p_MinPos.ToVec3(0.0) - offset) * scale).ToFloat3(), 1.0);
-		fVec4 pos_c = fVec4(((square.p_MaxPos.ToVec3(0.0) - offset) * scale).ToFloat3(), 1.0);
+		fVec4 pos_a = fVec4(((square.p_MinPos - offset) * scale).ToFloat3(), 1.0);
+		fVec4 pos_c = fVec4(((square.p_MaxPos - offset) * scale).ToFloat3(), 1.0);
 		fVec4 pos_b(pos_a.x, pos_c.y, 0.0, 1.0);
 		fVec4 pos_d(pos_c.x, pos_a.y, 0.0, 1.0);
 		if (square.p_Filled) {
@@ -137,11 +137,11 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 		}
 		Matrix4 modded = Matrix4::Identity();
 
-		Vec2 center = (tex.p_MaxPos + tex.p_MinPos) * 0.5;
-		Vec2 size = (tex.p_MaxPos - tex.p_MinPos) * 0.5;
+		Vec3 center = (tex.p_MaxPos + tex.p_MinPos) * 0.5;
+		Vec3 size = (tex.p_MaxPos - tex.p_MinPos) * 0.5;
 
 		modded.Scale(Vec3(size.x, size.y, 1.0));
-		modded.Translate(Vec3(center.x, center.y, 0.0));
+		modded.Translate(center);
 		modded = view_perspective * modded;
 		auto new_gpu = modded.ToGPU();
 
@@ -256,12 +256,11 @@ void BaseDebugRender::IRender3DDebug(const Matrix4 & view_perspective, int width
 
 	glUniformMatrix4fv(debug_prog->GetUniform("uWorldViewPerspective"), 1, GL_FALSE, gpu_vp.Data());
 
-	Vec2 offset2d(offset.x, offset.y);
 	for (auto it = m_Circles.begin(); it != m_Circles.end(); it++) {
 
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
-		Vec2 dpos = (it->p_Pos - offset2d) * scale;
-		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, 0.0);
+		Vec3 dpos = (it->p_Pos - offset) * scale;
+		glUniform3f(debug_prog->GetUniform("uPos"), dpos.x, dpos.y, dpos.z);
 		glUniform1f(debug_prog->GetUniform("uSize"), it->p_Radius * scale);
 		buffer->Draw();
 	}
@@ -276,10 +275,10 @@ void BaseDebugRender::IRender3DDebug(const Matrix4 & view_perspective, int width
 	for (auto it = m_Squares.begin(); it != m_Squares.end(); it++) {
 
 		glUniform4f(debug_prog->GetUniform("uColor"), it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w);
-		Vec2 dmin_pos = (it->p_MinPos - offset2d) * scale;
-		Vec2 dmax_pos = (it->p_MaxPos - offset2d) * scale;
-		glUniform3f(debug_prog->GetUniform("uPosA"), dmin_pos.x, dmin_pos.y, 0.0);
-		glUniform3f(debug_prog->GetUniform("uPosB"), dmax_pos.x, dmax_pos.y, 0.0);
+		Vec3 dmin_pos = (it->p_MinPos - offset) * scale;
+		Vec3 dmax_pos = (it->p_MaxPos - offset) * scale;
+		glUniform3f(debug_prog->GetUniform("uPosA"), dmin_pos.x, dmin_pos.y, dmin_pos.z);
+		glUniform3f(debug_prog->GetUniform("uPosB"), dmax_pos.x, dmax_pos.y, dmax_pos.z);
 		buffer->Draw();
 	}
 
