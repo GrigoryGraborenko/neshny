@@ -37,4 +37,8 @@ private:
 
 	int	m_Width = 1280;
 	int	m_Height = 720;
+
+	bool					m_Mice[3] = { false, false, false };
+	Vec2					m_LastMouseWorld;
+	Camera2D				m_Cam = { Vec2(), 20 };
 };

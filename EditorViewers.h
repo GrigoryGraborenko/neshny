@@ -10,88 +10,79 @@ using GPUVariable = std::variant<int, unsigned int, float, fVec2, fVec3, fVec4, 
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class BaseDebugRender {
+class BaseSimpleRender {
 
 public:
 
-    //static inline std::vector<QString>&	        GetStrings  	    ( void ) { return Singleton().m_Strings; }
-	//static inline std::unordered_map<QString, QString>& GetPersistantStrings(void) { return Singleton().m_PersistStrings; }
-
-    inline void									AddLine             ( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Lines.push_back(DebugLine{a, b, color, on_top}); }
-    inline void									AddPoint            ( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(DebugPoint{pos, std::string(""), color, on_top}); }
-    inline void									AddPoint            ( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { m_Points.push_back(DebugPoint{pos, text, color, on_top}); }
-    inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { m_Triangles.push_back(DebugTriangle{a, b, c, color}); }
-    inline void									AddCircle			( Vec3 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(DebugCircle{a, radius, color, filled}); }
-    inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(DebugSquare{min_pos, max_pos, color, filled}); }
-    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, QString filename ) { m_Textures.push_back(DebugTexture{min_pos, max_pos, filename }); }
-
-    //static inline void                          AddString           ( const QString& str ) { Singleton().m_Strings.push_back(str); }
-    //static inline void                          AddPersistString    ( QString key, QString val ) { Singleton().m_PersistStrings.insert_or_assign(key, val); }
+    inline void									AddLine             ( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Lines.push_back(SimpleLine{a, b, color, on_top}); }
+    inline void									AddPoint            ( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(SimplePoint{pos, std::string(""), color, on_top}); }
+    inline void									AddPoint            ( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { m_Points.push_back(SimplePoint{pos, text, color, on_top}); }
+    inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { m_Triangles.push_back(SimpleTriangle{a, b, c, color}); }
+    inline void									AddCircle			( Vec3 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(SimpleCircle{a, radius, color, filled}); }
+    inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(SimpleSquare{min_pos, max_pos, color, filled}); }
+    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, QString filename ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, filename }); }
 
 protected:
 
-	struct DebugPoint {
+	struct SimplePoint {
 		Vec3 p_Pos;
 		std::string p_Str;
 		Vec4 p_Col;
 		bool p_OnTop;
 	};
 
-	struct DebugLine {
+	struct SimpleLine {
 		Vec3 p_A, p_B; Vec4 p_Col; bool p_OnTop;
 	};
 
-	struct DebugTriangle {
+	struct SimpleTriangle {
 		Vec3 p_A, p_B, p_C;
 		Vec4 p_Col;
 	};
 
-	struct DebugCircle {
+	struct SimpleCircle {
 		Vec3 p_Pos;
 		double p_Radius;
 		Vec4 p_Col;
 		bool p_Filled = false;
 	};
 
-	struct DebugSquare {
+	struct SimpleSquare {
 		Vec3 p_MinPos;
 		Vec3 p_MaxPos;
 		Vec4 p_Col;
 		bool p_Filled = false;
 	};
 
-	struct DebugText {
+	struct SimpleText {
 		QByteArray p_Text;
 		Vec2 p_Pos;
 		Vec4 p_Col;
 	};
 
-	struct DebugTexture {
+	struct SimpleTexture {
 		Vec3 p_MinPos;
 		Vec3 p_MaxPos;
 		QString p_Filename;
 	};
 
 #if defined(NESHNY_WEBGPU)
-	void										IRender3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+	void										IRender				( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #elif defined(NESHNY_GL)
-	void										IRender3DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
+	void										IRender				( const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #endif
 	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); m_Textures.clear(); }
 
-												BaseDebugRender		( void );
-												~BaseDebugRender	( void );
+												BaseSimpleRender	( void );
+												~BaseSimpleRender	( void );
 
-    std::vector<DebugLine>						m_Lines;
-    std::vector<DebugPoint>						m_Points;
-    std::vector<DebugTriangle>					m_Triangles;
-	std::vector<DebugCircle>					m_Circles;
-	std::vector<DebugSquare>					m_Squares;
-	std::vector<DebugTexture>					m_Textures;
+    std::vector<SimpleLine>						m_Lines;
+    std::vector<SimplePoint>					m_Points;
+    std::vector<SimpleTriangle>					m_Triangles;
+	std::vector<SimpleCircle>					m_Circles;
+	std::vector<SimpleSquare>					m_Squares;
+	std::vector<SimpleTexture>					m_Textures;
 	
-    //std::vector<QString> 						m_Strings;
-	//std::unordered_map<QString, QString>		m_PersistStrings;
-
 #if defined(NESHNY_WEBGPU)
 	WebGPUBuffer*								m_Uniforms = nullptr;
 	WebGPURenderBuffer							m_LineBuffer;
@@ -112,16 +103,16 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class DebugRender2D : private BaseDebugRender {
+class SimpleRender2D : private BaseSimpleRender {
 
 public:
 
-	static inline DebugRender2D&				Singleton			( void ) { static DebugRender2D instance; return instance; }
+	static inline SimpleRender2D&				Singleton			( void ) { static SimpleRender2D instance; return instance; }
 
 #if defined(NESHNY_WEBGPU)
-	static inline void							Render2DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec2 offset = Vec2(0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset.ToVec3(), scale); }
+	static inline void							Render				( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec2 offset = Vec2(0, 0), double scale = 1.0f) { Singleton().IRender(rtt, view_perspective, width, height, offset.ToVec3(), scale); }
 #else
-	static inline void							Render2DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+	static inline void							Render				( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender(view_perspective, width, height, offset, scale); }
 #endif
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }
@@ -134,22 +125,22 @@ public:
 	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
 	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, QString filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
 protected:
-												DebugRender2D		( void ) {}
+												SimpleRender2D		( void ) {}
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class DebugRender3D : private BaseDebugRender {
+class SimpleRender3D : private BaseSimpleRender {
 
 public:
 
-	static inline DebugRender3D&				Singleton			( void ) { static DebugRender3D instance; return instance; }
+	static inline SimpleRender3D&				Singleton			( void ) { static SimpleRender3D instance; return instance; }
 
 #if defined(NESHNY_WEBGPU)
-	static inline void							Render3DDebug		( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(rtt, view_perspective, width, height, offset, scale); }
+	static inline void							Render				( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender(rtt, view_perspective, width, height, offset, scale); }
 #else
-	static inline void							Render3DDebug		( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender3DDebug(view_perspective, width, height, offset, scale); }
+	static inline void							Render				( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender(view_perspective, width, height, offset, scale); }
 #endif
 
     static inline void					        Clear		        ( void ) { Singleton().IClear(); }
@@ -159,7 +150,7 @@ public:
 	static inline void                          Point				( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { Singleton().AddPoint(pos, text, color, on_top); }
 	static inline void                          Triangle			( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { Singleton().AddTriangle(a, b, c, color); }
 protected:
-												DebugRender3D		( void ) {}
+												SimpleRender3D		( void ) {}
 };
 
 
@@ -297,7 +288,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Scrapbook2D : private BaseDebugRender {
+class Scrapbook2D : private BaseSimpleRender {
 public:
 
 	inline static Scrapbook2D&	Singleton				( void ) { static Scrapbook2D instance; return instance; }
@@ -323,7 +314,7 @@ public:
 
 private:
 
-	void						AddText					( QByteArray text, Vec2 pos, Vec4 color ) { m_Texts.push_back(DebugText{ text, pos, color }); }
+	void						AddText					( QByteArray text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ text, pos, color }); }
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
 	RTT							m_RTT;
@@ -335,13 +326,13 @@ private:
 	Matrix4						m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
-	std::vector<DebugText>										m_Texts;
+	std::vector<SimpleText>										m_Texts;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Scrapbook3D : public BaseDebugRender {
+class Scrapbook3D : public BaseSimpleRender {
 public:
 
 	inline static Scrapbook3D&	Singleton					( void ) { static Scrapbook3D instance; return instance; }

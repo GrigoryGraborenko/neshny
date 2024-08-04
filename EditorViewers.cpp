@@ -6,25 +6,25 @@ namespace Neshny {
 #if defined(NESHNY_WEBGPU)
 
 ////////////////////////////////////////////////////////////////////////////////
-BaseDebugRender::BaseDebugRender(void) {
+BaseSimpleRender::BaseSimpleRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-BaseDebugRender::~BaseDebugRender(void) {
+BaseSimpleRender::~BaseSimpleRender(void) {
 	delete m_Uniforms;
 	delete m_CircleBuffer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	struct RenderPoint {
 		fVec4	p_Pos;
 		fVec4	p_Col;
 	};
-	std::vector<RenderPoint> debug_lines;
-	std::vector<RenderPoint> debug_circles;
-	std::vector<RenderPoint> debug_triangles;
+	std::vector<RenderPoint> simple_lines;
+	std::vector<RenderPoint> simple_circles;
+	std::vector<RenderPoint> simple_triangles;
 
 	for (WebGPUBuffer* prev_buffer : m_PreviousFrameBuffers) {
 		delete prev_buffer;
@@ -33,15 +33,15 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 
 	auto gpu_vp = view_perspective.ToGPU();
 
-	debug_lines.reserve(m_Lines.size() * 2);
-	debug_circles.reserve(m_Circles.size());
+	simple_lines.reserve(m_Lines.size() * 2);
+	simple_circles.reserve(m_Circles.size());
 	Vec2 offset2d(offset.x, offset.y);
 	for (const auto& line : m_Lines) {
-		debug_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
-		debug_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		simple_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		simple_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
 	}
 	for (const auto& circle : m_Circles) {
-		debug_circles.push_back({ fVec4((circle.p_Pos.x - offset.x) * scale, (circle.p_Pos.y - offset.y) * scale, circle.p_Radius * scale, circle.p_Radius * scale), circle.p_Col.ToFloat4() });
+		simple_circles.push_back({ fVec4((circle.p_Pos.x - offset.x) * scale, (circle.p_Pos.y - offset.y) * scale, circle.p_Radius * scale, circle.p_Radius * scale), circle.p_Col.ToFloat4() });
 	}
 	for (auto it = m_Points.begin(); it != m_Points.end(); it++) {
 
@@ -53,8 +53,8 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 
 		for (int i = 0; i < 2; i++) {
 			Vec3 off = (it->p_Pos - offset + Vec3(Random() - 0.5, Random() - 0.5, Random() - 0.5) * point_size) * scale;
-			debug_lines.push_back({ fVec4(it->p_Pos.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
-			debug_lines.push_back({ fVec4(off.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
+			simple_lines.push_back({ fVec4(it->p_Pos.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
+			simple_lines.push_back({ fVec4(off.ToFloat3(), 1.0), it->p_Col.ToFloat4() });
 		}
 		if (it->p_Str.size() <= 0) {
 			continue;
@@ -76,29 +76,29 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 		fVec4 pos_d(pos_c.x, pos_a.y, 0.0, 1.0);
 		if (square.p_Filled) {
 
-			debug_triangles.push_back({ pos_a, col });
-			debug_triangles.push_back({ pos_c, col });
-			debug_triangles.push_back({ pos_b, col });
+			simple_triangles.push_back({ pos_a, col });
+			simple_triangles.push_back({ pos_c, col });
+			simple_triangles.push_back({ pos_b, col });
 
-			debug_triangles.push_back({ pos_a, col });
-			debug_triangles.push_back({ pos_d, col });
-			debug_triangles.push_back({ pos_c, col });
+			simple_triangles.push_back({ pos_a, col });
+			simple_triangles.push_back({ pos_d, col });
+			simple_triangles.push_back({ pos_c, col });
 		} else {
-			debug_lines.push_back({ pos_a, col }); debug_lines.push_back({ pos_b, col });
-			debug_lines.push_back({ pos_b, col }); debug_lines.push_back({ pos_c, col });
-			debug_lines.push_back({ pos_c, col }); debug_lines.push_back({ pos_d, col });
-			debug_lines.push_back({ pos_d, col }); debug_lines.push_back({ pos_a, col });
+			simple_lines.push_back({ pos_a, col }); simple_lines.push_back({ pos_b, col });
+			simple_lines.push_back({ pos_b, col }); simple_lines.push_back({ pos_c, col });
+			simple_lines.push_back({ pos_c, col }); simple_lines.push_back({ pos_d, col });
+			simple_lines.push_back({ pos_d, col }); simple_lines.push_back({ pos_a, col });
 		}
 	}
 	for (const auto& triangle: m_Triangles) {
 		auto col = triangle.p_Col.ToFloat4();
-		debug_triangles.push_back({ fVec4(((triangle.p_A - offset) * scale).ToFloat3(), 1.0), col });
-		debug_triangles.push_back({ fVec4(((triangle.p_B - offset) * scale).ToFloat3(), 1.0), col });
-		debug_triangles.push_back({ fVec4(((triangle.p_C - offset) * scale).ToFloat3(), 1.0), col });
+		simple_triangles.push_back({ fVec4(((triangle.p_A - offset) * scale).ToFloat3(), 1.0), col });
+		simple_triangles.push_back({ fVec4(((triangle.p_B - offset) * scale).ToFloat3(), 1.0), col });
+		simple_triangles.push_back({ fVec4(((triangle.p_C - offset) * scale).ToFloat3(), 1.0), col });
 	}
 
-	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)debug_lines.data(), (int)debug_lines.size() * sizeof(RenderPoint));
-	m_TriangleBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_TriangleList, (unsigned char*)debug_triangles.data(), (int)debug_triangles.size() * sizeof(RenderPoint));
+	m_LineBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_LineList, (unsigned char*)simple_lines.data(), (int)simple_lines.size() * sizeof(RenderPoint));
+	m_TriangleBuffer.Init({ WGPUVertexFormat_Float32x4, WGPUVertexFormat_Float32x4 }, WGPUPrimitiveTopology_TriangleList, (unsigned char*)simple_triangles.data(), (int)simple_triangles.size() * sizeof(RenderPoint));
 
 	if (!m_Uniforms) {
 		// TODO: this throws an error for one frame due to buffers being empty at first
@@ -120,8 +120,8 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
 			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {});
 	}
-	m_CircleBuffer->EnsureSizeBytes((int)debug_circles.size() * sizeof(RenderPoint));
-	m_CircleBuffer->SetValues(debug_circles);
+	m_CircleBuffer->EnsureSizeBytes((int)simple_circles.size() * sizeof(RenderPoint));
+	m_CircleBuffer->SetValues(simple_circles);
 
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &gpu_vp, sizeof(fMatrix4));
 
@@ -158,15 +158,15 @@ void BaseDebugRender::IRender3DDebug(WebGPURTT& rtt, const Matrix4& view_perspec
 
 #elif defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
-BaseDebugRender::BaseDebugRender(void) {
+BaseSimpleRender::BaseSimpleRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-BaseDebugRender::~BaseDebugRender(void) {
+BaseSimpleRender::~BaseSimpleRender(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BaseDebugRender::IRender3DDebug(const Matrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
+void BaseSimpleRender::IRender(const Matrix4 & view_perspective, int width, int height, Vec3 offset, double scale, double point_size) {
 
 	auto gpu_vp = view_perspective.ToGPU();
 
@@ -1140,9 +1140,9 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		Line(Vec2(0, 0), Vec2(0, size_grid), Vec4(0, 1, 0, 1));
 
 #if defined(NESHNY_WEBGPU)
-		IRender3DDebug((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
+		IRender((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 #else
-		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
+		IRender(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 #endif
 		IClear();
 		m_NeedsReset = true;
@@ -1243,9 +1243,9 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 		AddLine(Vec3(0, 0, 0), Vec3(0, 0, size_grid), Vec4(0, 0, 1, 1));
 
 #if defined(NESHNY_WEBGPU)
-		IRender3DDebug((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
+		IRender((WebGPURTT&)m_RTT, m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
 #else
-		IRender3DDebug(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
+		IRender(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
 #endif
 
 		IClear();

@@ -10,14 +10,35 @@ Engine::~Engine(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void Engine::MouseButton(int button, bool is_down) {
+	m_Mice[button] = is_down;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Engine::MouseMove(Vec2 delta, bool occluded) {
+
+	if ((m_Width < 0) || (m_Height < 0)) {
+		return;
+	}
+	auto mouse = ImGui::GetMousePos();
+	m_LastMouseWorld = m_Cam.ScreenToWorld(Vec2(mouse.x, mouse.y), m_Width, m_Height);
+
+	if (m_Mice[2]) {
+		m_Cam.Pan(m_Width, delta.x, delta.y);
+	}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Engine::MouseWheel(bool up) {
+
+	const double ZOOM_SPEED = 0.1;
+	double new_zoom = m_Cam.p_Zoom * (1.0 + (up ? -1 : 1) * ZOOM_SPEED);
+
+	if ((m_Width <= 0) || (m_Height <= 0)) {
+		m_Cam.p_Zoom = new_zoom;
+		return;
+	}
+	m_Cam.Zoom(new_zoom, m_LastMouseWorld, m_Width, m_Height);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,13 +80,33 @@ void Engine::Render(int width, int height) {
 		return;
 	}
 
+	auto view_persp = m_Cam.Get4x4Matrix(width, height);
+
+	{ // examples of simple rendering for debug or early prototyping
+		Vec2 a(0, -1);
+		Vec2 b(2, 2);
+		Vec2 c(0, 2);
+
+		SimpleRender2D::Line(Vec2(3, 0.5), Vec2(4, 0), Vec4(1, 0, 0, 1));
+
+		SimpleRender2D::Square(Vec2(3, 0.5), Vec2(4, 0), Vec4(1, 0, 0, 1), false);
+		SimpleRender2D::Square(Vec2(3, 1.5), Vec2(4, 1), Vec4(0.5, 0.5, 0, 1), true);
+
+		SimpleRender2D::Triangle(a, b, c, Vec4(1, 0, 0, 1), 0.5);
+		SimpleRender2D::Triangle(a + Vec2(0.2, -0.2), b + Vec2(0.2, -0.2), c + Vec2(0.2, -0.2), Vec4(0, 1, 0, 1), 0.3);
+
+		SimpleRender2D::Texture(Vec2(-2.0, 1.0), Vec2(1.0, -4.0), "../../assets/images/tick.png", 0.5);
+		SimpleRender2D::Texture(Vec2(-1.0, 0.0), Vec2(1.6, -2.5), "../../assets/images/tick.png", 0.4);
+	}
+
 	{
 		WebGPURTT rtt;
 		auto token = rtt.Activate({ Core::Singleton().GetCurrentSwapTextureView() }, m_DepthTex->GetTextureView());
 		rtt.Render(&m_QuadPipeline);
+		SimpleRender2D::Render(rtt, view_persp, width, height);
 	}
 
-	DebugRender::Clear();
+	SimpleRender2D::Clear();
 	Core::RenderEditor();
 }
 
