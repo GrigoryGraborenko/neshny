@@ -229,15 +229,18 @@ bool Core::LoopInit(IEngine* engine) {
 
 	g_StaticInstance = this;
 
-	m_LogFile.setFileName("Core.log");
-	if (!m_LogFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+	m_LogFile.open("Core.log", std::ios::out | std::ios::trunc);
+	if (!m_LogFile.is_open()) {
 		return false;
 	}
 
 	qInstallMessageHandler([](QtMsgType type, const QMessageLogContext& context, const QString& msg) {
-		auto time = QDateTime::currentDateTime();
-		auto time_str = time.toString("hh:mm:ss.zzz");
 		auto msg_str = msg.toStdString();
+
+		const auto now = std::chrono::system_clock::now();
+		std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
+		auto time_str = std::format("{:%OH:%OM}:{:%S}", zoned_now, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()));
+
 #ifdef __EMSCRIPTEN__
 		msg_str += "\n";
 		printf(msg_str.c_str());
@@ -246,10 +249,12 @@ bool Core::LoopInit(IEngine* engine) {
 			case QtDebugMsg:
 			case QtWarningMsg:
 			case QtCriticalMsg:
-			case QtFatalMsg:
-				g_StaticInstance->m_LogFile.write(QString("[%1] %2 \n").arg(time_str).arg(msg).toLocal8Bit());
+			case QtFatalMsg: {
+				auto bytes = QString("[%1] %2 \n").arg(time_str.c_str()).arg(msg).toLocal8Bit();
+				g_StaticInstance->m_LogFile.write(bytes.data(), bytes.size());
 				g_StaticInstance->m_LogFile.flush();
 				break;
+			}
 			case QtInfoMsg: break;
 		}
 #endif
@@ -262,7 +267,7 @@ bool Core::LoopInit(IEngine* engine) {
 			case QtFatalMsg: col = ImVec4(0.8f, 0, 0, 1); break;
 			case QtInfoMsg: col = ImVec4(0.5f, 1.0f, 0.5f, 1); break;
 		}
-		LogViewer::Singleton().Log({ time, time_str.toStdString(), msg_str, col });
+		LogViewer::Singleton().Log({ time_str, msg_str, col });
 #endif
 	});
 

@@ -185,7 +185,6 @@ class LogViewer {
 public:
 
 	struct LogEntry {
-		QDateTime	p_Time;
 		std::string	p_TimeStr;
 		std::string	p_Message;
 		ImVec4		p_Color;

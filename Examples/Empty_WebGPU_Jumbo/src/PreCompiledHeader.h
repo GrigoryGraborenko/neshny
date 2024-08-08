@@ -9,16 +9,12 @@
 #define SDL_WEBGPU_LOOP
 #define NESHNY_WEBGPU_PROFILE
 
-#include <QCoreApplication>
 #include <QString>
 #include <QFile>
-#include <QDir>
 #include <QElapsedTimer>
 #ifdef QT_GUI_LIB
     #include <QImage>
 #endif
-#include <QtDebug>
-#include <QDateTime>
 #include <QCryptographicHash>
 
 #include <QJsonDocument>

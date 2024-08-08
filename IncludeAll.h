@@ -17,6 +17,8 @@
 #include <thread>
 #include <mutex>
 #include <variant>
+#include <chrono>
+#include <format>
 
 #ifdef NESHNY_GL
     #include "glad/glad.h"

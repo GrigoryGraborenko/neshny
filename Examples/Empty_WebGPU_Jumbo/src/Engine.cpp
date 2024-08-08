@@ -50,7 +50,7 @@ void Engine::Key(int key, bool is_down) {
 
 ////////////////////////////////////////////////////////////////////////////////
 bool Engine::Init(void) {
-	printf("Initializing...\n");
+	qDebug() << "Initializing...\n";
 
 	m_DepthTex = new WebGPUTexture();
 	m_DepthTex->InitDepth(m_Width, m_Height);

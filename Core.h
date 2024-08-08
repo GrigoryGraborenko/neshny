@@ -697,7 +697,7 @@ private:
 	std::mutex							m_SyncLock;
 	std::atomic_int						m_SyncsRequested = 0;
 
-	QFile								m_LogFile;
+	std::ofstream						m_LogFile;
 
 	InterfaceCore						m_Interface;
 	WorkerThreadPool					m_ResourceThreads;
