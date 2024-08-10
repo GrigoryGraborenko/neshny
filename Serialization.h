@@ -857,13 +857,13 @@ inline QDataStream &operator>>(QDataStream &in, std::string &args) {
 
 ////////////////////////////////////////////////////////////////////////////////
 inline QDataStream &operator<<(QDataStream &out, const long &args) {
-    out << (qint64)(args);
+    out << (uint64_t)(args);
     return out;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 inline QDataStream &operator>>(QDataStream &in, long &args) {
-    in >> (qint64&)args;
+    in >> (uint64_t&)args;
     return in;
 }
 

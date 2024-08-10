@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#define MINIMUM_DELTA_NANOSECONDS 15000000
+#define MINIMUM_DELTA_SECONDS 0.015
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -20,7 +20,7 @@ public:
 	virtual bool			Init						( void );
 	virtual void			ExitSignal					( void ) { m_ShouldExit = true; }
 	virtual bool			ShouldExit					( void ) { return m_ShouldExit; }
-	virtual bool			Tick						( qint64 delta_nanoseconds, int tick );
+	virtual bool			Tick						( double delta_seconds, int tick );
 	virtual void			Render						( int width, int height );
 
 	inline int				GetWidth					( void ) { return m_Width; }
@@ -30,7 +30,7 @@ private:
 
 	bool					m_ShouldExit = false;
 
-	qint64					m_AccumilatedNanoseconds = 0;
+	double					m_AccumilatedSeconds = 0;
 
 	WebGPUPipeline			m_QuadPipeline;
 	WebGPUTexture*			m_DepthTex = nullptr;

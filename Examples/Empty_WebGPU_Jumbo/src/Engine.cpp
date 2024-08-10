@@ -82,7 +82,7 @@ void Engine::Render(int width, int height) {
 
 	auto view_persp = m_Cam.Get4x4Matrix(width, height);
 
-	{ // examples of simple rendering for debug or early prototyping
+	if (1) { // examples of simple rendering for debug or early prototyping
 		Vec2 a(0, -1);
 		Vec2 b(2, 2);
 		Vec2 c(0, 2);
@@ -111,15 +111,15 @@ void Engine::Render(int width, int height) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Engine::Tick(qint64 delta_nanoseconds, int tick) {
+bool Engine::Tick(double delta_seconds, int tick) {
 
-	m_AccumilatedNanoseconds += delta_nanoseconds;
-	if (m_AccumilatedNanoseconds < MINIMUM_DELTA_NANOSECONDS) {
+	m_AccumilatedSeconds += delta_seconds;
+	if (m_AccumilatedSeconds < MINIMUM_DELTA_SECONDS) {
 		return false;
 	}
 
-	double delta_seconds = m_AccumilatedNanoseconds * NANO_CONVERT;
-	m_AccumilatedNanoseconds = 0;
+	double accumilated_seconds = m_AccumilatedSeconds;
+	m_AccumilatedSeconds = 0;
 
 	return true;
 }

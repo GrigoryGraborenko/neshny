@@ -35,8 +35,8 @@ public:
 	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chunk); }
 	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return m_Chunk->alen; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return 0; }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return m_Chunk->alen; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return 0; }
 
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 		SDL_RWops* rw = SDL_RWFromMem(data, length);
@@ -87,8 +87,8 @@ public:
 		return result;
 	}
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
 
 protected:
 	GLTexture	m_Texture;
@@ -125,8 +125,8 @@ public:
 	const WebGPUTexture&	Get						( void ) const { return m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
 
-	virtual qint64			GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64			GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
+	virtual uint64_t		GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
 
 protected:
 	WebGPUTexture	m_Texture;
@@ -162,8 +162,8 @@ public:
 	const WebGPUTexture&	Get						( void ) const { return m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 protected:
 	WebGPUTexture	m_Texture;
@@ -182,8 +182,8 @@ public:
 
 	virtual				~TextureTileset(void) {}
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
 
 	bool				Init(QString path, Params params, QString& err) {
 		m_Params = params;
@@ -251,8 +251,8 @@ public:
 	virtual				~TextureTileset(void) {}
 	bool				Init(QString path, Params params, QString& err) { m_Params = params; return Load(path, err); }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_DepthBytes; }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_DepthBytes; }
 
 	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
 
@@ -335,8 +335,8 @@ public:
 
 	inline const GLTexture& Get(void) { return m_Texture; }
 
-	virtual qint64		GetMemoryEstimate		( void ) const { return 0; }
-	virtual qint64		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 	void Render(const fMatrix4& vp, Vec3 cam_pos) {
 		

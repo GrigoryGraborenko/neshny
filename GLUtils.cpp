@@ -307,7 +307,7 @@ void GLBuffer::UseBuffer(GLShader* program) {
 		for (std::vector<unsigned int>::iterator size = m_VertexSizes.begin(); size != m_VertexSizes.end(); size++) {
 
 			int index = size - m_VertexSizes.begin();
-			qint64 offset = sizeof(GL_FLOAT) * current_size;
+			uint64_t offset = sizeof(GL_FLOAT) * current_size;
 			current_size += *size;
 			int stride = sizeof(GL_FLOAT) * total_size;
 			if (m_VertexSizes.size() == 1) {

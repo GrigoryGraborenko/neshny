@@ -11,7 +11,6 @@
 
 #include <QString>
 #include <QFile>
-#include <QElapsedTimer>
 #ifdef QT_GUI_LIB
     #include <QImage>
 #endif

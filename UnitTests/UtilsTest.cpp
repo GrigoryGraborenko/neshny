@@ -29,17 +29,17 @@ namespace Test {
 			virtual bool			Init(void) { return true; }
 			virtual void			ExitSignal(void) {}
 			virtual bool			ShouldExit(void) { return true; }
-			virtual bool			Tick(qint64 delta_nanoseconds, int tick) { return true; }
+			virtual bool			Tick(double delta_seconds, int tick) { return true; }
 			virtual void			Render(int width, int height) {}
 
-			inline void				SetMaxMem(qint64 max_mem, qint64 max_gpu_mem) { m_MaxMemory = max_mem; m_MaxGPUMemory = max_gpu_mem; }
+			inline void				SetMaxMem(uint64_t max_mem, uint64_t max_gpu_mem) { m_MaxMemory = max_mem; m_MaxGPUMemory = max_gpu_mem; }
 		};
 
 		struct TestResource {
-			qint64	p_Memory;
-			qint64	p_GPUMemory;
-			float	p_MinutesAge;
-			bool	p_ExpectDelete;
+			uint64_t	p_Memory;
+			uint64_t	p_GPUMemory;
+			float		p_MinutesAge;
+			bool		p_ExpectDelete;
 		};
 
 		TestEngine* engine = new TestEngine;
@@ -48,11 +48,11 @@ namespace Test {
 
 		auto Meg = [](int megabytes) { return (qint64)megabytes * 1024ll * 1024ll; };
 
-		auto test_scenario = [engine, minutes_to_ticks, &found_err](QString scenario, qint64 max_ram, qint64 max_gpu_ram, const std::vector<TestResource>& resources) {
+		auto test_scenario = [engine, minutes_to_ticks, &found_err](QString scenario, uint64_t max_ram, uint64_t max_gpu_ram, const std::vector<TestResource>& resources) {
 			engine->SetMaxMem(max_ram, max_gpu_ram);
 
-			qint64 curr_ram = 0;
-			qint64 curr_gpu_ram = 0;
+			uint64_t curr_ram = 0;
+			uint64_t curr_gpu_ram = 0;
 			for (const auto& resource : resources) {
 				curr_ram += resource.p_Memory;
 				curr_gpu_ram += resource.p_GPUMemory;

@@ -19,6 +19,7 @@
 #include <variant>
 #include <chrono>
 #include <format>
+#include <stdint.h>
 
 #ifdef NESHNY_GL
     #include "glad/glad.h"

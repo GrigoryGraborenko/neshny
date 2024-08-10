@@ -153,7 +153,6 @@ protected:
 												SimpleRender3D		( void ) {}
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,13 +163,13 @@ public:
 
 	inline static void							RenderImGui			( InterfaceInfoViewer& data ) { Singleton().IRenderImGui(data); }
 
-	inline static void							LoopTime			( qint64 nanos ) { Singleton().ILoopTime(nanos); }
-	inline static void							ClearLoopTime		( qint64 nanos ) { Singleton().IClearLoopTime(); }
+	inline static void							LoopTime			( TimerNanos nanos ) { Singleton().ILoopTime(nanos); }
+	inline static void							ClearLoopTime		( void ) { Singleton().IClearLoopTime(); }
 
 protected:
 												InfoViewer			( void ) { IClearLoopTime(); }
 
-	void										ILoopTime			( qint64 nanos );
+	void										ILoopTime			( TimerNanos nanos );
 	void										IRenderImGui		( InterfaceInfoViewer& data );
 	void										IClearLoopTime		( void );
 

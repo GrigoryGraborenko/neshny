@@ -288,8 +288,8 @@ void BaseSimpleRender::IRender(const Matrix4 & view_perspective, int width, int 
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-void InfoViewer::ILoopTime(qint64 nanos) {
-	double loop_seconds = nanos * NANO_CONVERT;
+void InfoViewer::ILoopTime(TimerNanos nanos) {
+	double loop_seconds = nanos.count() * NANO_CONVERT;
 	for (auto& segment : m_LoopHistogram) {
 		if (loop_seconds < segment.first) {
 			segment.second++;

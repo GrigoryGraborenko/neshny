@@ -7,6 +7,10 @@
 
 namespace Neshny {
 
+using TimerPoint = std::chrono::time_point<std::chrono::steady_clock>;
+using TimerSeconds = std::chrono::duration<double>;
+using TimerNanos = std::chrono::nanoseconds;
+
 struct Camera2D {
 
 	inline Matrix4 Get4x4Matrix(int width, int height) const {
@@ -133,8 +137,9 @@ public:
 
 	struct TimingInfo {
 		TimingInfo(const char* label) : p_Label(label) {}
-		TimingInfo(const char* label, qint64 nanos) : p_Label(label) { Add(nanos); }
-		void Add(qint64 nanos) {
+		TimingInfo(const char* label, TimerNanos nanos) : p_Label(label) { Add(nanos); }
+		void Add(TimerNanos nanoseconds) {
+			int64_t nanos = nanoseconds.count();
 			p_Nanos += nanos;
 			p_RecentNanos += nanos;
 			p_MinNanos = (p_MinNanos < 0) ? nanos : std::min(p_MinNanos, nanos);
@@ -149,20 +154,20 @@ public:
 				p_RollingAvSeconds = p_RollingAvSeconds ? p_RollingAvSeconds * roll_frac + av_secs * (1.0 - roll_frac) : av_secs;
 			}
 		}
-		QString Report(qint64 total_global_nanos) {
+		QString Report(int64_t total_global_nanos) {
 			double total_av_secs = ((double)p_Nanos * NANO_CONVERT) / (double)p_NumCalls;
 			double percent = 100.0 * (double)p_Nanos / (double)total_global_nanos;
 			double max_secs = (double)p_MaxNanos * NANO_CONVERT;
 			return QString("%1: %2 sec [%3 sec av %4 calls, %5 %%] max %6").arg(p_Label).arg(p_RollingAvSeconds, 0, 'f', 9).arg(total_av_secs, 0, 'f', 9).arg(p_NumCalls).arg(percent, 0, 'f', 6).arg(max_secs, 0, 'f', 9);
 		}
 		const char* p_Label;
-		qint64 p_Nanos = 0;
-		qint64 p_NumCalls = 0;
-		qint64 p_MinNanos = -1;
-		qint64 p_MaxNanos = 0;
+		int64_t p_Nanos = 0; // TODO: use proper TimeNanos as a type for these durations?
+		int64_t p_NumCalls = 0;
+		int64_t p_MinNanos = -1;
+		int64_t p_MaxNanos = 0;
 
-		qint64 p_RecentNanos = 0;
-		qint64 p_RecentNumCalls = 0;
+		int64_t p_RecentNanos = 0;
+		int64_t p_RecentNumCalls = 0;
 
 		double p_RollingAvSeconds = 0;
 	};
@@ -175,11 +180,17 @@ public:
 
 	static std::vector<TimingInfo>&		GetTimings		( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
 
-	static qint64						MainLoopTimer	( void ) { static QElapsedTimer timer; qint64 time = timer.nsecsElapsed(); timer.restart(); return time; }
+	static TimerNanos					MainLoopTimer	( void ) {
+		TimerPoint time = std::chrono::steady_clock::now();
+		static TimerPoint last = time;
+		TimerNanos nanos = time - last;
+		last = time;
+		return nanos;
+	}
 
 private:
 
-	QElapsedTimer		m_Timer;
+	TimerPoint			m_Timer;
 	const char*			m_Label;
 	bool				m_Finished = false;
 };
@@ -376,8 +387,8 @@ private:
 class Resource {
 public:
 	virtual				~Resource				( void ) {}
-	virtual qint64		GetMemoryEstimate		( void ) const = 0;
-	virtual qint64		GetGPUMemoryEstimate	( void ) const = 0;
+	virtual uint64_t	GetMemoryEstimate		( void ) const = 0;
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const = 0;
 protected:
 };
 
@@ -386,12 +397,12 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 struct ResourceManagementToken {
 	struct ResourceEntry {
-		ResourceEntry(Resource const* resource, QString id, qint64 memory, qint64 gpu_memory, int ticks_since_access) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_TicksSinceAccess(ticks_since_access), p_FlagForDeletion(false), p_Score(0.0) {}
+		ResourceEntry(Resource const* resource, QString id, uint64_t memory, uint64_t gpu_memory, int ticks_since_access) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_TicksSinceAccess(ticks_since_access), p_FlagForDeletion(false), p_Score(0.0) {}
 		void FlagForDeletion(void) { p_FlagForDeletion = true; }
 		Resource const*		p_Resource;
 		QString				p_Id;
-		qint64				p_Memory;
-		qint64				p_GPUMemory;
+		uint64_t			p_Memory;
+		uint64_t			p_GPUMemory;
 		int					p_TicksSinceAccess;
 		bool				p_FlagForDeletion;
 		double				p_Score;
@@ -423,15 +434,15 @@ public:
 	virtual bool					Init		( void ) = 0;
 	virtual void					ExitSignal	( void ) = 0;
 	virtual bool					ShouldExit	( void ) = 0;
-	virtual bool					Tick		( qint64 delta_nanoseconds, int tick ) = 0;
+	virtual bool					Tick		( double delta_seconds, int tick ) = 0;
 	virtual void					Render		( int width, int height ) = 0;
 
 	// replace with your own custom resource/memory management system if required
-	virtual void					ManageResources	( ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram );
+	virtual void					ManageResources	( ResourceManagementToken token, uint64_t allocated_ram, uint64_t allocated_gpu_ram );
 
 protected:
-	qint64							m_MaxMemory = 1024ll * 1024ll * 1024ll * 2ll; // 2 gigs
-	qint64							m_MaxGPUMemory = 1024ll * 1024ll * 1024ll * 1ll; // 1 gig
+	uint64_t						m_MaxMemory = 1024ll * 1024ll * 1024ll * 2ll; // 2 gigs
+	uint64_t						m_MaxGPUMemory = 1024ll * 1024ll * 1024ll * 1ll; // 1 gig
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,8 +462,8 @@ public:
 		ResourceState	m_State = ResourceState::PENDING;
 		Resource*		m_Resource = nullptr;
 		QString			m_Error;
-		qint64			m_Memory = 0;
-		qint64			m_GPUMemory = 0;
+		uint64_t		m_Memory = 0;
+		uint64_t		m_GPUMemory = 0;
 		int				m_LastTickAccessed = 0;
 	};
 
@@ -613,8 +624,8 @@ public:
 	inline const std::map<QString, WebGPUShader*>& GetShaders		( void ) { return m_Shaders; }
 #endif
 
-	inline qint64						GetMemoryAllocated			( void ) { return m_MemoryAllocated; }
-	inline qint64						GetGPUMemoryAllocated		( void ) { return m_GPUMemoryAllocated; }
+	inline uint64_t						GetMemoryAllocated			( void ) { return m_MemoryAllocated; }
+	inline uint64_t						GetGPUMemoryAllocated		( void ) { return m_GPUMemoryAllocated; }
 
 	ResourceManagementToken				GetResourceManagementToken ( void );
 
@@ -687,11 +698,11 @@ private:
 	std::vector<WebGPUSampler*>				m_Samplers;
 #endif
 	std::map<QString, ResourceContainer>	m_Resources;
-	qint64									m_MemoryAllocated = 0;
-	qint64									m_GPUMemoryAllocated = 0;
+	uint64_t								m_MemoryAllocated = 0;
+	uint64_t								m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
-	QElapsedTimer						m_FrameTimer;
+	TimerPoint							m_FrameTimer;
 	bool								m_FullScreenHover = true;
 	std::thread::id						m_MainThreadId;
 	std::mutex							m_SyncLock;

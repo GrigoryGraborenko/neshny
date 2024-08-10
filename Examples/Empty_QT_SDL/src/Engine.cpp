@@ -35,7 +35,7 @@ bool Engine::Init(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Engine::Tick(qint64 delta_nanoseconds, int tick) {
+bool Engine::Tick(double delta_seconds, int tick) {
 	return true;
 }
 

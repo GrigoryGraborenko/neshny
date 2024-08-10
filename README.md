@@ -287,8 +287,8 @@ public:
         }
         return true; // resource will be "DONE"
     };
-    virtual qint64 GetMemoryEstimate    ( void ) const { return 0; }
-    virtual qint64 GetGPUMemoryEstimate ( void ) const { return 0; }
+    virtual uint64_t GetMemoryEstimate    ( void ) const { return 0; }
+    virtual uint64_t GetGPUMemoryEstimate ( void ) const { return 0; }
 
 private:
     int cached_value = 0; // whatever payloads/objects you like
@@ -297,7 +297,7 @@ private:
 ```
 If you want to create a resource based off data in a file, you have the convenience base class `FileResource` which requires you to implement the `virtual bool FileInit(QString path, unsigned char* data, int length, QString& err)` function that is called after the file in the path is loaded. `data` and `length` contain the contents of the file if it has been successfully loaded.
 
-The default resource management is for older, larger resources to be deallocated once the memory limit is reached. You can change the memory limit for both regular memory and GPU memory in your `IEngine` subclass by setting `m_MaxMemory` and `m_MaxGPUMemory` as bytes. They are set to 2 gig and 1 gig respectively. If you would like to take over memory management yourself, override the function `virtual void ManageResources(ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram)`. Have a look inside the default implementation for a guide on how to do that. 
+The default resource management is for older, larger resources to be deallocated once the memory limit is reached. You can change the memory limit for both regular memory and GPU memory in your `IEngine` subclass by setting `m_MaxMemory` and `m_MaxGPUMemory` as bytes. They are set to 2 gig and 1 gig respectively. If you would like to take over memory management yourself, override the function `virtual void ManageResources(ResourceManagementToken token, uint64_t allocated_ram, uint64_t allocated_gpu_ram)`. Have a look inside the default implementation for a guide on how to do that.
 ### <i>3D Debug Visualizer</i>
 An easy way to get started on a 3D project is to chuck in some debug lines so you can get some basic context. Here's an example of origin axis lines:
 ``` C++

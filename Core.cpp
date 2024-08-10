@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "Core.h"
 
 namespace Neshny {
 
@@ -12,7 +13,7 @@ Core* g_StaticInstance = nullptr;
 DebugTiming::DebugTiming(const char* label) :
 	m_Label(label)
 {
-	m_Timer.start();
+	m_Timer = std::chrono::steady_clock::now();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,7 +28,7 @@ void DebugTiming::Finish(void) {
 	}
 	m_Finished = true;
 
-	qint64 nanos = m_Timer.nsecsElapsed();
+	TimerNanos nanos = std::chrono::steady_clock::now() - m_Timer;
 	auto& timings = GetTimings();
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
 		if ((iter->p_Label == m_Label) || (strcmp(iter->p_Label, m_Label) == 0)) {
@@ -42,7 +43,7 @@ void DebugTiming::Finish(void) {
 QStringList DebugTiming::Report(void) {
 
 	auto& timings = GetTimings();
-	qint64 total_nanos = 0;
+	int64_t total_nanos = 0;
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
 		total_nanos += iter->p_Nanos;
 	}
@@ -238,7 +239,11 @@ bool Core::LoopInit(IEngine* engine) {
 		auto msg_str = msg.toStdString();
 
 		const auto now = std::chrono::system_clock::now();
-		std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
+#ifdef __APPLE__
+		const auto zoned_now = now; // TODO: update to use zoned time
+#else
+		const std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
+#endif
 		auto time_str = std::format("{:%OH:%OM}:{:%S}", zoned_now, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()));
 
 #ifdef __EMSCRIPTEN__
@@ -382,7 +387,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	m_SyncLock.lock();
 	while (!engine->ShouldExit()) {
 
-		qint64 loop_nanos = DebugTiming::MainLoopTimer();
+		TimerNanos loop_nanos = DebugTiming::MainLoopTimer();
 #ifdef NESHNY_EDITOR_VIEWERS
 		InfoViewer::LoopTime(loop_nanos);
 #endif
@@ -670,7 +675,7 @@ void Core::SyncResolution(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void Core::SDLLoopInner() {
-	qint64 loop_nanos = DebugTiming::MainLoopTimer();
+	TimerNanos loop_nanos = DebugTiming::MainLoopTimer();
 #ifdef NESHNY_EDITOR_VIEWERS
 	InfoViewer::LoopTime(loop_nanos);
 #endif
@@ -697,9 +702,10 @@ void Core::SDLLoopInner() {
 		}
 	}
 
-	qint64 nanos = m_FrameTimer.nsecsElapsed();
-	m_FrameTimer.restart();
-	if (m_Engine->Tick(nanos, m_Ticks)) {
+	TimerPoint time_now = std::chrono::steady_clock::now();
+	TimerSeconds seconds = time_now - m_FrameTimer;
+	m_FrameTimer = time_now;
+	if (m_Engine->Tick(seconds.count(), m_Ticks)) {
 		m_Ticks++;
 	}
 	m_Engine->ManageResources(GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
@@ -818,7 +824,7 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 	DebugTiming::MainLoopTimer(); // init to zero
 	m_SyncLock.lock();
 
-	m_FrameTimer.restart();
+	m_FrameTimer = std::chrono::steady_clock::now();
 
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop([]() {
@@ -1506,10 +1512,10 @@ ResourceManagementToken Core::GetResourceManagementToken(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void IEngine::ManageResources(ResourceManagementToken token, qint64 allocated_ram, qint64 allocated_gpu_ram) {
+void IEngine::ManageResources(ResourceManagementToken token, uint64_t allocated_ram, uint64_t allocated_gpu_ram) {
 
-	qint64 excess_ram = allocated_ram - m_MaxMemory;
-	qint64 excess_gpu_ram = allocated_gpu_ram - m_MaxGPUMemory;
+	int64_t excess_ram = (int64_t)allocated_ram - (int64_t)m_MaxMemory;
+	int64_t excess_gpu_ram = (int64_t)allocated_gpu_ram - (int64_t)m_MaxGPUMemory;
 	if ((excess_ram <= 0) && (excess_gpu_ram <= 0)) {
 		return;
 	}
