@@ -1,10 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#ifdef QT_LOOP
-	class QOpenGLWindow;
-#endif
-
 namespace Neshny {
 
 using TimerPoint = std::chrono::time_point<std::chrono::steady_clock>;
@@ -492,9 +488,6 @@ public:
 
 #ifdef SDL_OPENGL_LOOP
 	bool								SDLLoop						( SDL_Window* window, IEngine* engine );
-#endif
-#ifdef QT_LOOP
-	bool								QTLoop						( QOpenGLWindow* window, IEngine* engine );
 #endif
 #ifdef NESHNY_WEBGPU
 	enum class WebGPUNativeBackend {

@@ -353,11 +353,7 @@ void Core::LoopFinishImGui(IEngine* engine, int width, int height) {
 	}
 
 	ImGui::End();
-#ifdef QT_LOOP
-	QTRender();
-#else
 	ImGui::Render();
-#endif
 }
 
 #ifdef SDL_OPENGL_LOOP
@@ -376,9 +372,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	int width, height;
 	SDL_GetWindowSize(window, &width, &height);
 
-	QElapsedTimer frame_timer;
-	frame_timer.restart();
-	const double inv_nano = 1.0 / 1000000000;
+	TimerPoint frame_timer = std::chrono::steady_clock::now();
 
 	int unfocus_timeout = 0;
 
@@ -433,9 +427,10 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		SDL_GetWindowSize(window, &width, &height);
 
-		qint64 nanos = frame_timer.nsecsElapsed();
-		frame_timer.restart();
-		if (engine->Tick(nanos, m_Ticks)) {
+		TimerPoint curr_now = std::chrono::steady_clock::now();
+		TimerSeconds seconds = curr_now - frame_timer;
+		frame_timer = curr_now;
+		if (engine->Tick(seconds.count(), m_Ticks)) {
 			m_Ticks++;
 		}
 		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
@@ -837,55 +832,6 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 #endif
 	qDebug() << "Finished";
 
-	return true;
-}
-#endif
-
-#ifdef QT_LOOP
-////////////////////////////////////////////////////////////////////////////////
-bool Core::QTLoop(QOpenGLWindow* window, IEngine* engine) {
-
-	if (!LoopInit(engine)) {
-		return false;
-	}
-
-	QElapsedTimer frame_timer;
-	frame_timer.restart();
-	const double inv_nano = 1.0 / 1000000000;
-
-	ImGuiIO& io = ImGui::GetIO();
-	DebugTiming::MainLoopTimer(); // init to zero
-	m_SyncLock.lock();
-	while (!engine->ShouldExit()) {
-
-		qint64 loop_nanos = DebugTiming::MainLoopTimer();
-		InfoViewer::LoopTime(loop_nanos);
-
-		QApplication::processEvents(QEventLoop::WaitForMoreEvents, 1);
-		int width = window->width();
-		int height = window->height();
-
-		qint64 nanos = frame_timer.nsecsElapsed();
-		frame_timer.restart();
-		if (engine->Tick(nanos, m_Ticks)) {
-			m_Ticks++;
-		}
-		engine->ManageResources(Core::Singleton().GetResourceManagementToken(), GetMemoryAllocated(), GetGPUMemoryAllocated());
-
-		if (io.DeltaTime <= 0.0f) {
-			io.DeltaTime = 0.00001f;
-		}
-
-		window->makeCurrent();
-
-		QTNewFrame();
-		LoopInner(engine, width, height);
-		// Finish imgui rendering
-		LoopFinishImGui(engine, width, height);
-
-		window->context()->swapBuffers(window->context()->surface());
-		window->doneCurrent();
-	}
 	return true;
 }
 #endif
