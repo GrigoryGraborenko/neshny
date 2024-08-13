@@ -246,14 +246,14 @@ namespace Test {
 		std::vector<DataItem> data_items;
 		for (int i = 0; i < 5; i++) {
 			data_items.push_back({
-				RandomInt(-10, 10)
-				,float(Random(-10, 10))
-				,Neshny::fVec2(Random(-10, 10), Random(-10, 10))
-				,Neshny::fVec3(Random(-10, 10), Random(-10, 10), Random(-10, 10))
-				,Neshny::fVec4(Random(-10, 10), Random(-10, 10), Random(-10, 10), Random(-10, 10))
-				,Neshny::iVec2(RandomInt(-10, 10), RandomInt(-10, 10))
-				,Neshny::iVec3(RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10))
-				,Neshny::iVec4(RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10), RandomInt(-10, 10))
+				Neshny::RandomInt(-10, 10)
+				,float(Neshny::Random(-10, 10))
+				,Neshny::fVec2(Neshny::Random(-10, 10), Neshny::Random(-10, 10))
+				,Neshny::fVec3(Neshny::Random(-10, 10), Neshny::Random(-10, 10), Neshny::Random(-10, 10))
+				,Neshny::fVec4(Neshny::Random(-10, 10), Neshny::Random(-10, 10),Neshny::Random(-10, 10), Neshny::Random(-10, 10))
+				,Neshny::iVec2(Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10))
+				,Neshny::iVec3(Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10))
+				,Neshny::iVec4(Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10), Neshny::RandomInt(-10, 10))
 			});
 		}
 
@@ -366,7 +366,7 @@ namespace Test {
 			for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
 				for (auto iter = other_expected.begin(); iter != other_expected.end(); iter++) {
 					if (iter->p_Id < 0) {
-						RemoveUnordered(other_expected, iter);
+						Neshny::RemoveUnordered(other_expected, iter);
 					}
 				}
 			}
@@ -411,7 +411,7 @@ namespace Test {
 			for (int i = 0; i < 2; i++) { // to avoid skipping the moved ones
 				for (auto iter = expected.begin(); iter != expected.end(); iter++) {
 					if (iter->p_Int % div_val == 0) {
-						RemoveUnordered(expected, iter);
+						Neshny::RemoveUnordered(expected, iter);
 					}
 				}
 			}
@@ -477,7 +477,7 @@ namespace Test {
 
 		const float find_radius_sqr = find_radius * find_radius;
 
-		RandomSeed(0);
+		Neshny::RandomSeed(0);
 
 #if defined(NESHNY_GL)
 		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
@@ -495,16 +495,16 @@ namespace Test {
 		std::vector<GPUThing> expected_prey;
 		for (int i = 0; i < prey_count; i++) {
 			GPUThing prey = GPUThing::Init(i);
-			prey.p_Float = Random(0.0, 10);
-			prey.p_TwoDim = Neshny::fVec2(Random(-map_radius, map_radius), Random(-map_radius, map_radius));
+			prey.p_Float = Neshny::Random(0.0, 10);
+			prey.p_TwoDim = Neshny::fVec2(Neshny::Random(-map_radius, map_radius), Neshny::Random(-map_radius, map_radius));
 			expected_prey.push_back(prey);
 		}
 		prey_entities.AddInstances(expected_prey);
 
 		std::vector<GPUOther> expected_hunters;
 		for (int i = 0; i < hunter_count; i++) {
-			float x = Random(-map_radius, map_radius);
-			float y = Random(-map_radius, map_radius);
+			float x = Neshny::Random(-map_radius, map_radius);
+			float y = Neshny::Random(-map_radius, map_radius);
 			GPUOther hunter{
 				-1,
 				0,

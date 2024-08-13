@@ -1,6 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+namespace Neshny {
+
 #define STRING2(x) #x
 #define STRING(x) STRING2(x)
 #define msg(str) message(__FILE__ "(" STRING(__LINE__) ") ____________________ " str " ____________________")
@@ -51,6 +53,7 @@ double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);
 int RoundUpPowerTwo(int value);
 size_t HashMemory(unsigned char* mem, int size);
+bool NearlyEqual(double a, double b);// { return fabs(a - b) < ALMOST_ZERO; }
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>
@@ -99,8 +102,6 @@ T RadiansDiff(T rad_a, T rad_b) {
 
 ////////////////////////////////////////////////////////////////////////////////
 uint64_t TimeSinceEpochMilliseconds();
-
-namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
 //

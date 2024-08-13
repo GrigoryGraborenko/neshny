@@ -3,6 +3,8 @@
 
 #include "NeshnyUtils.h"
 
+namespace Neshny {
+
 ////////////////////////////////////////////////////////////////////////////////
 void RandomGenerator::AutoSeed(void) {
     Seed(TimeSinceEpochMilliseconds());
@@ -57,3 +59,10 @@ size_t HashMemory(unsigned char* mem, int size) {
 uint64_t TimeSinceEpochMilliseconds() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+bool NearlyEqual(double a, double b) {
+    return fabs(a - b) < ALMOST_ZERO;
+}
+
+} // namespace Neshny

@@ -3,15 +3,15 @@
 namespace Test {
 
     void UnitTest_RoundPowerTwo(void) {
-        Expect("RoundUpPowerTwo of 0 should be 0", RoundUpPowerTwo(0) == 0);
-        Expect("RoundUpPowerTwo of 1 should be 1", RoundUpPowerTwo(1) == 1);
-        Expect("RoundUpPowerTwo of 2 should be 2", RoundUpPowerTwo(2) == 2);
-        Expect("RoundUpPowerTwo of 3 should be 4", RoundUpPowerTwo(3) == 4);
-        Expect("RoundUpPowerTwo of 4 should be 4", RoundUpPowerTwo(4) == 4);
-        Expect("RoundUpPowerTwo of 5 should be 8", RoundUpPowerTwo(5) == 8);
-        Expect("RoundUpPowerTwo of 31 should be 32", RoundUpPowerTwo(31) == 32);
-        Expect("RoundUpPowerTwo of 45 should be 64", RoundUpPowerTwo(45) == 64);
-        Expect("RoundUpPowerTwo of 64 should be 64", RoundUpPowerTwo(64) == 64);
+        Expect("RoundUpPowerTwo of 0 should be 0", Neshny::RoundUpPowerTwo(0) == 0);
+        Expect("RoundUpPowerTwo of 1 should be 1", Neshny::RoundUpPowerTwo(1) == 1);
+        Expect("RoundUpPowerTwo of 2 should be 2", Neshny::RoundUpPowerTwo(2) == 2);
+        Expect("RoundUpPowerTwo of 3 should be 4", Neshny::RoundUpPowerTwo(3) == 4);
+        Expect("RoundUpPowerTwo of 4 should be 4", Neshny::RoundUpPowerTwo(4) == 4);
+        Expect("RoundUpPowerTwo of 5 should be 8", Neshny::RoundUpPowerTwo(5) == 8);
+        Expect("RoundUpPowerTwo of 31 should be 32", Neshny::RoundUpPowerTwo(31) == 32);
+        Expect("RoundUpPowerTwo of 45 should be 64", Neshny::RoundUpPowerTwo(45) == 64);
+        Expect("RoundUpPowerTwo of 64 should be 64", Neshny::RoundUpPowerTwo(64) == 64);
     }
 
     void UnitTest_DefaultMemoryManagement(void) {
@@ -270,7 +270,7 @@ namespace Test {
 			Expect("32 bit simulation of 64 bit multiplication", TestMult(pair.first, pair.second));
 		}
 
-		RandomGenerator gen(false);
+		Neshny::RandomGenerator gen(false);
 
 		std::set<unsigned int> set_vals;
 		std::vector<unsigned int> vals;
@@ -290,15 +290,15 @@ namespace Test {
 		Expect("Small number of duplicates", duplicates < 5);
 
 		CheckRandomNumbers([]() -> double {
-			return Random();
+			return Neshny::Random();
 		});
-		RandomGenerator gpu_sim_gen;
+		Neshny::RandomGenerator gpu_sim_gen;
 		unsigned int rand_seed = 0;
 		CheckRandomNumbers([&gpu_sim_gen, &rand_seed]() -> double {
 			gpu_sim_gen.Seed(0x4d595df400000000 | uint64_t(rand_seed++));
 			gpu_sim_gen.Next();
 			unsigned int raw = gpu_sim_gen.Next();
-			return raw * INV_UINT;
+			return raw * Neshny::INV_UINT;
 		});
 	}
 

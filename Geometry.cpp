@@ -39,12 +39,4 @@ std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 
 	return target_pos + target_vel * t;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-double AngleDiff(double a, double b) {
-	double simple = fabs(a - b);
-	double up = fabs(a - b + TWOPI);
-	double down = fabs(a - b - TWOPI);
-	return std::min(simple, std::min(up, down));
-}
-
 } // namespace Neshny
