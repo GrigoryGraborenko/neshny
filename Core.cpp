@@ -939,28 +939,6 @@ bool Core::IIsBufferEnabled(QString name) {
 	return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-void Core::EnsureEmbeddableLoaderInit(void) {
-	if (m_EmbeddableLoader.has_value()) {
-		return;
-	}
-//#error maybe this is not the right way of doing this? what if embedded files and dirs called the core functions themselves?
-//	m_EmbeddableLoader = [this] (QString path, QString& err_msg) -> QByteArray {
-//		QFile file;
-//		for (auto prefix : m_ResourceDirs) {
-//			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
-//			if (file.open(QIODevice::ReadOnly)) {
-//				break;
-//			}
-//		}
-//		if (!file.isOpen()) {
-//			err_msg = "File error - " + file.errorString();
-//			return QByteArray();
-//		}
-//		return file.readAll();
-//	};
-}
-
 #if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, bool mem_barrier) {
