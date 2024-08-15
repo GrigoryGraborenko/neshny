@@ -7,6 +7,7 @@
 # cmake --build build
 # 
 # BROWSER:
+# emcc --check
 # emcmake cmake -B build-web -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 # cmake --build build-web
 # node server

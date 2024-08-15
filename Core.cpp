@@ -239,12 +239,17 @@ bool Core::LoopInit(IEngine* engine) {
 		auto msg_str = msg.toStdString();
 
 		const auto now = std::chrono::system_clock::now();
-#ifdef __APPLE__
+#if defined __APPLE__ || defined __EMSCRIPTEN__
 		const auto zoned_now = now; // TODO: update to use zoned time
 #else
 		const std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
 #endif
+
+#if defined __EMSCRIPTEN__
+		auto time_str = "_"; // cannot format time yet
+#else
 		auto time_str = std::format("{:%OH:%OM}:{:%S}", zoned_now, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()));
+#endif
 
 #ifdef __EMSCRIPTEN__
 		msg_str += "\n";
@@ -722,7 +727,8 @@ void Core::SDLLoopInner() {
 
 	// Start the Dear ImGui frame
 	ImGui_ImplWGPU_NewFrame();
-	ImGui_ImplSDL2_NewFrame(m_Window);
+	ImGui_ImplSDL2_NewFrame();
+	//ImGui_ImplSDL2_NewFrame(m_Window);
 
 	ImGui::NewFrame();
 	LoopInner(m_Engine, m_CurrentWidth, m_CurrentHeight);
@@ -802,16 +808,26 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 	auto context = ImGui::CreateContext();
 	ImGui::SetCurrentContext(context);
 
-#if __WIN32__
-	if (!ImGui_ImplSDL2_InitForD3D(window)) {
-		return false;
-	}
-#elif __APPLE__
+#if __APPLE__
 	if (!ImGui_ImplSDL2_InitForMetal(window)) {
 		return false;
 	}
+#elif defined __WIN32__
+	if (!ImGui_ImplSDL2_InitForD3D(window)) {
+		return false;
+	}
+#else
+	if (!ImGui_ImplSDL2_InitForOther(window)) {
+		return false;
+	}
 #endif
-	ImGui_ImplWGPU_Init(m_Device, 3, WGPUTextureFormat_BGRA8Unorm, WGPUTextureFormat_Depth24Plus);
+
+	ImGui_ImplWGPU_InitInfo imgui_info;
+	imgui_info.Device = m_Device;
+	imgui_info.NumFramesInFlight = 3;
+	imgui_info.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
+	imgui_info.DepthStencilFormat = WGPUTextureFormat_Depth24Plus;
+	ImGui_ImplWGPU_Init(&imgui_info);
 
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 
@@ -921,6 +937,28 @@ bool Core::IIsBufferEnabled(QString name) {
 		}
 	}
 	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Core::EnsureEmbeddableLoaderInit(void) {
+	if (m_EmbeddableLoader.has_value()) {
+		return;
+	}
+//#error maybe this is not the right way of doing this? what if embedded files and dirs called the core functions themselves?
+//	m_EmbeddableLoader = [this] (QString path, QString& err_msg) -> QByteArray {
+//		QFile file;
+//		for (auto prefix : m_ResourceDirs) {
+//			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
+//			if (file.open(QIODevice::ReadOnly)) {
+//				break;
+//			}
+//		}
+//		if (!file.isOpen()) {
+//			err_msg = "File error - " + file.errorString();
+//			return QByteArray();
+//		}
+//		return file.readAll();
+//	};
 }
 
 #if defined(NESHNY_GL)

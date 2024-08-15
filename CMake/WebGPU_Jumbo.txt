@@ -112,6 +112,8 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
     set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s NO_EXIT_RUNTIME=1 -s STRICT=0 -s ASYNCIFY=1")
 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fexperimental-library")    
+
     # Linker flags to optimize for smallest output code size
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
 endif()
@@ -149,15 +151,12 @@ if (NOT EMSCRIPTEN)
     # ensure this all happens before the main build
     add_dependencies(${PROJECT_NAME} EMBEDDED_BUILD)
 
-    # adds list of shader directories to allow dynamic runtime loading in debug
-    file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
-
 else()
-
     include(${NESHNY_DIR}/CMake/EmbeddedShaders.txt)
-    file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
-
 endif()
+
+# adds list of shader directories to allow dynamic runtime loading in debug
+file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 ###############################################################################
 message(STATUS "Project Structure")

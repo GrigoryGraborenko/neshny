@@ -6,17 +6,13 @@ using namespace Neshny;
 
 #include "Engine.h"
 
-#ifdef __EMSCRIPTEN__
-	#include "EmbeddedFiles.cpp"
-#else
-	#ifndef _DEBUG
-		#include "EmbeddedFiles.cpp"
-	#endif
-#endif
 #include "EmbeddedDirectories.cpp"
+#if !defined _DEBUG || defined __EMSCRIPTEN__
+	#include "EmbeddedFiles.cpp"
+#endif
 
 #ifdef __APPLE__
-extern void* MacOSGetWindowLayer(void* nsWindow);
+	extern void* MacOSGetWindowLayer(void* nsWindow);
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
