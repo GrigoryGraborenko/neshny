@@ -161,7 +161,7 @@ namespace Test {
             //}}
         };
 
-        auto loader = [] (QString fname, QString& err) -> QByteArray {
+        auto loader = [] (std::string_view fname, std::string& err) -> QByteArray {
             if (fname == "recurse.txt") {
                 return "#include \"include.txt\"\nfloat thing = 99.9;";
             } else if (fname == "include.txt") {
@@ -174,7 +174,7 @@ namespace Test {
         };
 
         for (int i = 0; i < scenarios.size(); i++) {
-            QString err_msg;
+            std::string err_msg;
             auto expected = scenarios[i].second.join("\n");
             auto output = Neshny::Preprocess(scenarios[i].first.join("\n"), loader, err_msg);
             Expect(QString("Scenario %1 did not match expected output").arg(i), expected == output);

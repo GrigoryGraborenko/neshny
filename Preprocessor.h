@@ -5,6 +5,6 @@
 
 namespace Neshny {
 
-    QByteArray      Preprocess  ( QByteArray input, const std::function<QByteArray(QString, QString&)>& loader, QString& err_msg );
+    QByteArray      Preprocess  ( QByteArray input, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string& err_msg );
 
 }

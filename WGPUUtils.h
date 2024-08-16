@@ -17,7 +17,7 @@ public:
 
 	struct Error {
 		WGPUCompilationMessageType	m_Type;
-		QByteArray					m_Message;
+		std::string					m_Message;
 		uint64_t					m_LineNum;
 		uint64_t					m_LinePos;
 	};
@@ -25,7 +25,7 @@ public:
 													WebGPUShader			( void );
 													~WebGPUShader			( void );
 
-	bool											Init					( const std::function<QByteArray(QString, QString&)>& loader, QString filename, QByteArray start_insert, QByteArray end_insert );
+	bool											Init					( const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, QByteArray start_insert, QByteArray end_insert );
 
 	inline WGPUShaderModule							Get						( void ) const { return m_Shader; }
 	inline bool										IsValid					( void ) const { return (m_Shader != nullptr) && m_Errors.empty(); }

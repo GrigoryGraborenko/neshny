@@ -26,7 +26,7 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 		const auto& msg = compilationInfo->messages[i];
 		shader->m_Errors.push_back({
 			msg.type,
-			QByteArray(msg.message),
+			std::string(msg.message),
 			msg.lineNum - 1, // device outputs line numbers starting with 1
 			msg.linePos - 2 // device outputs line pos starting with 2 for some reason
 		});
@@ -34,18 +34,18 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& loader, QString filename, QByteArray start_insert, QByteArray end_insert) {
+bool WebGPUShader::Init(const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, QByteArray start_insert, QByteArray end_insert) {
 
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPUShader::Init");
 #endif
 
-	QString err_msg;
+	std::string err_msg;
 	QByteArray arr = loader(filename, err_msg);
 	if (arr.isNull()) {
 		m_Errors.push_back({
 			WGPUCompilationMessageType_Error,
-			("File error - " + err_msg).toLocal8Bit(),
+			("File error - " + err_msg),
 			-1u,
 			-1u
 		});
@@ -53,10 +53,10 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 	}
 	m_SourcePrePreProcessor = start_insert + arr + end_insert;
 	m_Source = Preprocess(m_SourcePrePreProcessor, loader, err_msg);
-	if (!err_msg.isEmpty()) {
+	if (!err_msg.empty()) {
 		m_Errors.push_back({
 			WGPUCompilationMessageType_Error,
-			("Preprocessor error - " + err_msg).toLocal8Bit(),
+			("Preprocessor error - " + err_msg),
 			-1u,
 			-1u
 		});
@@ -72,8 +72,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(QString, QString&)>& load
 #endif
 	WGPUShaderModuleDescriptor desc = {};
 	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
-	auto fname_bytes = filename.toLocal8Bit();
-	desc.label = fname_bytes.data();
+	desc.label = filename.data();
 
 	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetWebGPUDevice(), &desc);
 #ifndef __EMSCRIPTEN__

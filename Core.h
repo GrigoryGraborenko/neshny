@@ -478,8 +478,8 @@ public:
 
 	void								SetResourceDirs				( const std::vector<std::string>& dirs ) { m_ResourceDirs = dirs; }
 	void								SetEmbeddedFiles			( const std::unordered_map<std::string, std::span<const unsigned char>>& files ) { m_EmbeddedFiles = files; }
-	void								SetEmbeddableFileLoader		( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
-	QByteArray							LoadEmbedded				( QString filename, QString& err_msg );
+	void								SetEmbeddableFileLoader		( std::function<QByteArray(std::string_view, std::string&)> loader ) { m_EmbeddableLoader = loader; }
+	QByteArray							LoadEmbedded				( std::string_view filename, std::string& err_msg );
 
 	inline void							SetTicksOverride			( int ticks ) { m_Ticks = ticks; }
 	Token								SyncWithMainThread			( void );
@@ -709,9 +709,9 @@ private:
 	InterfaceCore						m_Interface;
 	WorkerThreadPool					m_ResourceThreads;
 
-	std::vector<std::string>											m_ResourceDirs;
-	std::unordered_map<std::string, std::span<const unsigned char>>		m_EmbeddedFiles;
-	std::optional<std::function<QByteArray(QString, QString&)>>			m_EmbeddableLoader;
+	std::vector<std::string>													m_ResourceDirs;
+	std::unordered_map<std::string, std::span<const unsigned char>>				m_EmbeddedFiles;
+	std::optional<std::function<QByteArray(std::string_view, std::string&)>>	m_EmbeddableLoader;
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;

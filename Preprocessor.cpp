@@ -26,7 +26,7 @@ bool IsWhiteSpace(char c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, QString&)>& loader, QString& err_msg) {
+QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string& err_msg) {
 
     QByteArray output;
     output.reserve(input.size());
@@ -327,8 +327,9 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(QString, 
                     }
                     includes.insert(fname);
 
-                    QString error;
-                    auto included_data = loader(fname, error);
+                    std::string error;
+                    std::string fname_str(fname.data(), fname.size());
+                    auto included_data = loader(fname_str, error);
                     if (!included_data.isNull()) {
                         // modifies local copy of input so preprocessor can process args as well
                         input.replace(c, fname_end - c + 1, included_data);

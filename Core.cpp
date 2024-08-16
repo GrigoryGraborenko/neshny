@@ -191,7 +191,7 @@ Core::~Core(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QByteArray Core::LoadEmbedded(QString filename, QString& err_msg) {
+QByteArray Core::LoadEmbedded(std::string_view filename, std::string& err_msg) {
 	EnsureEmbeddableLoaderInit();
 	return (*m_EmbeddableLoader)(filename, err_msg);
 }
@@ -941,26 +941,26 @@ void Core::EnsureEmbeddableLoaderInit(void) {
 	if (m_EmbeddableLoader.has_value()) {
 		return;
 	}
-	m_EmbeddableLoader = [this] (QString path, QString& err_msg) -> QByteArray {
-
-		auto path_str = path.toStdString();
+	m_EmbeddableLoader = [this] (std::string_view path, std::string& err_msg) -> QByteArray {
+		std::string path_str(path);
 		auto found = m_EmbeddedFiles.find(path_str);
 		if (found != m_EmbeddedFiles.end()) {
 			return QByteArray((char*)found->second.data(), found->second.size());
 		}
 
-		QFile file;
 		for (auto prefix : m_ResourceDirs) {
-			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
-			if (file.open(QIODevice::ReadOnly)) {
-				break;
+			std::string filename = std::format("{}/{}", prefix, path);
+			std::ifstream file(filename, std::ios::in | std::ios::binary);
+			if (file) {
+				std::ostringstream data_stream;
+				data_stream << file.rdbuf();
+				std::string data = data_stream.str();
+				file.close();
+				return QByteArray(data.c_str(), data.size());
 			}
 		}
-		if (!file.isOpen()) {
-			err_msg = "File error - " + file.errorString();
-			return QByteArray();
-		}
-		return file.readAll();
+		err_msg = "Could not open file";
+		return QByteArray();
 	};
 }
 
@@ -995,11 +995,12 @@ GLShader* Core::IGetShader(QString name, QString insertion) {
 	}
 	m_Shaders.insert_or_assign(lookup_name, nullptr);
 
-	QString vertex_name = name + ".vert", fragment_name = name + ".frag", geometry_name = "";
+	std::string name_str = name.toStdString();
+	std::string vertex_name = name_str + ".vert", fragment_name = name_str + ".frag", geometry_name = "";
 
 	GLShader* new_shader = new GLShader();
 	m_Shaders.insert_or_assign(lookup_name, new_shader);
-	QString err_msg = "";
+	std::string err_msg = "";
 	if (!new_shader->Init(err_msg, m_EmbeddableLoader.value(), vertex_name, fragment_name, geometry_name, insertion)) {
 		qDebug() << err_msg;
 		m_Interface.p_ShaderView.p_Visible = true;
@@ -1024,11 +1025,11 @@ GLShader* Core::IGetComputeShader(QString name, QString insertion) {
 	}
 	m_ComputeShaders.insert_or_assign(lookup_name, nullptr);
 
-	QString shader_name = name + ".comp";
+	std::string shader_name = name.toStdString() + ".comp";
 
 	GLShader* new_shader = new GLShader();
 	m_ComputeShaders.insert_or_assign(lookup_name, new_shader);
-	QString err_msg;
+	std::string err_msg;
 	if (!new_shader->InitCompute(err_msg, m_EmbeddableLoader.value(), shader_name, insertion)) {
 		m_Interface.p_ShaderView.p_Visible = true;
 		qDebug() << err_msg;
@@ -1198,7 +1199,7 @@ WebGPUShader* Core::IGetShader(QString name, QByteArray start_insert, QByteArray
 	}
 	m_Shaders.insert_or_assign(lookup_name, nullptr);
 
-	QString wgsl_name = name + ".wgsl";
+	std::string wgsl_name = name.toStdString() + ".wgsl";
 
 	WebGPUShader* new_shader = new WebGPUShader();
 	m_Shaders.insert_or_assign(lookup_name, new_shader);

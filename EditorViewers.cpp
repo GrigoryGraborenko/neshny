@@ -870,8 +870,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 
 			QStringList lines = src.m_Source.split('\n');
 
-			if (!src.m_Error.isNull()) {
-				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), src.m_Error.toLocal8Bit().data());
+			if (!src.m_Error.empty()) {
+				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), src.m_Error.data());
 			}
 			if (search.isNull()) {
 				for (int line = 0; line < lines.size(); line++) {

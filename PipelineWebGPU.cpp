@@ -749,7 +749,7 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 
 	target_stage.AddStructBuffer<Grid2DCacheUniform>(QString("b_%1GridUniform").arg(name), QString("%1GridUniformStruct").arg(name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
 
-	QString err_msg;
+	std::string err_msg;
 	auto utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);
 	if (utils_file.isNull()) {
 		qWarning() << "could not open 'GridCache2D.wgsl.template'" << err_msg;

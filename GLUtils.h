@@ -15,14 +15,14 @@ public:
 	struct SourceInfo {
 		QString		m_Type;
 		QString		m_Source;
-		QString		m_Error;
+		std::string	m_Error;
 	};
 
 													GLShader			( void );
 													~GLShader			( void);
 
-	bool											Init				( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_filename, QString fragment_filename, QString geometry_filename, QString insertion );
-	bool											InitCompute			( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString shader_filename, QString insertion );
+	bool											Init				( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_filename, std::string_view fragment_filename, std::string_view geometry_filename, QString insertion );
+	bool											InitCompute			( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view shader_filename, QString insertion );
 
 	void											UseProgram			( void );
 	GLuint											GetAttribute		( QString name );
@@ -33,8 +33,8 @@ public:
 
 private:
 
-	GLuint											CreateProgram		( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString vertex_shader_filename, QString fragment_shader_filename, QString geometry_shader_filename, QString insertion );
-	GLuint											CreateShader		( QString& err_msg, const std::function<QByteArray(QString, QString&)>& loader, QString filename, GLenum type, QString insertion );
+	GLuint											CreateProgram		( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_shader_filename, std::string_view fragment_shader_filename, std::string_view geometry_shader_filename, QString insertion );
+	GLuint											CreateShader		( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, QString insertion );
 
 	GLuint											m_Program;
 	std::vector<SourceInfo>							m_Sources;
