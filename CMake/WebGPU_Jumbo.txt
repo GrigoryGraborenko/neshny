@@ -136,7 +136,7 @@ if (NOT EMSCRIPTEN)
     # command that embeds shaders and their names into a cpp file
     add_custom_command(
         OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp
-        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/EmbeddedShaders.txt
+        COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/EmbeddedFiles.txt
         DEPENDS "${BASE_DIR}/${SHADER_PATH}/*.*" DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
     )
 
@@ -152,7 +152,7 @@ if (NOT EMSCRIPTEN)
     add_dependencies(${PROJECT_NAME} EMBEDDED_BUILD)
 
 else()
-    include(${NESHNY_DIR}/CMake/EmbeddedShaders.txt)
+    include(${NESHNY_DIR}/CMake/EmbeddedFiles.txt)
 endif()
 
 # adds list of shader directories to allow dynamic runtime loading in debug

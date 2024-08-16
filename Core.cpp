@@ -192,11 +192,8 @@ Core::~Core(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 QByteArray Core::LoadEmbedded(QString filename, QString& err_msg) {
-	if (m_EmbeddableLoader.has_value()) {
-		return (*m_EmbeddableLoader)(filename, err_msg);
-	}
-	err_msg = "No loader set";
-	return QByteArray();
+	EnsureEmbeddableLoaderInit();
+	return (*m_EmbeddableLoader)(filename, err_msg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -939,6 +936,34 @@ bool Core::IIsBufferEnabled(QString name) {
 	return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void Core::EnsureEmbeddableLoaderInit(void) {
+	if (m_EmbeddableLoader.has_value()) {
+		return;
+	}
+	m_EmbeddableLoader = [this] (QString path, QString& err_msg) -> QByteArray {
+
+		auto path_str = path.toStdString();
+		auto found = m_EmbeddedFiles.find(path_str);
+		if (found != m_EmbeddedFiles.end()) {
+			return QByteArray((char*)found->second.data(), found->second.size());
+		}
+
+		QFile file;
+		for (auto prefix : m_ResourceDirs) {
+			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
+			if (file.open(QIODevice::ReadOnly)) {
+				break;
+			}
+		}
+		if (!file.isOpen()) {
+			err_msg = "File error - " + file.errorString();
+			return QByteArray();
+		}
+		return file.readAll();
+	};
+}
+
 #if defined(NESHNY_GL)
 ////////////////////////////////////////////////////////////////////////////////
 void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, bool mem_barrier) {
@@ -956,9 +981,7 @@ void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, b
 ////////////////////////////////////////////////////////////////////////////////
 GLShader* Core::IGetShader(QString name, QString insertion) {
 
-	if (!m_EmbeddableLoader.has_value()) {
-		return nullptr;
-	}
+	EnsureEmbeddableLoaderInit();
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
@@ -987,9 +1010,7 @@ GLShader* Core::IGetShader(QString name, QString insertion) {
 ////////////////////////////////////////////////////////////////////////////////
 GLShader* Core::IGetComputeShader(QString name, QString insertion) {
 
-	if (!m_EmbeddableLoader.has_value()) {
-		return nullptr;
-	}
+	EnsureEmbeddableLoaderInit();
 
 	QString lookup_name = name;
 	if (!insertion.isNull()) {
@@ -1163,9 +1184,7 @@ GLBuffer* Core::IGetBuffer(QString name) {
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUShader* Core::IGetShader(QString name, QByteArray start_insert, QByteArray end_insert) {
 
-	if (!m_EmbeddableLoader.has_value()) {
-		return nullptr;
-	}
+	EnsureEmbeddableLoaderInit();
 
 	QString lookup_name = name;
 	if ((!start_insert.isNull()) || (!end_insert.isNull())) {

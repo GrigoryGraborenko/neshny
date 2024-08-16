@@ -19,32 +19,13 @@ using namespace Neshny;
 
 int main(int, char**) {
 
+	Core::Singleton().SetResourceDirs(g_ShaderBaseDirs);
+#if !defined _DEBUG || defined __EMSCRIPTEN__
+	Core::Singleton().SetEmbeddedFiles(g_EmbeddedFiles);
+#endif
+
 #ifdef __EMSCRIPTEN__
 	std::filesystem::current_path("./assets/images/");
-	Core::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
-		auto path_str = path.toStdString();
-		auto found = g_EmbeddedFiles.find(path_str);
-		if (found == g_EmbeddedFiles.end()) {
-			err_msg = "Cannot find embedded file error - " + path;
-			return QByteArray();
-		}
-		return QByteArray((char*)found->second.p_Data, found->second.p_Size);
-	});
-#else
-	Core::Singleton().SetEmbeddableFileLoader([](QString path, QString& err_msg) -> QByteArray {
-		QFile file;
-		for (auto prefix : g_ShaderBaseDirs) {
-			file.setFileName(QString("%1/%2").arg(prefix.c_str()).arg(path));
-			if (file.open(QIODevice::ReadOnly)) {
-				break;
-			}
-		}
-		if (!file.isOpen()) {
-			err_msg = "File error - " + file.errorString();
-			return QByteArray();
-		}
-		return file.readAll();
-	});
 #endif
 
 	Engine engine;

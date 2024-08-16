@@ -1,13 +1,13 @@
 include(${BASE_DIR}/UserSettings.cmake)
 
-message(STATUS "Embedding shaders")
+message(STATUS "Embedding files")
 
 # creates CPP resources file "EmbeddedFiles.cpp" from input files
 function(create_resources output_fname)
     # create empty output file
     file(WRITE ${output_fname} "")
 
-    set(resource_vector "struct EmbeddedFile{ unsigned long long p_Size=0\\; const unsigned char* p_Data=nullptr\\; }\\;\n std::unordered_map<std::string, EmbeddedFile> g_EmbeddedFiles = {\n")
+    set(resource_vector "std::unordered_map<std::string, std::span<const unsigned char>> g_EmbeddedFiles = {\n")
 
     # iterate through input files
     math(EXPR last "${ARGC} - 1")
@@ -27,7 +27,7 @@ function(create_resources output_fname)
         string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
         # append data to output file
         file(APPEND ${output_fname} "const unsigned char _g_${c_filename}[] = {${filedata}};\n")
-        string(APPEND resource_vector "{ \"${filename}\", { sizeof(_g_${c_filename}), _g_${c_filename} }},\n")
+        string(APPEND resource_vector "{ \"${filename}\", { _g_${c_filename}, sizeof(_g_${c_filename}) }},\n")
     endforeach()
     string(APPEND resource_vector "}\\;\n")
     file(APPEND ${output_fname} ${resource_vector})

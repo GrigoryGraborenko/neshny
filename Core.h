@@ -476,6 +476,8 @@ public:
 
 	inline static Core&					Singleton					( void ) { static Core core; return core; }
 
+	void								SetResourceDirs				( const std::vector<std::string>& dirs ) { m_ResourceDirs = dirs; }
+	void								SetEmbeddedFiles			( const std::unordered_map<std::string, std::span<const unsigned char>>& files ) { m_EmbeddedFiles = files; }
 	void								SetEmbeddableFileLoader		( std::function<QByteArray(QString, QString&)> loader ) { m_EmbeddableLoader = loader; }
 	QByteArray							LoadEmbedded				( QString filename, QString& err_msg );
 
@@ -642,6 +644,7 @@ private:
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
 	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
 #endif
+	void								EnsureEmbeddableLoaderInit	( void );
 
 	template<class T, typename P = typename T::Params>
 	inline const ResourceResult<T>		IGetResource				( QString path, const P& params ) {
@@ -705,7 +708,10 @@ private:
 
 	InterfaceCore						m_Interface;
 	WorkerThreadPool					m_ResourceThreads;
-	std::optional<std::function<QByteArray(QString, QString&)>>	m_EmbeddableLoader;
+
+	std::vector<std::string>											m_ResourceDirs;
+	std::unordered_map<std::string, std::span<const unsigned char>>		m_EmbeddedFiles;
+	std::optional<std::function<QByteArray(QString, QString&)>>			m_EmbeddableLoader;
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;

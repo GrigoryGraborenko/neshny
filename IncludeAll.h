@@ -20,6 +20,7 @@
 #include <chrono>
 #include <format>
 #include <stdint.h>
+#include <span>
 
 #ifdef NESHNY_GL
     #include "glad/glad.h"
