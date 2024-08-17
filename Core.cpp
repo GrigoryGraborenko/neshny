@@ -441,7 +441,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 
 		// Start the Dear ImGui frame
 		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplSDL2_NewFrame(window);
+		ImGui_ImplSDL2_NewFrame();
 
 		ImGui::NewFrame();
 		LoopInner(engine, width, height);
