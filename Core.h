@@ -513,8 +513,8 @@ public:
 #endif
 
 #if defined(NESHNY_GL)
-	static GLShader*					GetShader					( QString name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
-	static GLShader*					GetComputeShader			( QString name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
+	static GLShader*					GetShader					( std::string_view name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
+	static GLShader*					GetComputeShader			( std::string_view name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 #elif defined(NESHNY_WEBGPU)
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
@@ -618,16 +618,14 @@ public:
 	inline static void					RenderEditor				( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks					( void ) { return Singleton().m_Ticks; }
 
+	inline const std::vector<ShaderGroup>&	GetShaders				( void ) { return m_ShaderGroups; }
 #if defined(NESHNY_GL)
-	inline const std::map<QString, GLShader*>&	GetShaders			( void ) { return m_Shaders; }
-	inline const std::map<QString, GLShader*>&	GetComputeShaders	( void ) { return m_ComputeShaders; }
+	inline const std::vector<ShaderGroup>&	GetComputeShaders		( void ) { return m_ComputeShaderGroups; }
 
 	int									CreateGLContext				( void );
 	bool 								ActivateGLContext			( int index );
 	void 								DeleteGLContext				( int index );
 	static void							OpenGLSync					( void );
-#elif defined(NESHNY_WEBGPU)
-	inline const std::vector<ShaderGroup>&	GetShaders				( void ) { return m_ShaderGroups; }
 #endif
 
 	inline uint64_t						GetMemoryAllocated			( void ) { return m_MemoryAllocated; }
@@ -645,9 +643,9 @@ private:
 										~Core						( void );
 
 #if defined(NESHNY_GL)
-	GLShader*							IGetShader					( QString name, QString insertion );
+	GLShader*							IGetShader					( std::string_view name, QString insertion );
 	GLBuffer*							IGetBuffer					( QString name );
-	GLShader*							IGetComputeShader			( QString name, QString insertion );
+	GLShader*							IGetComputeShader			( std::string_view name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
 	WebGPUShader*						IGetShader					( std::string_view name, QByteArray start_insert, QByteArray end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( QString name );
@@ -696,8 +694,8 @@ private:
 	bool								IIsBufferEnabled			( QString name );
 
 #if defined(NESHNY_GL)
-	std::map<QString, GLShader*>		m_Shaders;
-	std::map<QString, GLShader*>		m_ComputeShaders;
+	std::vector<ShaderGroup>			m_ShaderGroups;
+	std::vector<ShaderGroup>			m_ComputeShaderGroups;
 	std::map<QString, GLBuffer*>		m_Buffers;
 #elif defined(NESHNY_WEBGPU)
 	std::vector<ShaderGroup>				m_ShaderGroups;

@@ -814,17 +814,6 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	ImGui::BeginChild("ShaderList", ImVec2(space_available.x - 8, space_available.y - size_banner), false, ImGuiWindowFlags_HorizontalScrollbar);
 
 	auto shaders = Core::Singleton().GetShaders();
-#if defined(NESHNY_GL)
-	auto compute_shaders = Core::Singleton().GetComputeShaders();
-	for (auto& shader : compute_shaders) {
-		auto info = RenderShader(data, shader.first, shader.second, true, search);
-		info->p_Open = (info->p_Open || all_open) && (!all_close);
-	}
-	for (auto& shader : shaders) {
-		auto info = RenderShader(data, shader.first, shader.second, false, search);
-		info->p_Open = (info->p_Open || all_open) && (!all_close);
-	}
-#elif defined NESHNY_WEBGPU
 	for (const auto& group : shaders) {
 		int num_inst = group.p_Instances.size();
 		for (int i = 0; i < num_inst; i++) {
@@ -833,6 +822,18 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 			info->p_Open = (info->p_Open || all_open) && (!all_close);
 		}
 	}
+#if defined(NESHNY_GL)
+	auto compute_shaders = Core::Singleton().GetComputeShaders();
+
+	for (const auto& group : compute_shaders) {
+		int num_inst = group.p_Instances.size();
+		for (int i = 0; i < num_inst; i++) {
+			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
+			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, true, search);
+			info->p_Open = (info->p_Open || all_open) && (!all_close);
+		}
+	}
+#elif defined NESHNY_WEBGPU
 #endif
 	ImGui::EndChild();
 	ImGui::End();

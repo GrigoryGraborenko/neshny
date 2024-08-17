@@ -979,27 +979,33 @@ void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, b
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::IGetShader(QString name, QString insertion) {
+GLShader* Core::IGetShader(std::string_view name, QString insertion) {
 
 	EnsureEmbeddableLoaderInit();
 
-	QString lookup_name = name;
-	if (!insertion.isNull()) {
-		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
-		lookup_name += "_" + hash_val;
+	QByteArray start_insert = insertion.toLocal8Bit();
+	ShaderGroup* found_group = nullptr;
+	for (auto& group : m_ShaderGroups) {
+		if (group.p_Name == name) {
+			for (const auto& instance : group.p_Instances) {
+				if (instance.m_StartInsert == start_insert) {
+					return instance.p_Shader;
+				}
+			}
+			found_group = &group;
+			break;
+		}
+	}
+	if (!found_group) {
+		m_ShaderGroups.push_back({ std::string(name), {} });
+		found_group = &m_ShaderGroups.back();
 	}
 
-	auto found = m_Shaders.find(lookup_name);
-	if (found != m_Shaders.end()) {
-		return found->second;
-	}
-	m_Shaders.insert_or_assign(lookup_name, nullptr);
-
-	std::string name_str = name.toStdString();
+	std::string name_str(name);
 	std::string vertex_name = name_str + ".vert", fragment_name = name_str + ".frag", geometry_name = "";
 
 	GLShader* new_shader = new GLShader();
-	m_Shaders.insert_or_assign(lookup_name, new_shader);
+	found_group->p_Instances.push_back({ new_shader, start_insert });
 	std::string err_msg = "";
 	if (!new_shader->Init(err_msg, m_EmbeddableLoader.value(), vertex_name, fragment_name, geometry_name, insertion)) {
 		qDebug() << err_msg;
@@ -1009,26 +1015,32 @@ GLShader* Core::IGetShader(QString name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::IGetComputeShader(QString name, QString insertion) {
+GLShader* Core::IGetComputeShader(std::string_view name, QString insertion) {
 
 	EnsureEmbeddableLoaderInit();
 
-	QString lookup_name = name;
-	if (!insertion.isNull()) {
-		auto hash_val = QCryptographicHash::hash(insertion.toLocal8Bit(), QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
-		lookup_name += "_" + hash_val;
+	QByteArray start_insert = insertion.toLocal8Bit();
+	ShaderGroup* found_group = nullptr;
+	for (auto& group : m_ComputeShaderGroups) {
+		if (group.p_Name == name) {
+			for (const auto& instance : group.p_Instances) {
+				if (instance.m_StartInsert == start_insert) {
+					return instance.p_Shader;
+				}
+			}
+			found_group = &group;
+			break;
+		}
+	}
+	if (!found_group) {
+		m_ComputeShaderGroups.push_back({ std::string(name), {} });
+		found_group = &m_ComputeShaderGroups.back();
 	}
 
-	auto found = m_ComputeShaders.find(lookup_name);
-	if (found != m_ComputeShaders.end()) {
-		return found->second;
-	}
-	m_ComputeShaders.insert_or_assign(lookup_name, nullptr);
-
-	std::string shader_name = name.toStdString() + ".comp";
+	std::string shader_name = std::format("{}.comp", name);
 
 	GLShader* new_shader = new GLShader();
-	m_ComputeShaders.insert_or_assign(lookup_name, new_shader);
+	found_group->p_Instances.push_back({ new_shader, start_insert });
 	std::string err_msg;
 	if (!new_shader->InitCompute(err_msg, m_EmbeddableLoader.value(), shader_name, insertion)) {
 		m_Interface.p_ShaderView.p_Visible = true;
@@ -1404,11 +1416,6 @@ void Core::WaitForCommandsToFinish(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void Core::UnloadAllShaders(void) {
 
-#ifdef NESHNY_WEBGPU
-
-	//for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {
-		//delete it->second;
-	//}
 	for (auto& group : m_ShaderGroups) {
 		for (auto& instance : group.p_Instances) {
 			delete instance.p_Shader;
@@ -1416,11 +1423,13 @@ void Core::UnloadAllShaders(void) {
 	}
 	m_ShaderGroups.clear();
 
-#elif defined NESHNY_GL
-	for (auto it = m_ComputeShaders.begin(); it != m_ComputeShaders.end(); it++) {
-		delete it->second;
+#if defined NESHNY_GL
+	for (auto& group : m_ComputeShaderGroups) {
+		for (auto& instance : group.p_Instances) {
+			delete instance.p_Shader;
+		}
 	}
-	m_ComputeShaders.clear();
+	m_ComputeShaderGroups.clear();
 #endif
 }
 
