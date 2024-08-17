@@ -463,6 +463,17 @@ public:
 		int				m_LastTickAccessed = 0;
 	};
 
+	struct ShaderInstance {
+		Shader*			p_Shader = nullptr;
+		QByteArray		m_StartInsert;
+		QByteArray		m_EndInsert;
+	};
+
+	struct ShaderGroup {
+		std::string					p_Name;
+		std::vector<ShaderInstance>	p_Instances;
+	};
+
 	template<class T, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	struct ResourceResult {
 		ResourceResult(const ResourceContainer& container) : m_State(container.m_State), m_Resource((T*)container.m_Resource), m_Error(container.m_Error) {}
@@ -515,7 +526,7 @@ public:
 	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
 	WGPULimits							GetDefaultLimits			( void );
 	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
-	static WebGPUShader*				GetShader					( QString name, QByteArray start_insert = QByteArray(), QByteArray end_insert = QByteArray()) { return Singleton().IGetShader(name, start_insert, end_insert); }
+	static WebGPUShader*				GetShader					( std::string_view name, QByteArray start_insert = QByteArray(), QByteArray end_insert = QByteArray()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( QString name ) { return Singleton().IGetBuffer(name); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							WaitForCommandsToFinish		( void );
@@ -616,7 +627,7 @@ public:
 	void 								DeleteGLContext				( int index );
 	static void							OpenGLSync					( void );
 #elif defined(NESHNY_WEBGPU)
-	inline const std::map<QString, WebGPUShader*>& GetShaders		( void ) { return m_Shaders; }
+	inline const std::vector<ShaderGroup>&	GetShaders				( void ) { return m_ShaderGroups; }
 #endif
 
 	inline uint64_t						GetMemoryAllocated			( void ) { return m_MemoryAllocated; }
@@ -638,7 +649,7 @@ private:
 	GLBuffer*							IGetBuffer					( QString name );
 	GLShader*							IGetComputeShader			( QString name, QString insertion );
 #elif defined(NESHNY_WEBGPU)
-	WebGPUShader*						IGetShader					( QString name, QByteArray start_insert, QByteArray end_insert );
+	WebGPUShader*						IGetShader					( std::string_view name, QByteArray start_insert, QByteArray end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( QString name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
@@ -686,10 +697,10 @@ private:
 
 #if defined(NESHNY_GL)
 	std::map<QString, GLShader*>		m_Shaders;
-	std::map<QString, GLBuffer*>		m_Buffers;
 	std::map<QString, GLShader*>		m_ComputeShaders;
+	std::map<QString, GLBuffer*>		m_Buffers;
 #elif defined(NESHNY_WEBGPU)
-	std::map<QString, WebGPUShader*>		m_Shaders;
+	std::vector<ShaderGroup>				m_ShaderGroups;
 	std::map<QString, WebGPURenderBuffer*>	m_Buffers;
 	std::vector<WebGPUSampler*>				m_Samplers;
 #endif

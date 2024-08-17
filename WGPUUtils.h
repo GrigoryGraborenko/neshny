@@ -387,8 +387,8 @@ public:
 	WebGPUPipeline&				AddTexture				( WGPUTextureViewDimension texture_dimension, WGPUTextureView view ) { m_Textures.push_back({ texture_dimension, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						FinalizeRender			( QString shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
-	void						FinalizeCompute			( QString shader_name, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
+	void						FinalizeRender			( std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
+	void						FinalizeCompute			( std::string_view shader_name, QByteArray insertion = QByteArray(), QByteArray end_insertion = QByteArray() );
 	void						RefreshBindings			( void );
 	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );
 	void						ReplaceBuffer			( int index, WebGPUBuffer& replacement );

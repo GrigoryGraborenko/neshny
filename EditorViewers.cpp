@@ -820,11 +820,20 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 		auto info = RenderShader(data, shader.first, shader.second, true, search);
 		info->p_Open = (info->p_Open || all_open) && (!all_close);
 	}
-#endif
 	for (auto& shader : shaders) {
 		auto info = RenderShader(data, shader.first, shader.second, false, search);
 		info->p_Open = (info->p_Open || all_open) && (!all_close);
 	}
+#elif defined NESHNY_WEBGPU
+	for (const auto& group : shaders) {
+		int num_inst = group.p_Instances.size();
+		for (int i = 0; i < num_inst; i++) {
+			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
+			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, false, search);
+			info->p_Open = (info->p_Open || all_open) && (!all_close);
+		}
+	}
+#endif
 	ImGui::EndChild();
 	ImGui::End();
 }

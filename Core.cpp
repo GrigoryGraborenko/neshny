@@ -1183,26 +1183,30 @@ GLBuffer* Core::IGetBuffer(QString name) {
 }
 #elif defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUShader* Core::IGetShader(QString name, QByteArray start_insert, QByteArray end_insert) {
+WebGPUShader* Core::IGetShader(std::string_view name, QByteArray start_insert, QByteArray end_insert) {
 
 	EnsureEmbeddableLoaderInit();
 
-	QString lookup_name = name;
-	if ((!start_insert.isNull()) || (!end_insert.isNull())) {
-		auto hash_val = QCryptographicHash::hash(start_insert + "###" + end_insert, QCryptographicHash::Md5).toHex(0); // security is no concern, only speed and lack of collisions
-		lookup_name += "_" + hash_val;
+	ShaderGroup* found_group = nullptr;
+	for (auto& group : m_ShaderGroups) {
+		if (group.p_Name == name) {
+			for (const auto& instance : group.p_Instances) {
+				if ((instance.m_StartInsert == start_insert) && (instance.m_EndInsert == end_insert)) {
+					return instance.p_Shader;
+				}
+			}
+			found_group = &group;
+			break;
+		}
 	}
-
-	auto found = m_Shaders.find(lookup_name);
-	if (found != m_Shaders.end()) {
-		return found->second;
+	if (!found_group) {
+		m_ShaderGroups.push_back({ std::string(name), {} });
+		found_group = &m_ShaderGroups.back();
 	}
-	m_Shaders.insert_or_assign(lookup_name, nullptr);
-
-	std::string wgsl_name = name.toStdString() + ".wgsl";
-
 	WebGPUShader* new_shader = new WebGPUShader();
-	m_Shaders.insert_or_assign(lookup_name, new_shader);
+	found_group->p_Instances.push_back({ new_shader, start_insert, end_insert });
+
+	std::string wgsl_name = std::format("{}.wgsl", name);
 	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert, end_insert)) {
 		for (auto err : new_shader->GetErrors()) {
 			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
@@ -1400,12 +1404,19 @@ void Core::WaitForCommandsToFinish(void) {
 ////////////////////////////////////////////////////////////////////////////////
 void Core::UnloadAllShaders(void) {
 
-	for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {
-		delete it->second;
-	}
-	m_Shaders.clear();
+#ifdef NESHNY_WEBGPU
 
-#ifdef NESHNY_GL
+	//for (auto it = m_Shaders.begin(); it != m_Shaders.end(); it++) {
+		//delete it->second;
+	//}
+	for (auto& group : m_ShaderGroups) {
+		for (auto& instance : group.p_Instances) {
+			delete instance.p_Shader;
+		}
+	}
+	m_ShaderGroups.clear();
+
+#elif defined NESHNY_GL
 	for (auto it = m_ComputeShaders.begin(); it != m_ComputeShaders.end(); it++) {
 		delete it->second;
 	}

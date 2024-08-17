@@ -626,7 +626,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, QByteArray insertion, QByteArray end_insertion) {
+void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, QByteArray insertion, QByteArray end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -730,7 +730,7 @@ void WebGPUPipeline::FinalizeRender(QString shader_name, WebGPURenderBuffer& ren
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeCompute(QString shader_name, QByteArray insertion, QByteArray end_insertion) {
+void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, QByteArray insertion, QByteArray end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeCompute");
 #endif
