@@ -11,12 +11,12 @@ public:
 	struct Params {};
 
 	virtual				~FileResource(void) {}
-	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) = 0;
+	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) = 0;
 
-	bool				Load(QString path, QString& err) {
-		QFile file(path);
+	bool				Load(std::string_view path, std::string& err) {
+		QFile file(path.data());
 		if (!file.open(QIODevice::ReadOnly)) {
-			err = file.errorString();
+			err = file.errorString().toStdString();
 			return false;
 		}
 		auto data = file.readAll();
@@ -33,12 +33,12 @@ public:
 	struct Params {};
 
 	virtual				~SoundFile(void) { Mix_FreeChunk(m_Chunk); }
-	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
+	bool				Init(std::string_view path, Params params, std::string& err) { return Load(path, err); }
 
 	virtual uint64_t	GetMemoryEstimate		( void ) const { return m_Chunk->alen; }
 	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return 0; }
 
-	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
+	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) {
 		SDL_RWops* rw = SDL_RWFromMem(data, length);
 		m_Chunk = Mix_LoadWAV_RW(rw, 0);
 		SDL_RWclose(rw);
@@ -67,22 +67,22 @@ public:
 	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
 
 	virtual				~Texture2D(void) {}
-	bool				Init(QString path, Params params, QString& err) { return Load(path, err); }
+	bool				Init(std::string_view path, Params params, std::string& err) { return Load(path, err); }
 
-	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
+	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) {
 		QByteArray arr((const char*)data, length);
 		return m_Texture.Init(arr);
 	};
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
-	bool Save(QString filename) {
+	bool Save(std::string filename) {
 		int size = m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes();
 		unsigned char* data = new unsigned char[size];
 		glGetTextureImage(m_Texture.GetTexture(), 0, GL_RGBA, GL_UNSIGNED_BYTE, size, data);
 		QImage im(data, m_Texture.GetWidth(), m_Texture.GetHeight(), QImage::Format_RGBA8888);
 		im = im.mirrored();
-		bool result = im.save(filename);
+		bool result = im.save(filename.c_str());
 		delete[] data;
 		return result;
 	}
@@ -104,11 +104,11 @@ public:
 	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
 
 	virtual				~Texture2D(void) {}
-	bool				Init(QString path, Params params, QString& err) { 
+	bool				Init(std::string_view path, Params params, std::string& err) {
 
-		QImage im(path);
+		QImage im(path.data());
 		if (im.isNull()) {
-			err = "Could not load image " + path;
+			err = std::format("Could not load image {}", path);
 			return false;
 		}
 		int depth = im.depth() / 8;
@@ -140,14 +140,14 @@ public:
 	struct Params {};
 
 	virtual				~TextureSkybox(void) {}
-	virtual bool		Init(QString path, Params params, QString& err) {
+	virtual bool		Init(std::string_view path, Params params, std::string& err) {
 		std::vector<QString> names = { "right", "left", "top", "bottom", "front", "back" };
 		for (int i = 0; i < 6; i++) {
-			QString fullname = path;
+			QString fullname(path.data());
 			fullname.replace('*', names[i]);
 			QImage im(fullname);
 			if (im.isNull()) {
-				err = "Could not load " + fullname;
+				err = std::format("Could not load {}", fullname.toStdString());
 				return false;
 			}
 			if (i == 0) {
@@ -185,12 +185,12 @@ public:
 	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
 	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
 
-	bool				Init(QString path, Params params, QString& err) {
+	bool				Init(std::string_view path, Params params, std::string& err) {
 		m_Params = params;
 
-		QImage im(path);
+		QImage im(path.data());
 		if (im.isNull()) {
-			err = "Could not load image " + path;
+			err = std::format("Could not load image {}", path);
 			return false;
 		}
 		int depth = im.depth() / 8;
@@ -249,12 +249,12 @@ public:
 	};
 
 	virtual				~TextureTileset(void) {}
-	bool				Init(QString path, Params params, QString& err) { m_Params = params; return Load(path, err); }
+	bool				Init(std::string_view path, Params params, std::string& err) { m_Params = params; return Load(path, err); }
 
 	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
 	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_DepthBytes; }
 
-	virtual bool		FileInit(QString path, unsigned char* data, int length, QString& err) {
+	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) {
 
 		QByteArray bytes((const char*)data, length);
 		QImage im;

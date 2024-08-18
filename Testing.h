@@ -6,17 +6,17 @@
 namespace Test {
 
 	struct InfoException : public std::exception {
-		QByteArray p_Info;
-		InfoException(QString info) : p_Info(info.toLocal8Bit()) {}
+		std::string p_Info;
+		InfoException(std::string info) : p_Info(info) {}
 		~InfoException() throw () {}
-		const char* what() const throw() { return p_Info.data(); }
+		const char* what() const throw() { return p_Info.c_str(); }
 	};
 	inline void Expect(const char* info, bool condition) {
 		if (!condition) {
 			throw info;
 		}
 	}
-	inline void Expect(QString info, bool condition) {
+	inline void Expect(std::string info, bool condition) {
 		if (!condition) {
 			throw InfoException(info);
 		}
@@ -38,9 +38,9 @@ public:
 protected:
 
 	struct TestResult {
-		bool	p_Success;
-		QString p_Label;
-		QString p_Error;
+		bool		p_Success;
+		std::string	p_Label;
+		std::string p_Error;
 	};
 
 								UnitTester	( void ) {}

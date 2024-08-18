@@ -44,11 +44,11 @@ namespace Test {
 
 		TestEngine* engine = new TestEngine;
 		constexpr float minutes_to_ticks = 30 * 60;
-		QString found_err = QString();
+		std::string found_err;
 
 		auto Meg = [](int megabytes) { return (qint64)megabytes * 1024ll * 1024ll; };
 
-		auto test_scenario = [engine, minutes_to_ticks, &found_err](QString scenario, uint64_t max_ram, uint64_t max_gpu_ram, const std::vector<TestResource>& resources) {
+		auto test_scenario = [engine, minutes_to_ticks, &found_err](std::string scenario, uint64_t max_ram, uint64_t max_gpu_ram, const std::vector<TestResource>& resources) {
 			engine->SetMaxMem(max_ram, max_gpu_ram);
 
 			uint64_t curr_ram = 0;
@@ -64,7 +64,7 @@ namespace Test {
 					entries.reserve(resources.size());
 					int ind = 0;
 					for (const auto& resource : resources) {
-						entries.emplace_back(nullptr, QString("%1").arg(ind++), resource.p_Memory, resource.p_GPUMemory, resource.p_MinutesAge * minutes_to_ticks);
+						entries.emplace_back(nullptr, std::format("{}", ind++), resource.p_Memory, resource.p_GPUMemory, resource.p_MinutesAge * minutes_to_ticks);
 					}
 				}
 				,[&resources, scenario, &found_err](const std::vector<Neshny::ResourceManagementToken::ResourceEntry>& entries) {
@@ -72,22 +72,22 @@ namespace Test {
 					if (entries.empty()) {
 						for(int ind = 0; ind < resources.size(); ind++) {
 							if (resources[ind].p_ExpectDelete) {
-								found_err = QString("%1: expected DELETION in resource %2").arg(scenario).arg(ind);
+								found_err = std::format("{}: expected DELETION in resource {}", scenario, ind);
 								return;
 							}
 						}
 					}
 					for (const auto& entry : entries) {
-						int ind = entry.p_Id.toInt();
+						int ind = std::stoi(entry.p_Id);
 						const auto& resource = resources[ind];
 						if (resource.p_ExpectDelete != entry.p_FlagForDeletion) {
-							found_err = QString("%1: expected %2 in resource %3").arg(scenario).arg(resource.p_ExpectDelete ? "DELETION" : "PRESERVATION").arg(ind);
+							found_err = std::format("{}: expected {} in resource {}", scenario, resource.p_ExpectDelete ? "DELETION" : "PRESERVATION", ind);
 						}
 					}
 				}
 			), curr_ram, curr_gpu_ram);
 
-			Expect(found_err, found_err.isNull());
+			Expect(found_err, found_err.empty());
 		};
 
 		test_scenario("Enough memory", Meg(1000), Meg(1000), {

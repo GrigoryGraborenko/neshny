@@ -177,7 +177,7 @@ namespace Test {
             std::string err_msg;
             auto expected = scenarios[i].second.join("\n");
             auto output = Neshny::Preprocess(scenarios[i].first.join("\n"), loader, err_msg);
-            Expect(QString("Scenario %1 did not match expected output").arg(i), expected == output);
+            Expect(std::format("Scenario {} did not match expected output", i), expected == output);
         }
 #endif
     }

@@ -393,10 +393,10 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 struct ResourceManagementToken {
 	struct ResourceEntry {
-		ResourceEntry(Resource const* resource, QString id, uint64_t memory, uint64_t gpu_memory, int ticks_since_access) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_TicksSinceAccess(ticks_since_access), p_FlagForDeletion(false), p_Score(0.0) {}
+		ResourceEntry(Resource const* resource, std::string_view id, uint64_t memory, uint64_t gpu_memory, int ticks_since_access) : p_Resource(resource), p_Id(id), p_Memory(memory), p_GPUMemory(gpu_memory), p_TicksSinceAccess(ticks_since_access), p_FlagForDeletion(false), p_Score(0.0) {}
 		void FlagForDeletion(void) { p_FlagForDeletion = true; }
 		Resource const*		p_Resource;
-		QString				p_Id;
+		std::string			p_Id;
 		uint64_t			p_Memory;
 		uint64_t			p_GPUMemory;
 		int					p_TicksSinceAccess;
@@ -457,7 +457,7 @@ public:
 	struct ResourceContainer {
 		ResourceState	m_State = ResourceState::PENDING;
 		Resource*		m_Resource = nullptr;
-		QString			m_Error;
+		std::string		m_Error;
 		uint64_t		m_Memory = 0;
 		uint64_t		m_GPUMemory = 0;
 		int				m_LastTickAccessed = 0;
@@ -482,7 +482,7 @@ public:
 		bool IsValid(void) const { return m_State == ResourceState::DONE; }
 		ResourceState	m_State = ResourceState::PENDING;
 		T*				m_Resource = nullptr;
-		QString			m_Error;
+		std::string		m_Error;
 	};
 
 	inline static Core&					Singleton					( void ) { static Core core; return core; }
@@ -534,11 +534,11 @@ public:
 #endif
 
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
-	static inline const ResourceResult<T> GetResource(QString path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(path, params); }
+	static inline const ResourceResult<T> GetResource(std::string_view path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(std::string(path), params); }
 
 	static inline bool					IsBufferEnabled				( QString name ) { return Singleton().IIsBufferEnabled(name); }
 	static inline const InterfaceCore&	GetInterfaceData			( void ) { return Singleton().m_Interface; }
-	static inline const std::map<QString, ResourceContainer> GetResources	( void ) { return Singleton().m_Resources; }
+	static inline const std::map<std::string, ResourceContainer> GetResources ( void ) { return Singleton().m_Resources; }
 
 	void								UnloadAllShaders			( void );
 	void								UnloadAllResources			( void );
@@ -656,13 +656,13 @@ private:
 	void								EnsureEmbeddableLoaderInit	( void );
 
 	template<class T, typename P = typename T::Params>
-	inline const ResourceResult<T>		IGetResource				( QString path, const P& params ) {
+	inline const ResourceResult<T>		IGetResource				( std::string path, const P& params ) {
 
-		QString key = path;
+		std::string key = path;
 		int size_params = sizeof(P);
 		if (size_params > 1) {
 			size_t hash = HashMemory((unsigned char*)&params, sizeof(P));
-			key += QString(":%2").arg(hash);
+			key += std::format(":{}", hash);
 		}
 
 		auto found = m_Resources.find(key);
@@ -674,13 +674,13 @@ private:
 
 		m_ResourceThreads.DoTask([path, params, ticks=m_Ticks]() -> void* {
 			T* result = new T();
-			QString err;
+			std::string err;
 			bool valid = result->Init(path, params, err);
 			if (!valid) {
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 			}
-			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, QString(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks };
+			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, std::string(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks };
 		}, [this, &resource](void* ptr) { // uses temporary resource to transfer across thread divide
 			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
 			resource = *tmp_resource;
@@ -702,9 +702,9 @@ private:
 	std::map<QString, WebGPURenderBuffer*>	m_Buffers;
 	std::vector<WebGPUSampler*>				m_Samplers;
 #endif
-	std::map<QString, ResourceContainer>	m_Resources;
-	uint64_t								m_MemoryAllocated = 0;
-	uint64_t								m_GPUMemoryAllocated = 0;
+	std::map<std::string, ResourceContainer>	m_Resources;
+	uint64_t									m_MemoryAllocated = 0;
+	uint64_t									m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
 	TimerPoint							m_FrameTimer;

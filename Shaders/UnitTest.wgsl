@@ -23,7 +23,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3u) {
     }
 
 #ifdef TEST_RANDOM
-    output[comp_index] = GetRandom(0.0, 1.0, comp_index);
+    output[comp_index] = GetRandomFromSeed(0.0, 1.0, comp_index);
 #else
     output[comp_index] += f32(comp_index) + 0.25;
     atomicAdd(&(atomic_output[0]), 1);

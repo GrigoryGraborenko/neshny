@@ -131,7 +131,7 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 
 	// TODO: sort by texture name and render in batches
 	for (const auto& tex : m_Textures) {
-		auto texture = Core::GetResource<Texture2D>(tex.p_Filename);
+		auto texture = Core::GetResource<Texture2D>(tex.p_Filename.toStdString());
 		if (!texture.IsValid()) {
 			return;
 		}
@@ -1050,19 +1050,17 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
-			QByteArray name = resource.first.toLocal8Bit();
-			ImGui::Text(name.data());
+			ImGui::Text("%s", resource.first.c_str());
 
 			ImGui::TableSetColumnIndex(1);
-			QString state = "Pending";
+			std::string state = "Pending";
 			if (resource.second.m_State == Core::ResourceState::DONE) {
 				state = "Done";
 			}
 			else if (resource.second.m_State == Core::ResourceState::IN_ERROR) {
 				state = "Error - " + resource.second.m_Error;
 			}
-			QByteArray status = state.toLocal8Bit();
-			ImGui::Text(status.data());
+			ImGui::Text("%s", state.c_str());
 
 			ImGui::TableSetColumnIndex(2);
 			ImGui::Text("%lli", resource.second.m_Memory);
@@ -1074,8 +1072,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 			ImGui::Text("%i", ticks - resource.second.m_LastTickAccessed);
 
 			ImGui::TableSetColumnIndex(5);
-			QByteArray err_str = resource.second.m_Error.toLocal8Bit();
-			ImGui::Text(err_str.data());
+			ImGui::Text("%s", resource.second.m_Error.c_str());
 		}
 		ImGui::EndTable();
 	}

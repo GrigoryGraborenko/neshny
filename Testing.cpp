@@ -14,17 +14,15 @@ void UnitTester::IRender(void) {
 
     int index = 0;
     for (auto& result : m_Results) {
-        auto bytes = result.p_Label.toLocal8Bit();
-        ImGui::PushID(bytes.data());
-        ImGui::TextColored(result.p_Success ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), bytes.data());
+        ImGui::PushID(result.p_Label.c_str());
+        ImGui::TextColored(result.p_Success ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", result.p_Label.c_str());
         ImGui::SameLine();
         if (ImGui::Button("Rerun")) {
             result = ExecuteTest(g_UnitTests[index]);
         }
         if (!result.p_Success) {
-            auto err_bytes = result.p_Error.toLocal8Bit();
             ImGui::Indent(20);
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), err_bytes.data());
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", result.p_Error.c_str());
             ImGui::Unindent(20);
         }
         ImGui::PopID();
@@ -36,25 +34,24 @@ void UnitTester::IRender(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 UnitTester::TestResult UnitTester::ExecuteTest(const UnitTest& test) {
-    QString label = test.p_Label.c_str();
-    qDebug() << "Starting test" << label;
+    qDebug() << "Starting test" << test.p_Label;
     try {
         test.p_Func();
     } catch(const char* info) {
-        qWarning() << "Failure in " << label << ": " << info;
-        return { false, label, info };
+        qWarning() << "Failure in " << test.p_Label << ": " << info;
+        return { false, test.p_Label, info };
     } catch(Test::InfoException info) {
-        qWarning() << "Failure in " << label << ": " << info.p_Info;
-        return { false, label, info.p_Info };
+        qWarning() << "Failure in " << test.p_Label << ": " << info.p_Info;
+        return { false, test.p_Label, info.p_Info };
     } catch(std::exception excp) {
-        qWarning() << "Failure in " << label << ": " << excp.what();
-        return { false, label, excp.what() };
+        qWarning() << "Failure in " << test.p_Label << ": " << excp.what();
+        return { false, test.p_Label, excp.what() };
     } catch(...) {
-        qWarning() << "Failure in " << label;
-        return { false, label, "Unknown exception" };
+        qWarning() << "Failure in " << test.p_Label;
+        return { false, test.p_Label, "Unknown exception" };
     }
-    qDebug() << label << "passed";
-    return { true, label };
+    qDebug() << test.p_Label << "passed";
+    return { true, test.p_Label };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
