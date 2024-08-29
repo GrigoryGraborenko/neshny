@@ -150,6 +150,7 @@ void WorkerThreadPool::Sync(void) {
 Core::Core(void) {
 
 	m_MainThreadId = std::this_thread::get_id();
+	m_TotalDurationStart = std::chrono::steady_clock::now();
 
 	QFile file(EDITOR_INTERFACE_FILENAME);
 	if (file.open(QIODevice::ReadOnly)) {
@@ -945,7 +946,7 @@ void Core::EnsureEmbeddableLoaderInit(void) {
 		std::string path_str(path);
 		auto found = m_EmbeddedFiles.find(path_str);
 		if (found != m_EmbeddedFiles.end()) {
-			return QByteArray((char*)found->second.data(), found->second.size());
+			return QByteArray((char*)found->second.data(), (int)found->second.size());
 		}
 
 		for (auto prefix : m_ResourceDirs) {
@@ -956,7 +957,7 @@ void Core::EnsureEmbeddableLoaderInit(void) {
 				data_stream << file.rdbuf();
 				std::string data = data_stream.str();
 				file.close();
-				return QByteArray(data.c_str(), data.size());
+				return QByteArray(data.c_str(), (int)data.size());
 			}
 		}
 		err_msg = "Could not open file";

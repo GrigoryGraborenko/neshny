@@ -322,7 +322,7 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 	ImGui::Begin("Info Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
 	//ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 
-	ImGui::Text("Avg %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::Text("Avg %.3f ms/frame (%.1f FPS), Tick %i, Second %.1f", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate, Core::GetTicks(), Core::GetRuntimeSeconds());
 	ImGui::SameLine();
 
 #ifdef NESHNY_TESTING
@@ -815,7 +815,7 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 
 	auto shaders = Core::Singleton().GetShaders();
 	for (const auto& group : shaders) {
-		int num_inst = group.p_Instances.size();
+		int num_inst = (int)group.p_Instances.size();
 		for (int i = 0; i < num_inst; i++) {
 			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
 			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, false, search);
@@ -826,7 +826,7 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	auto compute_shaders = Core::Singleton().GetComputeShaders();
 
 	for (const auto& group : compute_shaders) {
-		int num_inst = group.p_Instances.size();
+		int num_inst = (int)group.p_Instances.size();
 		for (int i = 0; i < num_inst; i++) {
 			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
 			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, true, search);
@@ -1026,6 +1026,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 
 	ImGui::Text("CPU Memory Allocated: %lli", core.GetMemoryAllocated());
 	ImGui::Text("Graphics Memory Allocated: %lli", core.GetGPUMemoryAllocated());
+	ImGui::Text("Tick: %i", core.GetTicks());
 
 	ImVec2 space_available = ImGui::GetWindowContentRegionMax();
 	const int size_banner = 80;
@@ -1035,7 +1036,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 	const auto& resources = Core::GetResources();
 
 	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
-	if (ImGui::BeginTable("##Table", 6, table_flags)) {
+	if (ImGui::BeginTable("##Table", 7, table_flags)) {
 		ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
 
 		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
@@ -1043,6 +1044,7 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 		ImGui::TableSetupColumn("Mem", ImGuiTableColumnFlags_WidthFixed, 80);
 		ImGui::TableSetupColumn("GPU Mem", ImGuiTableColumnFlags_WidthFixed, 80);
 		ImGui::TableSetupColumn("Ticks Since Use", ImGuiTableColumnFlags_WidthFixed, 110);
+		ImGui::TableSetupColumn("Tick Created", ImGuiTableColumnFlags_WidthFixed, 110);
 		ImGui::TableSetupColumn("Error", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
 
@@ -1072,6 +1074,9 @@ void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 			ImGui::Text("%i", ticks - resource.second.m_LastTickAccessed);
 
 			ImGui::TableSetColumnIndex(5);
+			ImGui::Text("%i", resource.second.m_TickCreated);
+
+			ImGui::TableSetColumnIndex(6);
 			ImGui::Text("%s", resource.second.m_Error.c_str());
 		}
 		ImGui::EndTable();

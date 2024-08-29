@@ -8,8 +8,6 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 class FileResource : public Resource {
 public:
-	struct Params {};
-
 	virtual				~FileResource(void) {}
 	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) = 0;
 
@@ -64,7 +62,10 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class Texture2D : public FileResource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
+#pragma pack(pop)
 
 	virtual				~Texture2D(void) {}
 	bool				Init(std::string_view path, Params params, std::string& err) { return Load(path, err); }
@@ -101,7 +102,10 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class Texture2D : public Resource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {}; // todo: add stuff like linear interp, mipmaps, etc
+#pragma pack(pop)
 
 	virtual				~Texture2D(void) {}
 	bool				Init(std::string_view path, Params params, std::string& err) {
@@ -137,7 +141,10 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class TextureSkybox : public Resource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {};
+#pragma pack(pop)
 
 	virtual				~TextureSkybox(void) {}
 	virtual bool		Init(std::string_view path, Params params, std::string& err) {
@@ -174,11 +181,14 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class TextureTileset : public Resource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {
 		int		p_TileHeight;
 		int		p_TileWidth;
 		bool	p_Mipmaps;
 	};
+#pragma pack(pop)
 
 	virtual				~TextureTileset(void) {}
 
@@ -240,6 +250,8 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class TextureTileset : public FileResource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {
 		int		p_TileHeight;
 		int		p_TileWidth;
@@ -247,6 +259,7 @@ public:
 		bool	p_LinearInterp;
 		bool	p_Mipmaps;
 	};
+#pragma pack(pop)
 
 	virtual				~TextureTileset(void) {}
 	bool				Init(std::string_view path, Params params, std::string& err) { m_Params = params; return Load(path, err); }
@@ -326,7 +339,10 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class TextureSkybox : public Resource {
 public:
+#pragma pack(push)
+#pragma pack (1)
 	struct Params {};
+#pragma pack(pop)
 
 	virtual				~TextureSkybox(void) {}
 	virtual bool		Init(QString path, Params params, QString& err) {

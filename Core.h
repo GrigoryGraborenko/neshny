@@ -461,6 +461,7 @@ public:
 		uint64_t		m_Memory = 0;
 		uint64_t		m_GPUMemory = 0;
 		int				m_LastTickAccessed = 0;
+		int				m_TickCreated = 0;
 	};
 
 	struct ShaderInstance {
@@ -617,6 +618,7 @@ public:
 
 	inline static void					RenderEditor				( void ) { Singleton().IRenderEditor(); }
 	inline static int					GetTicks					( void ) { return Singleton().m_Ticks; }
+	inline static double				GetRuntimeSeconds			( void ) { TimerSeconds seconds = std::chrono::steady_clock::now() - Singleton().m_TotalDurationStart; return seconds.count(); }
 
 	inline const std::vector<ShaderGroup>&	GetShaders				( void ) { return m_ShaderGroups; }
 #if defined(NESHNY_GL)
@@ -680,7 +682,7 @@ private:
 				delete result;
 				return new ResourceContainer{ ResourceState::IN_ERROR, nullptr, err };
 			}
-			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, std::string(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks };
+			return new ResourceContainer{ ResourceState::DONE, (Resource*)result, std::string(), result->GetMemoryEstimate(), result->GetGPUMemoryEstimate(), ticks, ticks };
 		}, [this, &resource](void* ptr) { // uses temporary resource to transfer across thread divide
 			ResourceContainer* tmp_resource = (ResourceContainer*)ptr;
 			resource = *tmp_resource;
@@ -707,6 +709,7 @@ private:
 	uint64_t									m_GPUMemoryAllocated = 0;
 
 	int									m_Ticks = 0;
+	TimerPoint							m_TotalDurationStart;
 	TimerPoint							m_FrameTimer;
 	bool								m_FullScreenHover = true;
 	std::thread::id						m_MainThreadId;
