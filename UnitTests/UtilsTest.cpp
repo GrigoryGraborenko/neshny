@@ -353,6 +353,14 @@ namespace Test {
 			return res;
 		});
 #endif
+	}
+
+	void UnitTest_ReplaceAll(void) {
+
+		ExpectEqual<std::string>("String Replacement", Neshny::ReplaceAll("abc abc 123 aabcc", "abc", "xyzw"), "xyzw xyzw 123 axyzwc");
+		ExpectEqual<std::string>("String Replacement", Neshny::ReplaceAll("abc abc 123 aabcc", "abc", "x"), "x x 123 axc");
+		ExpectEqual<std::string>("String Replacement", Neshny::ReplaceAll("hello ** there", "*", "this is a long string"), "hello this is a long stringthis is a long string there");
+		ExpectEqual<std::string>("String Replacement", Neshny::ReplaceAll("123 123 1234", "123", "1234"), "1234 1234 12344");
 
 	}
 

@@ -53,7 +53,8 @@ double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);
 int RoundUpPowerTwo(int value);
 size_t HashMemory(unsigned char* mem, int size);
-bool NearlyEqual(double a, double b);// { return fabs(a - b) < ALMOST_ZERO; }
+bool NearlyEqual(double a, double b);
+std::string ReplaceAll(std::string_view str, std::string_view before, std::string_view after);
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

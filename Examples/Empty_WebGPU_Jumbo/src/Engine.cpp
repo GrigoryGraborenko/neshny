@@ -95,8 +95,8 @@ void Engine::Render(int width, int height) {
 		SimpleRender2D::Triangle(a, b, c, Vec4(1, 0, 0, 1), 0.5);
 		SimpleRender2D::Triangle(a + Vec2(0.2, -0.2), b + Vec2(0.2, -0.2), c + Vec2(0.2, -0.2), Vec4(0, 1, 0, 1), 0.3);
 
-		SimpleRender2D::Texture(Vec2(-2.0, 1.0), Vec2(1.0, -4.0), "../../assets/images/tick.png", 0.5);
-		SimpleRender2D::Texture(Vec2(-1.0, 0.0), Vec2(1.6, -2.5), "../../assets/images/tick.png", 0.4);
+		SimpleRender2D::Texture(Vec2(-2.0, 1.0), Vec2(1.0, -4.0), "../../assets/images/Tick.png", 0.5);
+		SimpleRender2D::Texture(Vec2(-1.0, 0.0), Vec2(1.6, -2.5), "../../assets/images/Tick.png", 0.4);
 	}
 
 	{

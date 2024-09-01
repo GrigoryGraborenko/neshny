@@ -65,4 +65,18 @@ bool NearlyEqual(double a, double b) {
     return fabs(a - b) < ALMOST_ZERO;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+std::string ReplaceAll(std::string_view str, std::string_view before, std::string_view after) {
+    std::string result(str);
+    if (before.empty()) {
+        return result;
+    }
+    size_t start_pos = 0;
+    while ((start_pos = result.find(before, start_pos)) != std::string::npos) {
+        result.replace(start_pos, before.length(), after);
+        start_pos += after.length();
+    }
+    return result;
+}
+
 } // namespace Neshny

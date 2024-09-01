@@ -97,6 +97,9 @@ protected:
 
 #elif defined(NESHNY_WEBGPU)
 
+const auto g_WebGPUFormat = WGPUTextureFormat_BGRA8Unorm;
+const auto g_CorrectSDLFormat = SDL_PIXELFORMAT_ARGB8888; // not sure why this is the correct combo
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,19 +113,23 @@ public:
 	virtual				~Texture2D(void) {}
 	bool				Init(std::string_view path, Params params, std::string& err) {
 
-		QImage im(path.data());
-		if (im.isNull()) {
+		SDL_Surface* surface = IMG_Load(path.data());
+		if (!surface) {
 			err = std::format("Could not load image {}", path);
 			return false;
 		}
-		int depth = im.depth() / 8;
-		if (depth != 4) {
-			err = "Can only load RGBA images";
-			return false;
+
+		if (surface->format->format != g_CorrectSDLFormat) {
+			SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+			SDL_FreeSurface(surface);
+			surface = converted_surface;
 		}
-		m_Texture.Init2D(im.width(), im.height());
+
+		m_Texture.Init2D(surface->w, surface->h, g_WebGPUFormat);
 		auto sync_token = Core::Singleton().SyncWithMainThread();
-		m_Texture.CopyData2D((unsigned char*)im.bits(), depth, im.bytesPerLine());
+		m_Texture.CopyData2D((unsigned char*)surface->pixels, surface->format->BytesPerPixel, surface->pitch);
+
+		SDL_FreeSurface(surface);
 		return true;
 	}
 
@@ -148,20 +155,28 @@ public:
 
 	virtual				~TextureSkybox(void) {}
 	virtual bool		Init(std::string_view path, Params params, std::string& err) {
-		std::vector<QString> names = { "right", "left", "top", "bottom", "front", "back" };
+		std::vector<std::string> names = { "right", "left", "top", "bottom", "front", "back" };
 		for (int i = 0; i < 6; i++) {
-			QString fullname(path.data());
-			fullname.replace('*', names[i]);
-			QImage im(fullname);
-			if (im.isNull()) {
-				err = std::format("Could not load {}", fullname.toStdString());
+
+			std::string fullname = ReplaceAll(path, "*", names[i]);
+
+			SDL_Surface* surface = IMG_Load(fullname.data());
+			if (!surface) {
+				err = std::format("Could not load image {}", path);
 				return false;
 			}
+
+			if (surface->format->format != g_CorrectSDLFormat) {
+				SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+				SDL_FreeSurface(surface);
+				surface = converted_surface;
+			}
+
 			if (i == 0) {
-				m_Texture.InitCubeMap(im.width(), im.height());
+				m_Texture.InitCubeMap(surface->w, surface->h);
 			}
 			auto sync_token = Core::Singleton().SyncWithMainThread();
-			m_Texture.CopyDataLayer(i, (unsigned char*)im.bits(), 4, im.bytesPerLine(), false);
+			m_Texture.CopyDataLayer(i, (unsigned char*)surface->pixels, surface->format->BytesPerPixel, surface->pitch, false);
 		}
 		return true;
 	};
@@ -198,19 +213,21 @@ public:
 	bool				Init(std::string_view path, Params params, std::string& err) {
 		m_Params = params;
 
-		QImage im(path.data());
-		if (im.isNull()) {
+		SDL_Surface* surface = IMG_Load(path.data());
+		if (!surface) {
 			err = std::format("Could not load image {}", path);
 			return false;
 		}
-		int depth = im.depth() / 8;
-		if (depth != 4) {
-			err = "Can only load RGBA images";
-			return false;
+
+		if (surface->format->format != g_CorrectSDLFormat) {
+			SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+			SDL_FreeSurface(surface);
+			surface = converted_surface;
 		}
 
-		m_FullWidth = im.width();
-		m_FullHeight = im.height();
+		m_FullWidth = surface->w;
+		m_FullHeight = surface->h;
+		int depth = surface->format->BytesPerPixel;
 		int num_wid = m_FullWidth / m_Params.p_TileWidth;
 		int num_hei = m_FullHeight / m_Params.p_TileHeight;
 		m_TileCount = num_wid * num_hei;
@@ -221,8 +238,8 @@ public:
 		for (int i = 0; i < m_TileCount; i++) {
 			int x = (i % num_wid) * m_Params.p_TileWidth;
 			int y = (i / num_hei) * m_Params.p_TileHeight;
-			unsigned char* data = (unsigned char*)im.bits();
-			m_Texture.CopyDataLayer(i, data + ((y * m_FullWidth + x) * depth), depth, im.bytesPerLine(), params.p_Mipmaps);
+			unsigned char* data = (unsigned char*)surface->pixels;
+			m_Texture.CopyDataLayer(i, data + ((y * m_FullWidth + x) * depth), depth, surface->pitch, params.p_Mipmaps);
 		}
 		return true;
 	};

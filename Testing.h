@@ -7,7 +7,7 @@ namespace Test {
 
 	struct InfoException : public std::exception {
 		std::string p_Info;
-		InfoException(std::string info) : p_Info(info) {}
+		InfoException(std::string_view info) : p_Info(info) {}
 		~InfoException() throw () {}
 		const char* what() const throw() { return p_Info.c_str(); }
 	};
@@ -16,9 +16,15 @@ namespace Test {
 			throw info;
 		}
 	}
-	inline void Expect(std::string info, bool condition) {
+	inline void Expect(std::string_view info, bool condition) {
 		if (!condition) {
 			throw InfoException(info);
+		}
+	}
+	template <typename T>
+	inline void ExpectEqual(std::string_view info, T actual, T expected) {
+		if (actual != expected) {
+			throw InfoException(std::format("{}: Expected \"{}\", Got \"{}\"", info, expected, actual));
 		}
 	}
 }

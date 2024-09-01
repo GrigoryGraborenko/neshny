@@ -29,7 +29,7 @@ int main(int, char**) {
 #endif
 
 	Engine engine;
-	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 	SDL_Window* sdl_window = SDL_CreateWindow("Test", 100, 100, engine.GetWidth(), engine.GetHeight(), SDL_WINDOW_RESIZABLE);
 
 	void* windowLayer = nullptr;
