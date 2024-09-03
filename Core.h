@@ -569,51 +569,74 @@ public:
 	}
 
 	template <class T>
-	static bool							LoadJSON					( std::vector<T>& items, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::ReadOnly)) {
+	static bool							LoadJSON					( std::vector<T>& items, std::string_view filename ) {
+		std::ifstream file(filename, std::ios::in);
+		if (!file.is_open()) {
 			return false;
 		}
+		std::ostringstream data_stream;
+		data_stream << file.rdbuf();
+		std::string data = data_stream.str();
+
 		Json::ParseError err;
-		Json::FromJson<T>(file.readAll(), items, err);
+		Json::FromJson<T>(data, items, err);
 		return !err;
 	}
 	template <class T>
-	static bool							LoadJSON					( T& item, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::ReadOnly)) {
+	static bool							LoadJSON					( T& item, std::string_view filename ) {
+		std::ifstream file(std::string(filename), std::ios::in);
+		if (!file.is_open()) {
 			return false;
 		}
+		std::ostringstream data_stream;
+		data_stream << file.rdbuf();
+		std::string data = data_stream.str();
+
 		Json::ParseError err;
-		Json::FromJson<T>(file.readAll(), item, err);
+		Json::FromJson<T>(data, item, err);
 		return !err;
 	}
 
 	template <class T>
-	static bool							SaveJSON					( std::vector<T>& items, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::WriteOnly)) {
+	static bool							SaveJSON					( std::vector<T>& items, std::string_view filename ) {
+
+		std::ofstream file;
+		file.open(filename, std::ios::in | std::ios::trunc);
+		if (!file.is_open()) {
 			return false;
 		}
 		Json::ParseError err;
-		auto data = Json::ToJson(items, err);
+		std::string data = Json::ToJson(items, err);
 		if (err) {
 			return false;
 		}
-		return file.write(data) == data.size();
+
+		try {
+			file.write(data.data(), data.size());
+		} catch (const std::exception& e) {
+			return false;
+		}
+		return true;
 	}
 	template <class T>
-	static bool							SaveJSON					( T& item, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::WriteOnly)) {
+	static bool							SaveJSON					( T& item, std::string_view filename ) {
+		std::ofstream file;
+		file.open(filename, std::ios::in | std::ios::trunc);
+		if (!file.is_open()) {
 			return false;
 		}
 		Json::ParseError err;
-		auto data = Json::ToJson(item, err);
+		std::string data = Json::ToJson(item, err);
 		if (err) {
 			return false;
 		}
-		return file.write(data) == data.size();
+
+		try {
+			file.write(data.data(), data.size());
+		} catch (const std::exception& e) {
+			return false;
+		}
+		return true;
 	}
 
 	inline static void					RenderEditor				( void ) { Singleton().IRenderEditor(); }

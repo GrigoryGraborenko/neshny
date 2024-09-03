@@ -23,7 +23,7 @@ namespace Test {
 	}
 	template <typename T>
 	inline void ExpectEqual(std::string_view info, T actual, T expected) {
-		if (actual != expected) {
+		if (!(actual == expected)) {
 			throw InfoException(std::format("{}: Expected \"{}\", Got \"{}\"", info, expected, actual));
 		}
 	}

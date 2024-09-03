@@ -152,18 +152,11 @@ Core::Core(void) {
 	m_MainThreadId = std::this_thread::get_id();
 	m_TotalDurationStart = std::chrono::steady_clock::now();
 
-	QFile file(EDITOR_INTERFACE_FILENAME);
-	if (file.open(QIODevice::ReadOnly)) {
-
-		//QDataStream in(&file);
-		//in >> m_Interface;
-
-		Json::ParseError err;
-		Json::FromJson<InterfaceCore>(file.readAll(), m_Interface, err);
-		if (m_Interface.p_Version != INTERFACE_SAVE_VERSION) {
-			m_Interface = InterfaceCore{};
-		}
+	bool loaded = Core::LoadJSON(m_Interface, EDITOR_INTERFACE_FILENAME);
+	if ((m_Interface.p_Version != INTERFACE_SAVE_VERSION) || (!loaded)) {
+		m_Interface = InterfaceCore{};
 	}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,18 +170,7 @@ Core::~Core(void) {
 	m_Resources.clear();
 	m_SyncLock.unlock();
 
-	QFile file(EDITOR_INTERFACE_FILENAME);
-	if (file.open(QIODevice::WriteOnly)) {
-		
-		Json::ParseError err;
-		QByteArray data = Json::ToJson<InterfaceCore>(m_Interface, err);
-		if (!err) {
-			file.write(data);
-		}
-
-		//QDataStream out(&file);
-		//out << m_Interface;
-	}
+	Core::SaveJSON(m_Interface, EDITOR_INTERFACE_FILENAME);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

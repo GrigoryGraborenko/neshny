@@ -3,7 +3,7 @@
 # cmake . -B build -G "Visual Studio 17 2022" -A x64
 # 
 # MACOS: (different dirs for Debug/Release)
-# cmake . -B build -G "Unix Makefiles"-DCMAKE_BUILD_TYPE=Debug
+# cmake . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug
 # cmake --build build
 # 
 # BROWSER:
