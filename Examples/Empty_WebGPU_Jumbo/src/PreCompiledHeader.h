@@ -11,15 +11,8 @@
 
 #include <QString>
 #include <QFile>
-#ifdef QT_GUI_LIB
-    #include <QImage>
-#endif
-#include <QCryptographicHash>
 
 #include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QJsonValue>
 
 #ifdef __EMSCRIPTEN__
     #include <emscripten.h>

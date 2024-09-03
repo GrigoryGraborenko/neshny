@@ -435,7 +435,7 @@ inline void DeserialiseByType(std::list<T>& result, const nlohmann::json& json, 
         T elem;
         Json::Deserialise(elem, item, err);
         if (err) {
-            return err.AddMessage(std::format("Deserialising array element %1 to std::list", result.size()));
+            return err.AddMessage(std::format("Deserialising array element {} to std::list", result.size()));
         }
         result.push_back(elem);
     }

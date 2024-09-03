@@ -55,7 +55,7 @@ protected:
 	};
 
 	struct SimpleText {
-		QByteArray p_Text;
+		std::string p_Text;
 		Vec2 p_Pos;
 		Vec4 p_Col;
 	};
@@ -297,7 +297,7 @@ public:
 	static inline void			Triangle				( Vec2 a, Vec2 b, Vec2 c, Vec4 color, double z_order = 0.0 ) { Singleton().AddTriangle(a.ToVec3(z_order), b.ToVec3(z_order), c.ToVec3(z_order), color); }
 	static inline void          Circle					( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
 	static inline void          Square					( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
-	static inline void          Text					( QByteArray text, Vec2 pos, Vec4 color ) { Singleton().AddText(text, pos, color); }
+	static inline void          Text					( std::string_view text, Vec2 pos, Vec4 color ) { Singleton().AddText(text, pos, color); }
 	static inline void			Controls				( std::function<void(int width, int height)> controls ) { Singleton().m_Controls.push_back(controls); }
 
 	static inline std::optional<Vec2>	MouseWorldPos	( void ) { return Singleton().m_LastMousePos; }
@@ -312,7 +312,7 @@ public:
 
 private:
 
-	void						AddText					( QByteArray text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ text, pos, color }); }
+	void						AddText					( std::string_view text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ std::string(text), pos, color }); }
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
 	RTT							m_RTT;

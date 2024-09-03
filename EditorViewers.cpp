@@ -342,7 +342,7 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 		ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
 
 		for (const auto& segment : m_LoopHistogram) {
-			QByteArray label = QString("<%1s").arg(segment.first, 0, 'f', 2).toLocal8Bit();
+			std::string label = std::format("<{:.2f}s", segment.first);
 			ImGui::TableSetupColumn(label.data(), ImGuiTableColumnFlags_WidthFixed, 50);
 		}
 		ImGui::TableSetupColumn("Overflow", ImGuiTableColumnFlags_WidthFixed, 60);
@@ -946,7 +946,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 					for (const auto& err : errors) {
 						if (err.m_LineNum == line) {
 							err_found = true;
-							ImGui::TextColored(error_col, QString("%1").arg(line).toLocal8Bit().data());
+							std::string line_str = std::format("{}", line);
+							ImGui::TextColored(error_col, line_str.data());
 							ImGui::SameLine();
 							ImGui::SetCursorPosX(number_width);
 
@@ -963,7 +964,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 					}
 				}
 				if (!err_found) {
-					ImGui::TextColored(line_num_col, QString("%1").arg(line).toLocal8Bit().data());
+					std::string line_str = std::format("{}", line);
+					ImGui::TextColored(line_num_col, line_str.data());
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
 					ImGui::TextUnformatted(lines[line].data());
@@ -997,7 +999,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 				if (last_line != (line - 1)) {
 					ImGui::Separator();
 				}
-				auto line_num_str = QString("%1").arg(line).toLocal8Bit();
+				std::string line_num_str = std::format("{}", line);
 				ImGui::TextColored(line_num_col, line_num_str.data());
 				ImGui::SameLine();
 				ImGui::SetCursorPosX(number_width);
