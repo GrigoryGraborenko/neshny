@@ -79,4 +79,18 @@ std::string ReplaceAll(std::string_view str, std::string_view before, std::strin
     return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+std::string JoinStrings(const std::vector<std::string>& list, std::string_view insert_between) {
+    std::string result;
+    int last_index = (int)list.size() - 1;
+    for (int i = 0; i <= last_index; i++) {
+        if (i == last_index) {
+            result += list[i];
+        } else {
+            result += std::format("{}{}", list[i], insert_between);
+        }
+    }
+    return result;
+}
+
 } // namespace Neshny

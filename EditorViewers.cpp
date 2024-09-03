@@ -597,13 +597,13 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 
 		InterfaceCollapsible* found = nullptr;
 		for (auto& item: data.p_Items) {
-			if (item.p_Name == buffer.first) {
+			if (item.p_Name == buffer.first.toStdString()) {
 				found = &item;
 				break;
 			}
 		}
 		if (!found) {
-			data.p_Items.push_back({ buffer.first, false, false });
+			data.p_Items.push_back({ buffer.first.toStdString(), false, false });
 			found = &(data.p_Items.back());
 		}
 
@@ -860,13 +860,13 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 
 	InterfaceCollapsible* found = nullptr;
 	for (auto& item : data.p_Items) {
-		if (item.p_Name == name) {
+		if (item.p_Name == name.toStdString()) {
 			found = &item;
 			break;
 		}
 	}
 	if (!found) {
-		data.p_Items.push_back({ name, false, false });
+		data.p_Items.push_back({ name.toStdString(), false, false });
 		found = &(data.p_Items.back());
 	}
 

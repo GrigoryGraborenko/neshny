@@ -21,11 +21,11 @@ namespace Json {
 class ParseError {
 public:
     explicit ParseError() = default;
-    inline void AddMessage(QString errStr) { m_ErrorList.prepend(errStr); }
-    inline QString Error() const { return m_ErrorList.join(", "); }
+    inline void AddMessage(std::string_view errStr) { m_ErrorList.push_back(std::string(errStr)); }
+    inline std::string Error() const { return JoinStrings(m_ErrorList, ", "); }
     inline operator bool() const { return !m_ErrorList.empty(); }
 private:
-    QStringList m_ErrorList = QStringList();
+    std::vector<std::string> m_ErrorList;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,8 +53,6 @@ inline void SerialiseByType(const Class& obj, nlohmann::json &json, [[maybe_unus
         json = static_cast<qint64>(obj);
     } else if constexpr (std::is_enum<Class>::value) {
         json = static_cast<int>(obj);
-    } else if constexpr (std::is_same<Class, QString>::value) {
-        json = obj.toStdString();
     } else {
         json = obj;
     }
@@ -108,7 +106,7 @@ public:
                     nlohmann::json serialisedValue;
                     Json::Serialise(*member.get(m_ClassObj), serialisedValue, m_Error);
                     if (m_Error) {
-                        return m_Error.AddMessage(QString("parsing member %1 failed").arg(member.getName()));
+                        return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                     }
                     m_JsonObject[member.getName()] = serialisedValue;
                 }
@@ -118,15 +116,15 @@ public:
             if (member.canGetConstRef()) {
                 Json::Serialise(member.get(m_ClassObj), serialisedValue, m_Error);
                 if (m_Error) {
-                    return m_Error.AddMessage(QString("parsing member %1 failed").arg(member.getName()));
+                    return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                 }
             } else if (member.hasGetter()) {
                 Json::Serialise(member.getCopy(m_ClassObj), serialisedValue, m_Error); // passing copy as const ref
                 if (m_Error) {
-                    return m_Error.AddMessage(QString("parsing member %1 failed").arg(member.getName()));
+                    return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                 }
             } else {
-                return m_Error.AddMessage(QString("member `%1` does not have getter or member-accessor").arg(member.getName()));
+                return m_Error.AddMessage(std::format("member `{}` does not have getter or member-accessor", member.getName()));
             }
             m_JsonObject[member.getName()] = serialisedValue;
         }
@@ -159,7 +157,7 @@ inline void SerialiseByType(const std::vector<T>& obj, nlohmann::json& json, Par
         nlohmann::json val;
         Json::Serialise(elem, val, err);
         if (err) {
-            return err.AddMessage(QString("Parsing element at index %1 in array").arg(i));
+            return err.AddMessage(std::format("Parsing element at index {} in array", i));
         }
         arr.push_back(val);
         ++i;
@@ -176,7 +174,7 @@ inline void SerialiseByType(const std::list<T>& obj, nlohmann::json& json, Parse
         nlohmann::json val;
         Json::Serialise(elem, val, err);
         if (err) {
-            return err.AddMessage(QString("Parsing element at index %1 in array").arg(i));
+            return err.AddMessage(std::format("Parsing element at index {} in array", i));
         }
         arr.push_back(val);
         ++i;
@@ -227,7 +225,7 @@ inline void DeserialiseByType(double& doubleVal, const nlohmann::json& json, Par
     if (json.is_number()) {
         doubleVal = json.template get<double>();
     } else {
-        err.AddMessage(QString("Expected number, got %1").arg(json.type_name()));
+        err.AddMessage(std::format("Expected number, got {}", json.type_name()));
     }
 }
 
@@ -237,7 +235,7 @@ inline void DeserialiseByType(bool& val, const nlohmann::json& json, ParseError 
     if (json.is_boolean()) {
         val = json.template get<bool>();
     } else {
-        err.AddMessage(QString("Expected bool, got %1").arg(json.type_name()));
+        err.AddMessage(std::format("Expected bool, got {}", json.type_name()));
     }
 }
 
@@ -247,18 +245,7 @@ inline void DeserialiseByType(std::string& val, const nlohmann::json& json, Pars
     if (json.is_string()) {
         val = json.template get<std::string>();
     } else {
-        err.AddMessage(QString("expected string, got %1").arg(json.type_name()));
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-template <>
-inline void DeserialiseByType(QString& val, const nlohmann::json& json, ParseError &err) {
-    if (json.is_string()) {
-        std::string str = json.template get<std::string>();
-        val = QString::fromStdString(str);
-    } else {
-        err.AddMessage(QString("Expected string, got %1").arg(json.type_name()));
+        err.AddMessage(std::format("expected string, got {}", json.type_name()));
     }
 }
 
@@ -266,16 +253,16 @@ inline void DeserialiseByType(QString& val, const nlohmann::json& json, ParseErr
 template <typename T>
 inline void DeserialiseByType(BaseVec2<T>& val, const nlohmann::json& json, ParseError &err) {
     if (!json.is_object()) {
-        return err.AddMessage(QString("Expected object, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected object, got {}", json.type_name()));
     }
     if (!json.contains("x") || !json.contains("y")) {
-        return err.AddMessage(QString("Expected object to have fields x and y: %1").arg(QString::fromStdString(json.dump())));
+        return err.AddMessage(std::format("Expected object to have fields x and y: {}", json.dump()));
     }
     T x, y;
     Json::Deserialise(x, json["x"], err);
     Json::Deserialise(y, json["y"], err);
     if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of BaseVec2"));
+        return err.AddMessage("Deserialising the elements of BaseVec2");
     }
     val = BaseVec2<T>(x, y);
 }
@@ -284,17 +271,17 @@ inline void DeserialiseByType(BaseVec2<T>& val, const nlohmann::json& json, Pars
 template <typename T>
 inline void DeserialiseByType(BaseVec3<T>& val, const nlohmann::json& json, ParseError &err) {
     if (!json.is_object()) {
-        return err.AddMessage(QString("Expected object, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected object, got {}", json.type_name()));
     }
     if (!json.contains("x") || !json.contains("y") || !json.contains("z")) {
-        return err.AddMessage(QString("Expected object to have fields x, y and z: %1").arg(QString::fromStdString(json.dump())));
+        return err.AddMessage(std::format("Expected object to have fields x, y and z: {}", json.dump()));
     }
     T x, y, z;
     Json::Deserialise(x, json["x"], err);
     Json::Deserialise(y, json["y"], err);
     Json::Deserialise(z, json["z"], err);
     if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of BaseVec3"));
+        return err.AddMessage("Deserialising the elements of BaseVec3");
     }
     val = BaseVec3<T>(x, y, z);
 }
@@ -303,10 +290,10 @@ inline void DeserialiseByType(BaseVec3<T>& val, const nlohmann::json& json, Pars
 template <typename T>
 inline void DeserialiseByType(BaseVec4<T>& val, const nlohmann::json& json, ParseError &err) {
     if (!json.is_object()) {
-        return err.AddMessage(QString("Expected object, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected object, got {}", json.type_name()));
     }
     if (!json.contains("x") || !json.contains("y") || !json.contains("z") || !json.contains("w")) {
-        return err.AddMessage(QString("Expected object to have fields x, y, z and w: %1").arg(QString::fromStdString(json.dump())));
+        return err.AddMessage(std::format("Expected object to have fields x, y, z and w: {}", json.dump()));
     }
     T x, y, z, w;
     Json::Deserialise(x, json["x"], err);
@@ -314,7 +301,7 @@ inline void DeserialiseByType(BaseVec4<T>& val, const nlohmann::json& json, Pars
     Json::Deserialise(z, json["z"], err);
     Json::Deserialise(w, json["w"], err);
     if (err) {
-        return err.AddMessage(QStringLiteral("Deserialising the elements of BaseVec4"));
+        return err.AddMessage("Deserialising the elements of BaseVec4");
     }
     val = BaseVec4<T>(x, y, z, w);
 }
@@ -339,23 +326,23 @@ public:
                         MemberT membType;
                         Json::Deserialise(membType, member_val, m_Error);
                         if (m_Error) {
-                            return m_Error.AddMessage(QString("Parsing member %1").arg(member.getName()));
+                            return m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
                         }
                         member.set(m_ClassObj, std::move(membType));
                     } else if (member.canGetRef()) {
                         MemberT membType;
                         Json::Deserialise(membType, member_val, m_Error);
                         if (m_Error) {
-                            return m_Error.AddMessage(QString("Parsing member %1").arg(member.getName()));
+                            return m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
                         }
                         member.getRef(m_ClassObj) = std::move(membType);
                     } else {
-                        m_Error.AddMessage(QString("Cannot deserialize member %1, read only").arg(member.getName()));
+                        m_Error.AddMessage(std::format("Cannot deserialize member {}, read only", member.getName()));
                     }
                     return;
                 }
             }
-            m_Error.AddMessage(QString("Required key %1 not found or null").arg(member.getName()));
+            m_Error.AddMessage(std::format("Required key {} not found or null", member.getName()));
         } else {
             if (m_JsonObject.contains(member.getName())) {
                 if (member.canGetRef()) {
@@ -365,13 +352,13 @@ public:
                         MemberT memb_type;
                         Json::Deserialise(memb_type, member_val, m_Error);
                         if (m_Error) {
-                            m_Error.AddMessage(QString("Parsing member %1").arg(member.getName()));
+                            m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
                             return;
                         }
                         member.getRef(m_ClassObj).emplace(std::move(memb_type));
                     }
                 } else {
-                    m_Error.AddMessage(QString("cannot get reference to std::optional member %1").arg(member.getName()));
+                    m_Error.AddMessage(std::format("cannot get reference to std::optional member {}", member.getName()));
                 }
             }
         }
@@ -409,16 +396,16 @@ inline void DeserialiseByType(T& obj, const nlohmann::json& json, ParseError &er
         if (json.is_number()) {
             obj = static_cast<T>((UnderlyingType)json.template get<double>());
         } else {
-            err.AddMessage(QString("Expected number, got %1").arg(json.type_name()));
+            err.AddMessage(std::format("Expected number, got {}", json.type_name()));
         }
     } else if constexpr ((std::is_arithmetic<T>::value || std::is_unsigned<T>::value) && !std::is_same<T, bool>::value) {
         if (json.is_number()) {
             obj = static_cast<T>(json.template get<double>());
         } else {
-            err.AddMessage(QString("Expected number, got %1").arg(json.type_name()));
+            err.AddMessage(std::format("Expected number, got {}", json.type_name()));
         }
     } else {
-        err.AddMessage(QString("Unimplemented deserialization. Input JSON value type is %1").arg(json.type_name()));
+        err.AddMessage(std::format("Unimplemented deserialization. Input JSON value type is {}", json.type_name()));
     }
 }
 
@@ -426,13 +413,13 @@ inline void DeserialiseByType(T& obj, const nlohmann::json& json, ParseError &er
 template <typename T>
 inline void DeserialiseByType(std::vector<T>& result, const nlohmann::json& json, ParseError &err) {
     if (!json.is_array()) {
-        return err.AddMessage(QString("Expected array, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected array, got {}", json.type_name()));
     }
     for (const auto& item: json) {
         T elem;
         Json::Deserialise(elem, item, err);
         if (err) {
-            return err.AddMessage(QString("Deserialising array element %1 to std::vector").arg(result.size()));
+            return err.AddMessage(std::format("Deserialising array element {} to std::vector", result.size()));
         }
         result.push_back(elem);
     }
@@ -442,13 +429,13 @@ inline void DeserialiseByType(std::vector<T>& result, const nlohmann::json& json
 template <typename T>
 inline void DeserialiseByType(std::list<T>& result, const nlohmann::json& json, ParseError &err) {
     if (!json.is_array()) {
-        return err.AddMessage(QString("Expected array, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected array, got {}", json.type_name()));
     }
     for (const auto& item : json) {
         T elem;
         Json::Deserialise(elem, item, err);
         if (err) {
-            return err.AddMessage(QString("Deserialising array element %1 to std::list").arg(result.size()));
+            return err.AddMessage(std::format("Deserialising array element %1 to std::list", result.size()));
         }
         result.push_back(elem);
     }
@@ -458,7 +445,7 @@ inline void DeserialiseByType(std::list<T>& result, const nlohmann::json& json, 
 template <typename K, typename T>
 inline void DeserialiseByType(std::unordered_map<K, T>& result, const nlohmann::json& json, ParseError& err) {
     if (!json.is_object()) {
-        return err.AddMessage(QString("Expected object, got %1").arg(json.type_name()));
+        return err.AddMessage(std::format("Expected object, got {}", json.type_name()));
     }
     for (auto iter = json.begin(); iter != json.end(); iter++) {
         T elem;

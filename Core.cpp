@@ -912,7 +912,7 @@ bool Core::IIsBufferEnabled(QString name) {
 		return true;
 	}
 	for (auto& buff : m_Interface.p_BufferView.p_Items) {
-		if (buff.p_Name == name) {
+		if (buff.p_Name == name.toStdString()) {
 			return buff.p_Enabled;
 		}
 	}
@@ -1212,7 +1212,7 @@ WebGPUShader* Core::IGetShader(std::string_view name, QByteArray start_insert, Q
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPURenderBuffer* Core::IGetBuffer(QString name) {
+WebGPURenderBuffer* Core::IGetBuffer(std::string name) {
 
 	auto found = m_Buffers.find(name);
 	if (found != m_Buffers.end()) {
