@@ -25,9 +25,11 @@ if (NOT APPLE)
     if (${CMAKE_SIZEOF_VOID_P} MATCHES 8)
         set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x64")
         set(SDL2_IMAGE_LIB_DIR "${SDL2_IMAGE_DIR}/lib/x64")
+        set(SDL2_MIXER_LIB_DIR "${SDL2_MIXER_DIR}/lib/x64")
     else()
         set(SDL2_LIB_DIR "${SDL2_DIR}/lib/x86")
         set(SDL2_IMAGE_LIB_DIR "${SDL2_IMAGE_DIR}/lib/x86")
+        set(SDL2_MIXER_LIB_DIR "${SDL2_MIXER_DIR}/lib/x86")
     endif()
 endif()
 
@@ -53,7 +55,7 @@ else()
     )
 
     if (NOT APPLE)
-        set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;${SDL2_IMAGE_LIB_DIR}/SDL2_image.lib;")
+        set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;${SDL2_IMAGE_LIB_DIR}/SDL2_image.lib;${SDL2_MIXER_LIB_DIR}/SDL2_mixer.lib;")
     endif()
 
 endif()
@@ -218,6 +220,7 @@ file(WRITE "server.js" "const execute = require('${NESHNY_DIR}/Scripts/server');
 if (WIN32)
     configure_file(${SDL2_LIB_DIR}/SDL2.dll ${CMAKE_BINARY_DIR}/release/SDL2.dll COPYONLY)
     configure_file(${SDL2_IMAGE_LIB_DIR}/SDL2_image.dll ${CMAKE_BINARY_DIR}/release/SDL2_image.dll COPYONLY)
+    configure_file(${SDL2_MIXER_LIB_DIR}/SDL2_mixer.dll ${CMAKE_BINARY_DIR}/release/SDL2_mixer.dll COPYONLY)
     
     configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
     configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)

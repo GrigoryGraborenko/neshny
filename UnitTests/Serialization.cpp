@@ -24,6 +24,8 @@ namespace Test {
 		}
 	};
 
+#pragma msg("test optional and vector of bools!")
+
 	struct Composite {
 		int				p_Int;
 		float			p_Float;
@@ -37,6 +39,8 @@ namespace Test {
 		Neshny::Vec2	p_DTwoDim;
 		Neshny::Vec3	p_DThreeDim;
 		Neshny::Vec4	p_DFourDim;
+		std::string		p_StrOne;
+		std::string		p_StrTwo;
 		std::vector<Small>						p_SmallItems;
 		std::list<Neshny::fVec2>				p_Vectors;
 		std::unordered_map<std::string, Small>	p_Map;
@@ -52,6 +56,8 @@ namespace Test {
 				(p_DTwoDim == other.p_DTwoDim) &&
 				(p_DThreeDim == other.p_DThreeDim) &&
 				(p_DFourDim == other.p_DFourDim) &&
+				(p_StrOne == other.p_StrOne) &&
+				(p_StrTwo == other.p_StrTwo) &&
 				(p_SmallItems == other.p_SmallItems) &&
 				(p_Vectors == other.p_Vectors) &&
 				(p_Map == other.p_Map);
@@ -84,6 +90,8 @@ namespace meta {
 			,member("DTwoDim", &Test::Composite::p_DTwoDim)
 			,member("DThreeDim", &Test::Composite::p_DThreeDim)
 			,member("DFourDim", &Test::Composite::p_DFourDim)
+			,member("StrOne", &Test::Composite::p_StrOne)
+			,member("StrTwo", &Test::Composite::p_StrTwo)
 			,member("SmallItems", &Test::Composite::p_SmallItems)
 			,member("Vectors", &Test::Composite::p_Vectors)
 			,member("Map", &Test::Composite::p_Map)
@@ -93,46 +101,71 @@ namespace meta {
 
 namespace Test {
 
+	const Small g_TestItemSmall{ 123, 0.123, 123000.00123, Option::GREAT };
+
+	const Composite g_TestItemComposite{
+		456, 0.456, 456000.00456,
+		Neshny::fVec2(1.1, 2.2), Neshny::fVec3(3.3, 4.4, 5.5), Neshny::fVec4(6.6, 7.7, 8.8, 9.9),
+		Neshny::iVec2(1, 2), Neshny::iVec3(3, 4, 5), Neshny::iVec4(6, 7, 8, 9),
+		Neshny::Vec2(1.0000001, 2.0000002), Neshny::Vec3(3.0000003, 4.0000004, 5.0000005), Neshny::Vec4(6.0000006, 7.0000007, 8.0000008, 9.0000009),
+		"hello there", "this is a second, longer string",
+		{
+			{ 123, 0.123, 123000.00123, Option::GREAT },
+			{ 1, -10.01, -100.0, Option::OK },
+			{ -10000, 10.01, -0.0099, Option::DECENT },
+		},
+		{}, // empty array
+		{
+			{ "hello", { 13, 0.13, 13000.0013, Option::TERRIBLE }},
+			{ "there", { -666, -0.666, -666000.00666, Option::GOAT }}
+		}
+	};
+
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_JSONSimple(void) {
 
-		Small item{ 123, 0.123, 123000.00123, Option::GREAT };
-
 		Neshny::Json::ParseError err;
-		std::string data = Neshny::Json::ToJson<Small>(item, err);
+		std::string data = Neshny::Json::ToJson<Small>(g_TestItemSmall, err);
 		Expect("JSON serialization for simple struct", std::string(R"({"Double":123000.00123,"Float":0.12300000339746475,"Int":123,"Quality":3})") == data);
 		
 		Small output;
 		Neshny::Json::FromJson(data, output, err);
-		Expect("JSON deserialization for simple struct", output == item);
+		Expect("JSON deserialization for simple struct", output == g_TestItemSmall);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_JSONComposite(void) {
 
-		Composite item{
-			456, 0.456, 456000.00456,
-			Neshny::fVec2(1.1, 2.2), Neshny::fVec3(3.3, 4.4, 5.5), Neshny::fVec4(6.6, 7.7, 8.8, 9.9),
-			Neshny::iVec2(1, 2), Neshny::iVec3(3, 4, 5), Neshny::iVec4(6, 7, 8, 9),
-			Neshny::Vec2(1.0000001, 2.0000002), Neshny::Vec3(3.0000003, 4.0000004, 5.0000005), Neshny::Vec4(6.0000006, 7.0000007, 8.0000008, 9.0000009),
-			{
-				{ 123, 0.123, 123000.00123, Option::GREAT },
-				{ 1, -10.01, -100.0, Option::OK },
-				{ -10000, 10.01, -0.0099, Option::DECENT },
-			},
-			{}, // empty array
-			{
-				{ "hello", { 13, 0.13, 13000.0013, Option::TERRIBLE }},
-				{ "there", { -666, -0.666, -666000.00666, Option::GOAT }}
-			}
-		};
-
 		Neshny::Json::ParseError err;
-		std::string data = Neshny::Json::ToJson<Composite>(item, err);
-		Expect("JSON serialization for composite struct", std::string(R"({"DFourDim":{"w":9.0000009,"x":6.0000006,"y":7.0000007,"z":8.0000008},"DThreeDim":{"x":3.0000003,"y":4.0000004,"z":5.0000005},"DTwoDim":{"x":1.0000001,"y":2.0000002},"Double":456000.00456,"Float":0.4560000002384186,"FourDim":{"w":9.899999618530273,"x":6.599999904632568,"y":7.699999809265137,"z":8.800000190734863},"Int":456,"IntFourDim":{"w":9,"x":6,"y":7,"z":8},"IntThreeDim":{"x":3,"y":4,"z":5},"IntTwoDim":{"x":1,"y":2},"Map":{"hello":{"Double":13000.0013,"Float":0.12999999523162842,"Int":13,"Quality":0},"there":{"Double":-666000.00666,"Float":-0.6660000085830688,"Int":-666,"Quality":4}},"SmallItems":[{"Double":123000.00123,"Float":0.12300000339746475,"Int":123,"Quality":3},{"Double":-100.0,"Float":-10.010000228881836,"Int":1,"Quality":1},{"Double":-0.0099,"Float":10.010000228881836,"Int":-10000,"Quality":2}],"ThreeDim":{"x":3.299999952316284,"y":4.400000095367432,"z":5.5},"TwoDim":{"x":1.100000023841858,"y":2.200000047683716},"Vectors":[]})") == data);
+		std::string data = Neshny::Json::ToJson<Composite>(g_TestItemComposite, err);
+		Expect("JSON serialization for composite struct", std::string(R"({"DFourDim":{"w":9.0000009,"x":6.0000006,"y":7.0000007,"z":8.0000008},"DThreeDim":{"x":3.0000003,"y":4.0000004,"z":5.0000005},"DTwoDim":{"x":1.0000001,"y":2.0000002},"Double":456000.00456,"Float":0.4560000002384186,"FourDim":{"w":9.899999618530273,"x":6.599999904632568,"y":7.699999809265137,"z":8.800000190734863},"Int":456,"IntFourDim":{"w":9,"x":6,"y":7,"z":8},"IntThreeDim":{"x":3,"y":4,"z":5},"IntTwoDim":{"x":1,"y":2},"Map":{"hello":{"Double":13000.0013,"Float":0.12999999523162842,"Int":13,"Quality":0},"there":{"Double":-666000.00666,"Float":-0.6660000085830688,"Int":-666,"Quality":4}},"SmallItems":[{"Double":123000.00123,"Float":0.12300000339746475,"Int":123,"Quality":3},{"Double":-100.0,"Float":-10.010000228881836,"Int":1,"Quality":1},{"Double":-0.0099,"Float":10.010000228881836,"Int":-10000,"Quality":2}],"StrOne":"hello there","StrTwo":"this is a second, longer string","ThreeDim":{"x":3.299999952316284,"y":4.400000095367432,"z":5.5},"TwoDim":{"x":1.100000023841858,"y":2.200000047683716},"Vectors":[]})") == data);
 		
 		Composite output;
 		Neshny::Json::FromJson(data, output, err);
-		Expect("JSON deserialization for composite struct", output == item);
+		Expect("JSON deserialization for composite struct", output == g_TestItemComposite);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_BinarySimple(void) {
+
+		Neshny::Binary::ParseError err;
+		auto binary = Neshny::Binary::ToBinary(g_TestItemSmall, err);
+
+		Small output;
+		Neshny::Binary::FromBinary(binary, output, err);
+
+		Expect("Binary serialization and deserialization for simple struct", output == g_TestItemSmall);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_BinaryComposite(void) {
+
+		Neshny::Binary::ParseError err;
+		auto binary = Neshny::Binary::ToBinary(g_TestItemComposite, err);
+
+		Composite output;
+		Neshny::Binary::FromBinary(binary, output, err);
+
+		Expect("Binary serialization and deserialization for composite struct", output == g_TestItemComposite);
 	}
 }

@@ -153,6 +153,7 @@ Core::Core(void) {
 	m_TotalDurationStart = std::chrono::steady_clock::now();
 
 	bool loaded = Core::LoadJSON(m_Interface, EDITOR_INTERFACE_FILENAME);
+	//bool loaded = Core::LoadBinary(m_Interface, EDITOR_INTERFACE_FILENAME);
 	if ((m_Interface.p_Version != INTERFACE_SAVE_VERSION) || (!loaded)) {
 		m_Interface = InterfaceCore{};
 	}
@@ -171,6 +172,7 @@ Core::~Core(void) {
 	m_SyncLock.unlock();
 
 	Core::SaveJSON(m_Interface, EDITOR_INTERFACE_FILENAME);
+	//Core::SaveBinary(m_Interface, EDITOR_INTERFACE_FILENAME);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -548,24 +548,40 @@ public:
 	static void							DispatchMultiple			( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
 #endif
 	template <class T>
-	static bool							SaveBinary					( const T& item, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::WriteOnly)) {
+	static bool							SaveBinary					( const T& item, std::string_view filename ) {
+
+		std::ofstream file;
+		file.open(filename, std::ios::in | std::ios::binary | std::ios::trunc);
+		if (!file.is_open()) {
 			return false;
 		}
-		QDataStream out(&file);
-		out << item;
+		Binary::ParseError err;
+		std::string data = Binary::ToBinary(item, err);
+		if (err) {
+			return false;
+		}
+
+		try {
+			file.write(data.data(), data.size());
+		} catch (const std::exception& e) {
+			return false;
+		}
 		return true;
 	}
 	template <class T>
-	static bool							LoadBinary					( T& item, QString filename ) {
-		QFile file(filename);
-		if (!file.open(QIODevice::ReadOnly)) {
+	static bool							LoadBinary					( T& item, std::string_view filename ) {
+
+		std::ifstream file(std::string(filename), std::ios::in | std::ios::binary);
+		if (!file.is_open()) {
 			return false;
 		}
-		QDataStream in(&file);
-		in >> item;
-		return true;
+		std::ostringstream data_stream;
+		data_stream << file.rdbuf();
+		std::string data = data_stream.str();
+
+		Binary::ParseError err;
+		Binary::FromBinary<T>(data, item, err);
+		return !err;
 	}
 
 	template <class T>
