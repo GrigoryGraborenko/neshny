@@ -139,32 +139,32 @@ public:
         }
         if constexpr (meta::is_optional<meta::get_member_type<Member>>::value) {
             if (member.canGetConstRef()) {
-                auto& optionalVal = member.get(m_ClassObj);
-                if(optionalVal) {
-                    nlohmann::json serialisedValue;
-                    Json::Serialise(*member.get(m_ClassObj), serialisedValue, m_Error);
+                auto& optional_val = member.get(m_ClassObj);
+                if(optional_val) {
+                    nlohmann::json serialised_value;
+                    Json::Serialise(*member.get(m_ClassObj), serialised_value, m_Error);
                     if (m_Error) {
                         return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                     }
-                    m_JsonObject[member.getName()] = serialisedValue;
+                    m_JsonObject[member.getName()] = serialised_value;
                 }
             }
         } else {
-            nlohmann::json serialisedValue;
+            nlohmann::json serialised_value;
             if (member.canGetConstRef()) {
-                Json::Serialise(member.get(m_ClassObj), serialisedValue, m_Error);
+                Json::Serialise(member.get(m_ClassObj), serialised_value, m_Error);
                 if (m_Error) {
                     return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                 }
             } else if (member.hasGetter()) {
-                Json::Serialise(member.getCopy(m_ClassObj), serialisedValue, m_Error); // passing copy as const ref
+                Json::Serialise(member.getCopy(m_ClassObj), serialised_value, m_Error); // passing copy as const ref
                 if (m_Error) {
                     return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
                 }
             } else {
                 return m_Error.AddMessage(std::format("member `{}` does not have getter or member-accessor", member.getName()));
             }
-            m_JsonObject[member.getName()] = serialisedValue;
+            m_JsonObject[member.getName()] = serialised_value;
         }
     }
 private:
@@ -405,16 +405,14 @@ public:
             if (m_JsonObject.contains(member.getName())) {
                 if (member.canGetRef()) {
                     nlohmann::json member_val = m_JsonObject[member.getName()];
-                    if (!member_val.isNull()) {
-                        using MemberT = typename meta::get_member_type<decltype(member)>::value_type;
-                        MemberT memb_type;
-                        Json::Deserialise(memb_type, member_val, m_Error);
-                        if (m_Error) {
-                            m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
-                            return;
-                        }
-                        member.getRef(m_ClassObj).emplace(std::move(memb_type));
+                    using MemberT = typename meta::get_member_type<decltype(member)>::value_type;
+                    MemberT memb_type;
+                    Json::Deserialise(memb_type, member_val, m_Error);
+                    if (m_Error) {
+                        m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
+                        return;
                     }
+                    member.getRef(m_ClassObj).emplace(std::move(memb_type));
                 } else {
                     m_Error.AddMessage(std::format("cannot get reference to std::optional member {}", member.getName()));
                 }
@@ -583,7 +581,9 @@ public:
         if constexpr (meta::is_optional<meta::get_member_type<Member>>::value) {
             if (member.canGetConstRef()) {
                 auto& optionalVal = member.get(m_ClassObj);
-                if(optionalVal) {
+                bool has_val = optionalVal.has_value();
+                Serialise(has_val, m_StreamObject, m_Error);
+                if(has_val) {
                     Serialise(*member.get(m_ClassObj), m_StreamObject, m_Error);
                     if (m_Error) {
                         return m_Error.AddMessage(std::format("parsing member {} failed", member.getName()));
@@ -734,7 +734,7 @@ public:
         if constexpr (!meta::is_optional<meta::get_member_type<Member>>::value) {
             using MemberT = meta::get_member_type<decltype(member)>;
             MemberT member_val;
-            Binary::Deserialise(member_val, m_StreamObject, m_Error);
+            Deserialise(member_val, m_StreamObject, m_Error);
             if (m_Error) {
                 return m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
             }
@@ -746,23 +746,22 @@ public:
                 m_Error.AddMessage(std::format("Cannot deserialize member {}, read only", member.getName()));
             }
         } else {
-            //if (m_JsonObject.contains(member.getName())) {
-            //    if (member.canGetRef()) {
-            //        nlohmann::json member_val = m_JsonObject[member.getName()];
-            //        if (!member_val.isNull()) {
-            //            using MemberT = typename meta::get_member_type<decltype(member)>::value_type;
-            //            MemberT memb_type;
-            //            Json::Deserialise(memb_type, member_val, m_Error);
-            //            if (m_Error) {
-            //                m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
-            //                return;
-            //            }
-            //            member.getRef(m_ClassObj).emplace(std::move(memb_type));
-            //        }
-            //    } else {
-            //        m_Error.AddMessage(std::format("cannot get reference to std::optional member {}", member.getName()));
-            //    }
-            //}
+            bool has_val;
+            Deserialise(has_val, m_StreamObject, m_Error);
+            if (has_val) {
+                if (member.canGetRef()) {
+                    using MemberT = typename meta::get_member_type<decltype(member)>::value_type;
+                    MemberT memb_type;
+                    Deserialise(memb_type, m_StreamObject, m_Error);
+                    if (m_Error) {
+                        m_Error.AddMessage(std::format("Parsing member {}", member.getName()));
+                        return;
+                    }
+                    member.getRef(m_ClassObj).emplace(std::move(memb_type));
+                } else {
+                    m_Error.AddMessage(std::format("cannot get reference to std::optional member {}", member.getName()));
+                }
+            }
         }
     }
 

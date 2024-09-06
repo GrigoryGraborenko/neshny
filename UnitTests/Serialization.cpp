@@ -24,8 +24,6 @@ namespace Test {
 		}
 	};
 
-#pragma msg("test optional and vector of bools!")
-
 	struct Composite {
 		int				p_Int;
 		float			p_Float;
@@ -64,6 +62,24 @@ namespace Test {
 		}
 	};
 
+	struct EdgeCases {
+		int					p_Int;
+		std::optional<int>	p_OpInt;
+		std::optional<int>	p_OpIntB;
+		std::optional<std::string>	p_OpStrA;
+		std::optional<std::string>	p_OpStrB;
+		std::vector<bool>			p_ListBools;
+		std::optional<Small>		p_OpStruct;
+
+		bool operator==(const EdgeCases& other) const {
+			return (p_Int == other.p_Int) &&
+				(p_OpInt == other.p_OpInt) && (p_OpIntB == other.p_OpIntB) &&
+				(p_OpStrA == other.p_OpStrA) && (p_OpStrB == other.p_OpStrB) &&
+				(p_ListBools == other.p_ListBools) &&
+				(p_OpStruct == other.p_OpStruct);
+		}
+	};
+
 #pragma pack(pop)
 }
 
@@ -97,6 +113,18 @@ namespace meta {
 			,member("Map", &Test::Composite::p_Map)
 		);
 	}
+	template<> inline auto registerMembers<Test::EdgeCases>() {
+		return members(
+			member("Int", &Test::EdgeCases::p_Int)
+			,member("OpInt", &Test::EdgeCases::p_OpInt)
+			,member("OpIntB", &Test::EdgeCases::p_OpIntB)
+			,member("OpStrA", &Test::EdgeCases::p_OpStrA)
+			,member("OpStrB", &Test::EdgeCases::p_OpStrB)
+			,member("ListBools", &Test::EdgeCases::p_ListBools)
+			,member("OpStruct", &Test::EdgeCases::p_OpStruct)
+		);
+	}
+
 }
 
 namespace Test {
@@ -120,6 +148,8 @@ namespace Test {
 			{ "there", { -666, -0.666, -666000.00666, Option::GOAT }}
 		}
 	};
+
+	const EdgeCases g_TestItemEdgeCases{ -321, std::nullopt, -654, "string that is set", std::nullopt, { true, false, false, true, false }, Small{ 0, -450.1, 10.0999, Option::TERRIBLE } };
 
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_JSONSimple(void) {
@@ -146,6 +176,18 @@ namespace Test {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_JSONEdgeCases(void) {
+
+		Neshny::Json::ParseError err;
+		std::string data = Neshny::Json::ToJson<EdgeCases>(g_TestItemEdgeCases, err);
+		Expect("JSON serialization for edge cases struct", std::string(R"({"Int":-321,"ListBools":[true,false,false,true,false],"OpIntB":-654,"OpStrA":"string that is set","OpStruct":{"Double":10.0999,"Float":-450.1000061035156,"Int":0,"Quality":0}})") == data);
+		
+		EdgeCases output;
+		Neshny::Json::FromJson(data, output, err);
+		Expect("JSON deserialization for edge cases struct", output == g_TestItemEdgeCases);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_BinarySimple(void) {
 
 		Neshny::Binary::ParseError err;
@@ -168,4 +210,17 @@ namespace Test {
 
 		Expect("Binary serialization and deserialization for composite struct", output == g_TestItemComposite);
 	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_BinaryEdgeCases(void) {
+
+		Neshny::Binary::ParseError err;
+		auto binary = Neshny::Binary::ToBinary(g_TestItemEdgeCases, err);
+
+		EdgeCases output;
+		Neshny::Binary::FromBinary(binary, output, err);
+
+		Expect("Binary serialization and deserialization for edge cases struct", output == g_TestItemEdgeCases);
+	}
+
 }
