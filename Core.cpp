@@ -1035,7 +1035,7 @@ GLShader* Core::IGetComputeShader(std::string_view name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLBuffer* Core::IGetBuffer(QString name) {
+GLBuffer* Core::IGetBuffer(std::string name) {
 
 	auto found = m_Buffers.find(name);
 	if (found != m_Buffers.end()) {

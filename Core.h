@@ -737,7 +737,7 @@ private:
 #if defined(NESHNY_GL)
 	std::vector<ShaderGroup>			m_ShaderGroups;
 	std::vector<ShaderGroup>			m_ComputeShaderGroups;
-	std::map<QString, GLBuffer*>		m_Buffers;
+	std::map<std::string, GLBuffer*>	m_Buffers;
 #elif defined(NESHNY_WEBGPU)
 	std::vector<ShaderGroup>					m_ShaderGroups;
 	std::map<std::string, WebGPURenderBuffer*>	m_Buffers;

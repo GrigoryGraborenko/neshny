@@ -501,8 +501,6 @@ inline void SerialiseByType(const T& obj, std::stringstream& stream, [[maybe_unu
     if constexpr (std::is_enum<T>::value) {
         int32_t value = static_cast<int>(obj);
         stream.write((char const*)&value, sizeof(value));
-    //} else if constexpr (std::is_arithmetic<T>::value) {
-    //    stream.write((char const*)&obj, sizeof(obj));
     } else {
         stream.write((char const*)&obj, sizeof(obj));
     }
