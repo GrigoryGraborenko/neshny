@@ -25,22 +25,22 @@ public:
 													WebGPUShader			( void );
 													~WebGPUShader			( void );
 
-	bool											Init					( const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, QByteArray start_insert, QByteArray end_insert );
+	bool											Init					( const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert );
 
 	inline WGPUShaderModule							Get						( void ) const { return m_Shader; }
 	inline bool										IsValid					( void ) const { return (m_Shader != nullptr) && m_Errors.empty(); }
 
 	inline const std::vector<Error>&				GetErrors				( void ) const { return m_Errors; }
-	inline QByteArray								GetSource				( void ) const { return m_Source; }
-	inline QByteArray								GetRawSource			( void ) const { return m_SourcePrePreProcessor; }
+	inline std::string								GetSource				( void ) const { return m_Source; }
+	inline std::string								GetRawSource			( void ) const { return m_SourcePrePreProcessor; }
 
 private:
 
 	static void										CompilationInfoCallback ( WGPUCompilationInfoRequestStatus status, WGPUCompilationInfo const* compilationInfo, void* userdata );
 
 	WGPUShaderModule					m_Shader;
-	QByteArray							m_Source;
-	QByteArray							m_SourcePrePreProcessor;
+	std::string							m_Source;
+	std::string							m_SourcePrePreProcessor;
 	std::vector<Error>					m_Errors;
 
 };

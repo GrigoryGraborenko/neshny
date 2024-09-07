@@ -932,7 +932,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 		}
 #elif defined(NESHNY_WEBGPU)
 
-		QList<QByteArray> lines = (data.p_ShowPreprocessed ? shader->GetSource() : shader->GetRawSource()).split('\n');
+		QList<QByteArray> lines = QByteArray::fromStdString(data.p_ShowPreprocessed ? shader->GetSource() : shader->GetRawSource()).split('\n');
 		const auto& errors = shader->GetErrors();
 		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
 		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);

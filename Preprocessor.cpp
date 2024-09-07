@@ -26,19 +26,19 @@ bool IsWhiteSpace(char c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string& err_msg) {
+std::string Preprocess(std::string input, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string& err_msg) {
 
-    QByteArray output;
+    std::string output;
     output.reserve(input.size());
 
     struct ReplaceWords {
 
         bool operator<(const ReplaceWords& other) const { return p_Word.size() > other.p_Word.size(); }
 
-        QByteArray  p_Word;
-        QByteArray  p_Replace;
+        std::string p_Word;
+        std::string p_Replace;
         int         p_NumArgs;
-        std::vector<std::variant<QByteArray, int>> p_FunctionPieces;
+        std::vector<std::variant<std::string, int>> p_FunctionPieces;
     };
 
     enum class IfDefMode {
@@ -48,7 +48,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
     };
 
     std::list<ReplaceWords> replacements = {}; // needs to always be sorted from longest to shortest
-    std::set<QString> includes = {}; // can only include a file once
+    std::set<std::string> includes = {}; // can only include a file once
 
     bool multi_line_comment = false;
     bool line_comment = false;
@@ -121,7 +121,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     }
                 }
                 if (def_end >= 0) {
-                    auto new_name = input.mid(name_start, name_end - name_start);
+                    auto new_name = input.substr(name_start, name_end - name_start);
                     for (auto iter = replacements.begin(); iter != replacements.end(); ) {
                         if (iter->p_Word == new_name) {
                             iter = replacements.erase(iter);
@@ -131,7 +131,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     }
                     replacements.push_back({
                         new_name,
-                        input.mid(def_start, def_end - def_start),
+                        input.substr(def_start, def_end - def_start),
                         (int)arg_names.size()
                     });
                     if (!arg_names.empty()) {
@@ -153,7 +153,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                                 if (matches) {
                                     found_any = true;
                                     if (first_replace_ind >= 0) {
-                                        pieces.push_back(input.mid(first_replace_ind, cc - first_replace_ind));
+                                        pieces.push_back(input.substr(first_replace_ind, cc - first_replace_ind));
                                     }
                                     pieces.push_back(a);
                                     cc += arg.size();
@@ -169,7 +169,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                             }
                         }
                         if (first_replace_ind >= 0) {
-                            pieces.push_back(input.mid(first_replace_ind, def_end - first_replace_ind));
+                            pieces.push_back(input.substr(first_replace_ind, def_end - first_replace_ind));
                         }
                     }
                     ignore_until_newline = true;
@@ -178,8 +178,8 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     continue;
                 } else if (name_end >= 0) {
                     replacements.push_back({
-                        input.mid(name_start, name_end - name_start),
-                        QByteArray(),
+                        input.substr(name_start, name_end - name_start),
+                        std::string(),
                         0
                     });
                     ignore_until_newline = true;
@@ -204,7 +204,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     }
                 }
                 if (name_end >= 0) {
-                    auto name = input.mid(name_start, name_end - name_start);
+                    auto name = input.substr(name_start, name_end - name_start);
                     bool removed = false;
                     for (auto iter = replacements.begin(); iter != replacements.end(); iter++) {
                         if (iter->p_Word == name) {
@@ -237,7 +237,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     }
                 }
                 if (name_end >= 0) {
-                    auto name = input.mid(name_start, name_end - name_start);
+                    auto name = input.substr(name_start, name_end - name_start);
                     bool found = false;
                     for (auto& replace : replacements) {
                         if (replace.p_Word == name) {
@@ -275,7 +275,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     }
                 }
                 if (name_end >= 0) {
-                    auto name = input.mid(name_start, name_end - name_start);
+                    auto name = input.substr(name_start, name_end - name_start);
                     for (auto& replace : replacements) {
                         if (replace.p_Word == name) {
                             ifdefs.pop();
@@ -320,7 +320,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                 }
                 ignore_until_newline = true;
                 if (fname_end >= 0) {
-                    auto fname = input.mid(fname_start, fname_end - fname_start);
+                    auto fname = input.substr(fname_start, fname_end - fname_start);
 
                     if (includes.find(fname) != includes.end()) {
                         continue;
@@ -332,12 +332,12 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                     auto included_data = loader(fname_str, error);
                     if (!included_data.isNull()) {
                         // modifies local copy of input so preprocessor can process args as well
-                        input.replace(c, fname_end - c + 1, included_data);
+                        input.replace(c, fname_end - c + 1, included_data.toStdString());
                         ignore_until_newline = false;
                         c--;
                         continue;
                     }
-                    output += QString("#error file \"%1\" not found").arg(QString(fname)).toLocal8Bit();
+                    output += std::format("#error file \"{}\" not found", fname);
                     ignore_until_newline = false;
                     c--;
                     continue;
@@ -358,7 +358,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                 if (match) {
                     if (replace.p_NumArgs > 0) {
                         int parenthesis = 0;
-                        QByteArrayList args;
+                        std::vector<std::string> args;
                         int arg_start = -1;
                         int arg_end = -1;
                         for (int cc = c + replace.p_Word.size(); cc < input.size(); cc++) {
@@ -369,7 +369,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                                 parenthesis--;
                                 if (parenthesis == 0) {
                                     if ((arg_start >= 0) && (arg_end >= 0)) {
-                                        args += input.mid(arg_start, arg_end - arg_start);
+                                        args.push_back(input.substr(arg_start, arg_end - arg_start));
                                     }
                                     arg_end = cc;
                                     break;
@@ -377,7 +377,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                                 arg_end = cc + 1;
                             } else if (curr == ',') {
                                 if ((arg_start >= 0) && (arg_end >= 0)) {
-                                    args += input.mid(arg_start, arg_end - arg_start);
+                                    args.push_back(input.substr(arg_start, arg_end - arg_start));
                                 }
                                 arg_start = -1;
                                 arg_end = -1;
@@ -389,21 +389,21 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                             }
                         }
                         if (replace.p_NumArgs != args.size()) {
-                            err_msg = "Incorrect number of args for macro " + replace.p_Word.toStdString();
-                            return QByteArray();
+                            err_msg = "Incorrect number of args for macro " + replace.p_Word;
+                            return std::string();
                         }
-                        QByteArray replacement;
+                        std::string replacement;
                         for (const auto& piece : replace.p_FunctionPieces) {
                             if (std::holds_alternative<int>(piece)) {
                                 replacement += args[std::get<int>(piece)];
                             } else {
-                                replacement += std::get<QByteArray>(piece);
+                                replacement += std::get<std::string>(piece);
                             }
                         }
                         // modifies local copy of input so preprocessor can process args as well
                         input.replace(c, arg_end - c + 1, replacement);
                         c--;
-                    } else if (!replace.p_Replace.isNull()) {
+                    } else if (!replace.p_Replace.empty()) {
                         output += replace.p_Replace;
                         c += replace.p_Word.size() - 1;
                     }

@@ -1204,7 +1204,7 @@ WebGPUShader* Core::IGetShader(std::string_view name, QByteArray start_insert, Q
 	found_group->p_Instances.push_back({ new_shader, start_insert, end_insert });
 
 	std::string wgsl_name = std::format("{}.wgsl", name);
-	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert, end_insert)) {
+	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert.toStdString(), end_insert.toStdString())) {
 		for (auto err : new_shader->GetErrors()) {
 			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
 		}

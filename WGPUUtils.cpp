@@ -34,15 +34,15 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool WebGPUShader::Init(const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, QByteArray start_insert, QByteArray end_insert) {
+bool WebGPUShader::Init(const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert) {
 
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPUShader::Init");
 #endif
 
 	std::string err_msg;
-	QByteArray arr = loader(filename, err_msg);
-	if (arr.isNull()) {
+	std::string arr = loader(filename, err_msg).toStdString();
+	if (arr.empty()) {
 		m_Errors.push_back({
 			WGPUCompilationMessageType_Error,
 			("File error - " + err_msg),
@@ -51,7 +51,7 @@ bool WebGPUShader::Init(const std::function<QByteArray(std::string_view, std::st
 		});
 		return false;
 	}
-	m_SourcePrePreProcessor = start_insert + arr + end_insert;
+	m_SourcePrePreProcessor = std::format("{}{}{}", start_insert, arr, end_insert);
 	m_Source = Preprocess(m_SourcePrePreProcessor, loader, err_msg);
 	if (!err_msg.empty()) {
 		m_Errors.push_back({

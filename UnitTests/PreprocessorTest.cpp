@@ -5,7 +5,7 @@ namespace Test {
     void UnitTest_Preprocessor(void) {
 
 #ifdef NESHNY_PREPROCESS
-        std::vector<std::pair<QByteArrayList, QByteArrayList>> scenarios = {
+        std::vector<std::pair<std::vector<std::string>, std::vector<std::string>>> scenarios = {
             {{
                 "int thing = THING;"
                 ,"#define   THING   123   "
@@ -175,8 +175,8 @@ namespace Test {
 
         for (int i = 0; i < scenarios.size(); i++) {
             std::string err_msg;
-            auto expected = scenarios[i].second.join("\n");
-            auto output = Neshny::Preprocess(scenarios[i].first.join("\n"), loader, err_msg);
+            auto expected = Neshny::JoinStrings(scenarios[i].second, "\n");
+            auto output = Neshny::Preprocess(Neshny::JoinStrings(scenarios[i].first, "\n"), loader, err_msg);
             Expect(std::format("Scenario {} did not match expected output", i), expected == output);
         }
 #endif
