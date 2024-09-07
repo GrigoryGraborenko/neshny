@@ -51,4 +51,6 @@
     #include "PipelineGL.h"
 #endif
 #include "Geometry.h"
-#include "Testing.h"
+#ifndef NESHNY_SKIP_TESTS
+    #include "Testing.h"
+#endif

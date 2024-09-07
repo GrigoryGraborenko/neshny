@@ -389,7 +389,7 @@ QByteArray Preprocess(QByteArray input, const std::function<QByteArray(std::stri
                             }
                         }
                         if (replace.p_NumArgs != args.size()) {
-                            err_msg = "Incorrect number of args for macro " + replace.p_Word;
+                            err_msg = "Incorrect number of args for macro " + replace.p_Word.toStdString();
                             return QByteArray();
                         }
                         QByteArray replacement;

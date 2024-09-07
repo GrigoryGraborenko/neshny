@@ -23,4 +23,6 @@
 #include "Core.cpp"
 #include "EditorViewers.cpp"
 #include "Geometry.cpp"
-#include "Testing.cpp"
+#ifndef NESHNY_SKIP_TESTS
+    #include "Testing.cpp"
+#endif

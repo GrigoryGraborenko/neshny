@@ -52,7 +52,7 @@ public:
 		SDL_RWops* rw = SDL_RWFromMem(data, length);
 		m_Chunk = Mix_LoadWAV_RW(rw, 0);
 		SDL_RWclose(rw);
-		if (m_Chunk == NULL) {
+		if (m_Chunk == nullptr) {
 			err = "Could not load sound";
 			return false;
 		}

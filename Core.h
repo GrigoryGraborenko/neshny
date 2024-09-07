@@ -586,7 +586,7 @@ public:
 
 	template <class T>
 	static bool							LoadJSON					( std::vector<T>& items, std::string_view filename ) {
-		std::ifstream file(filename, std::ios::in);
+		std::ifstream file(std::string(filename), std::ios::in);
 		if (!file.is_open()) {
 			return false;
 		}
@@ -629,7 +629,7 @@ public:
 
 		try {
 			file.write(data.data(), data.size());
-		} catch (const std::exception& e) {
+		} catch ([[maybe_unused]] const std::exception& e) {
 			return false;
 		}
 		return true;
@@ -649,7 +649,7 @@ public:
 
 		try {
 			file.write(data.data(), data.size());
-		} catch (const std::exception& e) {
+		} catch ([[maybe_unused]] const std::exception& e) {
 			return false;
 		}
 		return true;

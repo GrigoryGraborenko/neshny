@@ -509,7 +509,7 @@ inline void SerialiseByType(const T& obj, std::stringstream& stream, [[maybe_unu
 ////////////////////////////////////////////////////////////////////////////////
 template <>
 inline void SerialiseByType(const std::string& val, std::stringstream& stream, ParseError &err) {
-    int32_t size = val.size();
+    int32_t size = (int32_t)val.size();
     Serialise(size, stream, err);
     stream.write(val.data(), val.size());
 }
