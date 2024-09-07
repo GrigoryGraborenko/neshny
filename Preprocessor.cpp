@@ -82,7 +82,7 @@ std::string Preprocess(std::string input, const std::function<std::string(std::s
                 int name_end = -1;
                 int def_start = -1;
                 int def_end = -1;
-                QByteArrayList arg_names;
+                std::vector<std::string> arg_names;
                 for (int cc = c + 7; cc < input.size(); cc++) {
                     char curr = input[cc];
                     bool newline = curr == '\n';
@@ -99,16 +99,16 @@ std::string Preprocess(std::string input, const std::function<std::string(std::s
                     } else if ((name_end >= 0) && (def_start < 0) && !whitespace) {
                         def_start = cc;
                     } else if ((name_start >= 0) && (name_end < 0) && (curr == '(')) {
-                        QByteArray arg_name = "";
+                        std::string arg_name = "";
                         name_end = cc;
                         for (cc = cc + 1; cc < input.size(); cc++) {
                             curr = input[cc];
                             if (curr == ')') {
-                                arg_names += arg_name;
+                                arg_names.push_back(arg_name);
                                 arg_name = "";
                                 break;
                             } else if(curr == ',') {
-                                arg_names += arg_name;
+                                arg_names.push_back(arg_name);
                                 arg_name = "";
                             } else if(curr != ' ') {
                                 arg_name += curr;

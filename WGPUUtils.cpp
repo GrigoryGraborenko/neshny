@@ -626,7 +626,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, QByteArray insertion, QByteArray end_insertion) {
+void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, std::string_view insertion, std::string_view end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -636,7 +636,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	m_Type = Type::RENDER;
 	m_RenderBuffer = &render_buffer;
 
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion.toStdString(), end_insertion.toStdString())->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
 	if (shader == nullptr) {
 		throw std::logic_error("Cannot find shader");
 	}
@@ -730,7 +730,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, QByteArray insertion, QByteArray end_insertion) {
+void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, std::string_view insertion, std::string_view end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeCompute");
 #endif
@@ -741,7 +741,7 @@ void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, QByteArray in
 	m_RenderBuffer = nullptr;
 
 	CreateBindGroupLayout();
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion.toStdString(), end_insertion.toStdString())->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
 	if (!shader) {
 		throw std::logic_error("Could not load shader");
 	}

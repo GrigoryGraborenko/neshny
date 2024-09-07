@@ -112,7 +112,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
 	if (is_render && m_Entity) {
 		insertion_uniforms += "uniform int uCount;";
-		integer_vars.push_back({ QString("uCount").arg(m_Entity->GetName()), num_entities });
+		integer_vars.push_back({ QString("u%1Count").arg(m_Entity->GetName()), num_entities });
 
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {

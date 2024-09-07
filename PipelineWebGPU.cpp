@@ -465,9 +465,9 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if (is_render) {
-		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
+		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str.toStdString(), end_insertion_str.toStdString());
 	} else {
-		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
+		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str.toStdString(), end_insertion_str.toStdString());
 	}
 
 	return result;

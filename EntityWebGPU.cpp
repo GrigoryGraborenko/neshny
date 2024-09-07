@@ -77,7 +77,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
-			.FinalizeCompute("EntityCreation", QString("#define ENTITY_OFFSET_INTS %1\n").arg(ENTITY_OFFSET_INTS).toLocal8Bit());
+			.FinalizeCompute("EntityCreation", std::format("#define ENTITY_OFFSET_INTS {}\n", ENTITY_OFFSET_INTS));
 	}
 
 	struct Info {
