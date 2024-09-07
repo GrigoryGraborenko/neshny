@@ -466,8 +466,8 @@ public:
 
 	struct ShaderInstance {
 		Shader*			p_Shader = nullptr;
-		QByteArray		m_StartInsert;
-		QByteArray		m_EndInsert;
+		std::string		m_StartInsert;
+		std::string		m_EndInsert;
 	};
 
 	struct ShaderGroup {
@@ -490,8 +490,8 @@ public:
 
 	void								SetResourceDirs				( const std::vector<std::string>& dirs ) { m_ResourceDirs = dirs; }
 	void								SetEmbeddedFiles			( const std::unordered_map<std::string, std::span<const unsigned char>>& files ) { m_EmbeddedFiles = files; }
-	void								SetEmbeddableFileLoader		( std::function<QByteArray(std::string_view, std::string&)> loader ) { m_EmbeddableLoader = loader; }
-	QByteArray							LoadEmbedded				( std::string_view filename, std::string& err_msg );
+	void								SetEmbeddableFileLoader		( std::function<std::string(std::string_view, std::string&)> loader ) { m_EmbeddableLoader = loader; }
+	std::string							LoadEmbedded				( std::string_view filename, std::string& err_msg );
 
 	inline void							SetTicksOverride			( int ticks ) { m_Ticks = ticks; }
 	Token								SyncWithMainThread			( void );
@@ -514,8 +514,8 @@ public:
 #endif
 
 #if defined(NESHNY_GL)
-	static GLShader*					GetShader					( std::string_view name, QString insertion = QString() ) { return Singleton().IGetShader(name, insertion); }
-	static GLShader*					GetComputeShader			( std::string_view name, QString insertion = QString() ) { return Singleton().IGetComputeShader(name, insertion); }
+	static GLShader*					GetShader					( std::string_view name, std::string_view insertion = std::string_view() ) { return Singleton().IGetShader(name, insertion); }
+	static GLShader*					GetComputeShader			( std::string_view name, std::string_view insertion = std::string_view() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 #elif defined(NESHNY_WEBGPU)
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
@@ -527,7 +527,7 @@ public:
 	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
 	WGPULimits							GetDefaultLimits			( void );
 	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
-	static WebGPUShader*				GetShader					( std::string_view name, QByteArray start_insert = QByteArray(), QByteArray end_insert = QByteArray()) { return Singleton().IGetShader(name, start_insert, end_insert); }
+	static WebGPUShader*				GetShader					( std::string_view name, std::string_view start_insert = std::string_view(), std::string_view end_insert = std::string_view()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							WaitForCommandsToFinish		( void );
@@ -684,11 +684,11 @@ private:
 										~Core						( void );
 
 #if defined(NESHNY_GL)
-	GLShader*							IGetShader					( std::string_view name, QString insertion );
+	GLShader*							IGetShader					( std::string_view name, std::string_view insertion );
 	GLBuffer*							IGetBuffer					( std::string name );
-	GLShader*							IGetComputeShader			( std::string_view name, QString insertion );
+	GLShader*							IGetComputeShader			( std::string_view name, std::string_view insertion );
 #elif defined(NESHNY_WEBGPU)
-	WebGPUShader*						IGetShader					( std::string_view name, QByteArray start_insert, QByteArray end_insert );
+	WebGPUShader*						IGetShader					( std::string_view name, std::string_view start_insert, std::string_view end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( std::string name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
@@ -762,7 +762,7 @@ private:
 
 	std::vector<std::string>													m_ResourceDirs;
 	std::unordered_map<std::string, std::span<const unsigned char>>				m_EmbeddedFiles;
-	std::optional<std::function<QByteArray(std::string_view, std::string&)>>	m_EmbeddableLoader;
+	std::optional<std::function<std::string(std::string_view, std::string&)>>	m_EmbeddableLoader;
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;

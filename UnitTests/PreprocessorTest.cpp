@@ -161,7 +161,7 @@ namespace Test {
             //}}
         };
 
-        auto loader = [] (std::string_view fname, std::string& err) -> QByteArray {
+        auto loader = [] (std::string_view fname, std::string& err) -> std::string {
             if (fname == "recurse.txt") {
                 return "#include \"include.txt\"\nfloat thing = 99.9;";
             } else if (fname == "include.txt") {
@@ -170,7 +170,7 @@ namespace Test {
                 return "int file = 1;";
             }
             err = "not found";
-            return QByteArray();
+            return std::string();
         };
 
         for (int i = 0; i < scenarios.size(); i++) {

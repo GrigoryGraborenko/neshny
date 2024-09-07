@@ -34,14 +34,14 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool WebGPUShader::Init(const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert) {
+bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert) {
 
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPUShader::Init");
 #endif
 
 	std::string err_msg;
-	std::string arr = loader(filename, err_msg).toStdString();
+	std::string arr = loader(filename, err_msg);
 	if (arr.empty()) {
 		m_Errors.push_back({
 			WGPUCompilationMessageType_Error,
@@ -636,7 +636,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	m_Type = Type::RENDER;
 	m_RenderBuffer = &render_buffer;
 
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion.toStdString(), end_insertion.toStdString())->Get();
 	if (shader == nullptr) {
 		throw std::logic_error("Cannot find shader");
 	}
@@ -741,7 +741,7 @@ void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, QByteArray in
 	m_RenderBuffer = nullptr;
 
 	CreateBindGroupLayout();
-	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
+	WGPUShaderModule shader = Core::GetShader(shader_name, insertion.toStdString(), end_insertion.toStdString())->Get();
 	if (!shader) {
 		throw std::logic_error("Could not load shader");
 	}

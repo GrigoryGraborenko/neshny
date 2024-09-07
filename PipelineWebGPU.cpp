@@ -751,13 +751,13 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 
 	std::string err_msg;
 	auto utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);
-	if (utils_file.isNull()) {
+	if (utils_file.empty()) {
 		qWarning() << "could not open 'GridCache2D.wgsl.template'" << err_msg;
 		target_stage.AddCode("#error could not open 'GridCache2D.wgsl.template'");
 		return;
 	}
 	target_stage.AddCode(
-		QString(utils_file)
+		QString::fromStdString(utils_file)
 		.arg(name)
 		.arg(m_Entity.GetIDName())
 	);

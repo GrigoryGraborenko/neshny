@@ -15,13 +15,13 @@ GLShader::~GLShader(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLShader::Init(std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_filename, std::string_view fragment_filename, std::string_view geometry_filename, QString insertion) {
+bool GLShader::Init(std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view vertex_filename, std::string_view fragment_filename, std::string_view geometry_filename, std::string_view insertion) {
 	m_Program = CreateProgram(err_msg, loader, vertex_filename, fragment_filename, geometry_filename, insertion);
 	return (m_Program != 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLShader::InitCompute(std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view shader_filename, QString insertion) {
+bool GLShader::InitCompute(std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view shader_filename, std::string_view insertion) {
 
 	auto shader = CreateShader(err_msg, loader, shader_filename, GL_COMPUTE_SHADER, insertion);
 	if (!shader) {
@@ -69,7 +69,7 @@ GLint GLShader::GetUniform(QString name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_shader_filename, std::string_view fragment_shader_filename, std::string_view geometry_shader_filename, QString insertion) {
+GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view vertex_shader_filename, std::string_view fragment_shader_filename, std::string_view geometry_shader_filename, std::string_view insertion) {
 
 	GLuint vertex_shader = 0;
 	if (vertex_shader_filename != "") {
@@ -139,9 +139,9 @@ GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<QByteAr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLuint GLShader::CreateShader(std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, QString insertion) {
+GLuint GLShader::CreateShader(std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, std::string_view insertion) {
 
-	QByteArray arr = loader(filename, err_msg);
+	QByteArray arr = QByteArray::fromStdString(loader(filename, err_msg));
 	if (arr.isNull()) {
 		err_msg = "File error - " + err_msg; // TODO: better error handling than just last file error
 		return 0;
@@ -159,7 +159,7 @@ GLuint GLShader::CreateShader(std::string& err_msg, const std::function<QByteArr
 		preamble += "#define IS_GEOMETRY_SHADER\n";
 		source_type = "Geometry";
 	}
-	preamble += insertion + "\n";
+	preamble += QByteArray::fromStdString(std::string(insertion)) + "\n";
 	arr = preamble.toLocal8Bit() + arr;
 
 	{ // replace all #include
@@ -183,7 +183,7 @@ GLuint GLShader::CreateShader(std::string& err_msg, const std::function<QByteArr
 				continue;
 			}
 
-			QByteArray loaded_data = loader(include_filename.toStdString(), err_msg);
+			QByteArray loaded_data = QByteArray::fromStdString(loader(include_filename.toStdString(), err_msg));
 			if (loaded_data.isEmpty() || loaded_data.isNull()) {
 				err_msg = std::format("Include error, cannot open {} - {}", include_filename.toStdString(), err_msg);
 				return 0;

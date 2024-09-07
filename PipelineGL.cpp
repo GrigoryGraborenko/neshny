@@ -342,7 +342,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
 	QString insertion_str = m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n");
-	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str) : Core::GetComputeShader(m_ShaderName, insertion_str);
+	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str.toStdString()) : Core::GetComputeShader(m_ShaderName, insertion_str.toStdString());
 	prog->UseProgram();
 
 	//DebugGPU::Checkpoint("PostRun", m_Entity);

@@ -176,7 +176,7 @@ Core::~Core(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QByteArray Core::LoadEmbedded(std::string_view filename, std::string& err_msg) {
+std::string Core::LoadEmbedded(std::string_view filename, std::string& err_msg) {
 	EnsureEmbeddableLoaderInit();
 	return (*m_EmbeddableLoader)(filename, err_msg);
 }
@@ -926,11 +926,11 @@ void Core::EnsureEmbeddableLoaderInit(void) {
 	if (m_EmbeddableLoader.has_value()) {
 		return;
 	}
-	m_EmbeddableLoader = [this] (std::string_view path, std::string& err_msg) -> QByteArray {
+	m_EmbeddableLoader = [this] (std::string_view path, std::string& err_msg) -> std::string {
 		std::string path_str(path);
 		auto found = m_EmbeddedFiles.find(path_str);
 		if (found != m_EmbeddedFiles.end()) {
-			return QByteArray((char*)found->second.data(), (int)found->second.size());
+			return std::string((char*)found->second.data(), (int)found->second.size());
 		}
 
 		for (auto prefix : m_ResourceDirs) {
@@ -941,11 +941,11 @@ void Core::EnsureEmbeddableLoaderInit(void) {
 				data_stream << file.rdbuf();
 				std::string data = data_stream.str();
 				file.close();
-				return QByteArray(data.c_str(), (int)data.size());
+				return data;
 			}
 		}
 		err_msg = "Could not open file";
-		return QByteArray();
+		return std::string();
 	};
 }
 
@@ -964,16 +964,15 @@ void Core::DispatchMultiple(GLShader* prog, int count, int total_local_groups, b
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::IGetShader(std::string_view name, QString insertion) {
+GLShader* Core::IGetShader(std::string_view name, std::string_view insertion) {
 
 	EnsureEmbeddableLoaderInit();
 
-	QByteArray start_insert = insertion.toLocal8Bit();
 	ShaderGroup* found_group = nullptr;
 	for (auto& group : m_ShaderGroups) {
 		if (group.p_Name == name) {
 			for (const auto& instance : group.p_Instances) {
-				if (instance.m_StartInsert == start_insert) {
+				if (instance.m_StartInsert == insertion) {
 					return instance.p_Shader;
 				}
 			}
@@ -990,7 +989,7 @@ GLShader* Core::IGetShader(std::string_view name, QString insertion) {
 	std::string vertex_name = name_str + ".vert", fragment_name = name_str + ".frag", geometry_name = "";
 
 	GLShader* new_shader = new GLShader();
-	found_group->p_Instances.push_back({ new_shader, start_insert });
+	found_group->p_Instances.push_back({ new_shader, std::string(insertion) });
 	std::string err_msg = "";
 	if (!new_shader->Init(err_msg, m_EmbeddableLoader.value(), vertex_name, fragment_name, geometry_name, insertion)) {
 		qDebug() << err_msg;
@@ -1000,16 +999,15 @@ GLShader* Core::IGetShader(std::string_view name, QString insertion) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLShader* Core::IGetComputeShader(std::string_view name, QString insertion) {
+GLShader* Core::IGetComputeShader(std::string_view name, std::string_view insertion) {
 
 	EnsureEmbeddableLoaderInit();
 
-	QByteArray start_insert = insertion.toLocal8Bit();
 	ShaderGroup* found_group = nullptr;
 	for (auto& group : m_ComputeShaderGroups) {
 		if (group.p_Name == name) {
 			for (const auto& instance : group.p_Instances) {
-				if (instance.m_StartInsert == start_insert) {
+				if (instance.m_StartInsert == insertion) {
 					return instance.p_Shader;
 				}
 			}
@@ -1025,7 +1023,7 @@ GLShader* Core::IGetComputeShader(std::string_view name, QString insertion) {
 	std::string shader_name = std::format("{}.comp", name);
 
 	GLShader* new_shader = new GLShader();
-	found_group->p_Instances.push_back({ new_shader, start_insert });
+	found_group->p_Instances.push_back({ new_shader, std::string(insertion) });
 	std::string err_msg;
 	if (!new_shader->InitCompute(err_msg, m_EmbeddableLoader.value(), shader_name, insertion)) {
 		m_Interface.p_ShaderView.p_Visible = true;
@@ -1180,7 +1178,7 @@ GLBuffer* Core::IGetBuffer(std::string name) {
 }
 #elif defined(NESHNY_WEBGPU)
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUShader* Core::IGetShader(std::string_view name, QByteArray start_insert, QByteArray end_insert) {
+WebGPUShader* Core::IGetShader(std::string_view name, std::string_view start_insert, std::string_view end_insert) {
 
 	EnsureEmbeddableLoaderInit();
 
@@ -1201,10 +1199,10 @@ WebGPUShader* Core::IGetShader(std::string_view name, QByteArray start_insert, Q
 		found_group = &m_ShaderGroups.back();
 	}
 	WebGPUShader* new_shader = new WebGPUShader();
-	found_group->p_Instances.push_back({ new_shader, start_insert, end_insert });
+	found_group->p_Instances.push_back({ new_shader, std::string(start_insert), std::string(end_insert) });
 
 	std::string wgsl_name = std::format("{}.wgsl", name);
-	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert.toStdString(), end_insert.toStdString())) {
+	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert, end_insert)) {
 		for (auto err : new_shader->GetErrors()) {
 			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
 		}

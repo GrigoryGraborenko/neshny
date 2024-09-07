@@ -26,7 +26,7 @@ bool IsWhiteSpace(char c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::string Preprocess(std::string input, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string& err_msg) {
+std::string Preprocess(std::string input, const std::function<std::string(std::string_view, std::string&)>& loader, std::string& err_msg) {
 
     std::string output;
     output.reserve(input.size());
@@ -330,9 +330,9 @@ std::string Preprocess(std::string input, const std::function<QByteArray(std::st
                     std::string error;
                     std::string fname_str(fname.data(), fname.size());
                     auto included_data = loader(fname_str, error);
-                    if (!included_data.isNull()) {
+                    if (!included_data.empty()) {
                         // modifies local copy of input so preprocessor can process args as well
-                        input.replace(c, fname_end - c + 1, included_data.toStdString());
+                        input.replace(c, fname_end - c + 1, included_data);
                         ignore_until_newline = false;
                         c--;
                         continue;

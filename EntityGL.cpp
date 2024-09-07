@@ -128,7 +128,7 @@ void GPUEntity::ProcessMoveDeaths(int death_count) {
 	// todo: for each death, take index d from alive and copy it
 	m_ControlSSBO->EnsureSizeBytes(sizeof(int));
 
-	QString defines = QString("#define FLOATS_PER %1").arg(m_NumDataFloats);
+	std::string defines = std::format("#define FLOATS_PER {}", m_NumDataFloats);
 
 	GLShader* death_prog = Core::GetComputeShader("Death", defines);
 	death_prog->UseProgram();

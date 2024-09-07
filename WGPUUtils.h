@@ -25,7 +25,7 @@ public:
 													WebGPUShader			( void );
 													~WebGPUShader			( void );
 
-	bool											Init					( const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert );
+	bool											Init					( const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view filename, std::string_view start_insert, std::string_view end_insert );
 
 	inline WGPUShaderModule							Get						( void ) const { return m_Shader; }
 	inline bool										IsValid					( void ) const { return (m_Shader != nullptr) && m_Errors.empty(); }

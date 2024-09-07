@@ -21,8 +21,8 @@ public:
 													GLShader			( void );
 													~GLShader			( void);
 
-	bool											Init				( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_filename, std::string_view fragment_filename, std::string_view geometry_filename, QString insertion );
-	bool											InitCompute			( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view shader_filename, QString insertion );
+	bool											Init				( std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view vertex_filename, std::string_view fragment_filename, std::string_view geometry_filename, std::string_view insertion );
+	bool											InitCompute			( std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view shader_filename, std::string_view insertion );
 
 	void											UseProgram			( void );
 	GLuint											GetAttribute		( QString name );
@@ -33,8 +33,8 @@ public:
 
 private:
 
-	GLuint											CreateProgram		( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view vertex_shader_filename, std::string_view fragment_shader_filename, std::string_view geometry_shader_filename, QString insertion );
-	GLuint											CreateShader		( std::string& err_msg, const std::function<QByteArray(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, QString insertion );
+	GLuint											CreateProgram		( std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view vertex_shader_filename, std::string_view fragment_shader_filename, std::string_view geometry_shader_filename, std::string_view insertion );
+	GLuint											CreateShader		( std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, std::string_view insertion );
 
 	GLuint											m_Program;
 	std::vector<SourceInfo>							m_Sources;
