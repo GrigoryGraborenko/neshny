@@ -80,7 +80,7 @@ public:
 
 	bool											Init			( int width, int height, int depth_bytes = 4, GLint wrap_mode = GL_REPEAT );
 	bool											Init			( QByteArray data, GLint wrap_mode = GL_REPEAT );
-	bool											InitSkybox		( QString filename, QString& err );
+	bool											InitSkybox		( std::string_view filename, std::string& err );
 
 	inline GLuint									GetTexture		( void ) const { return m_Texture; }
 	inline int										GetWidth		( void ) const { return m_Width; }

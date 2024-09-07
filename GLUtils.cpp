@@ -416,17 +416,17 @@ void GLTexture::Common2DInit(GLint wrap_mode, unsigned char* data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLTexture::InitSkybox(QString filename, QString& err) {
+bool GLTexture::InitSkybox(std::string_view filename, std::string& err) {
 
-	std::vector<QString> names = { "right", "left", "top", "bottom", "front", "back" };
+	std::vector<std::string> names = { "right", "left", "top", "bottom", "front", "back" };
 	std::list<QImage> images;
 
 	for (auto name : names) {
 		images.push_back(QImage());
-		QString fullname = filename;
-		fullname.replace('*', name);
+		QString fullname = QString::fromStdString(std::string(filename));
+		fullname.replace('*', QString::fromStdString(name));
 		if (!images.back().load(fullname)) {
-			err = "Could not load " + fullname;
+			err = "Could not load " + fullname.toStdString();
 			return false;
 		}
 	}

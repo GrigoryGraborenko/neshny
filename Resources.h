@@ -374,7 +374,7 @@ public:
 #pragma pack(pop)
 
 	virtual				~TextureSkybox(void) {}
-	virtual bool		Init(QString path, Params params, QString& err) {
+	virtual bool		Init(std::string_view path, Params params, std::string& err) {
 		return m_Texture.InitSkybox(path, err);
 	};
 
