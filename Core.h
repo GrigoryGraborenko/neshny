@@ -25,20 +25,12 @@ struct Camera2D {
 	inline void Pan(int viewport_width, int delta_pixels_x, int delta_pixels_y) {
 		double pan_mult = 2.0 * p_Zoom / float(viewport_width);
 		p_Pos.x -= pan_mult * delta_pixels_x;
-#if defined(NESHNY_GL)
-		p_Pos.y -= pan_mult * delta_pixels_y;
-#else
 		p_Pos.y += pan_mult * delta_pixels_y;
-#endif
 	}
 
 	inline Vec2 ScreenToWorld(Vec2 pos, int width, int height) {
 		float aspect = (float)height / width;
-#if defined(NESHNY_GL)
-		double fx = pos.x / width - 0.5, fy = pos.y / height - 0.5;
-#else
 		double fx = pos.x / width - 0.5, fy = 0.5 - pos.y / height;
-#endif
 		// TODO: account for rotation here
 		return Vec2(
 			fx * p_Zoom * 2.0 + p_Pos.x
@@ -50,11 +42,7 @@ struct Camera2D {
 		auto vp = Get4x4Matrix(width, height);
 		Vec4 res = vp * Vec4(pos.x, pos.y, 0.0, 1.0);
 		double inv_w = 1.0 / res.w;
-#if defined(NESHNY_GL)
-		return Vec2((res.x * inv_w * 0.5 + 0.5) * width, (res.y * inv_w * 0.5 + 0.5) * height);
-#else
 		return Vec2((res.x * inv_w * 0.5 + 0.5) * width, (res.y * inv_w * -0.5 + 0.5) * height);
-#endif
 	}
 
 	inline void Zoom(double new_zoom, Vec2 mouse_world_pos, int width, int height) {

@@ -47,6 +47,7 @@ target_include_directories(${PROJECT_NAME}
     src
     ${NESHNY_DIR}
     ${SDL2_DIR}/include
+    ${SDL2_IMAGE_DIR}/include
     ${SDL2_MIXER_DIR}/include
 )
 

@@ -79,7 +79,7 @@ public:
 	virtual 										~GLTexture		( void );
 
 	bool											Init			( int width, int height, int depth_bytes = 4, GLint wrap_mode = GL_REPEAT );
-	bool											Init			( QByteArray data, GLint wrap_mode = GL_REPEAT );
+	bool											Init			( std::span<unsigned char> data, GLint wrap_mode = GL_REPEAT );
 	bool											InitSkybox		( std::string_view filename, std::string& err );
 
 	inline GLuint									GetTexture		( void ) const { return m_Texture; }

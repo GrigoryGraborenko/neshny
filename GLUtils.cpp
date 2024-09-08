@@ -377,18 +377,30 @@ bool GLTexture::Init(int width, int height, int depth_bytes, GLint wrap_mode) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool GLTexture::Init(QByteArray data, GLint wrap_mode) {
+bool GLTexture::Init(std::span<unsigned char> data, GLint wrap_mode) {
 
-	QImage im;
-	if (!im.loadFromData(data)) {
+	SDL_RWops* read_buffer = SDL_RWFromMem(data.data(), data.size());
+	SDL_Surface* surface = IMG_Load_RW(read_buffer, 0);
+
+	if (!surface) {
+		SDL_FreeRW(read_buffer);
 		return false;
 	}
-	m_Width = im.width();
-	m_Height = im.height();
-	m_DepthBytes = im.depth() / 8;
-	im = im.mirrored();
 
-	Common2DInit(wrap_mode, im.bits());
+	if (surface->format->format != g_CorrectSDLFormat) {
+		SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+		SDL_FreeSurface(surface);
+		surface = converted_surface;
+	}
+
+	m_Width = surface->w;
+	m_Height = surface->h;
+	m_DepthBytes = surface->format->BytesPerPixel;
+
+	Common2DInit(wrap_mode, (unsigned char*)surface->pixels);
+
+	SDL_FreeSurface(surface);
+	SDL_FreeRW(read_buffer);
 
 	return true;
 }
@@ -400,8 +412,6 @@ void GLTexture::Common2DInit(GLint wrap_mode, unsigned char* data) {
 	if (m_DepthBytes == 4) {
 		internal_format = GL_RGBA;
 		format = GL_BGRA;
-		//format = GL_BGRA;
-		//format = GL_AGB;
 	}
 
 	glEnable(GL_TEXTURE_2D);
@@ -419,16 +429,21 @@ void GLTexture::Common2DInit(GLint wrap_mode, unsigned char* data) {
 bool GLTexture::InitSkybox(std::string_view filename, std::string& err) {
 
 	std::vector<std::string> names = { "right", "left", "top", "bottom", "front", "back" };
-	std::list<QImage> images;
+	std::list<SDL_Surface*> images;
 
 	for (auto name : names) {
-		images.push_back(QImage());
-		QString fullname = QString::fromStdString(std::string(filename));
-		fullname.replace('*', QString::fromStdString(name));
-		if (!images.back().load(fullname)) {
-			err = "Could not load " + fullname.toStdString();
+		std::string fullname = ReplaceAll(filename, "*", name);
+		SDL_Surface* surface = IMG_Load(fullname.data());
+		if (!surface) {
+			err = std::format("Could not load image {}", fullname);
 			return false;
 		}
+		if (surface->format->format != g_CorrectSDLFormat) {
+			SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+			SDL_FreeSurface(surface);
+			surface = converted_surface;
+		}
+		images.push_back(surface);
 	}
 
 	glGenTextures(1, &m_Texture);
@@ -440,10 +455,9 @@ bool GLTexture::InitSkybox(std::string_view filename, std::string& err) {
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	int index = 0;
-	for (auto& im : images) {
-		auto format = im.depth() == 24 ? GL_RGB : GL_RGBA;
-		auto f = im.format();
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + index++, 0, format, im.width(), im.height(), 0, format, GL_UNSIGNED_BYTE, im.bits());
+	for (SDL_Surface* surface : images) {
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + index++, 0, GL_RGBA, surface->w, surface->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surface->pixels);
+		SDL_FreeSurface(surface);
 	}
 
 	return true;

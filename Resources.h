@@ -3,6 +3,8 @@
 
 namespace Neshny {
 
+const auto g_CorrectSDLFormat = SDL_PIXELFORMAT_ARGB8888;
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,8 +85,7 @@ public:
 	bool				Init(std::string_view path, Params params, std::string& err) { return Load(path, err); }
 
 	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) {
-		QByteArray arr((const char*)data, length);
-		return m_Texture.Init(arr);
+		return m_Texture.Init(std::span<unsigned char>(data, length));
 	};
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
@@ -109,8 +110,7 @@ protected:
 
 #elif defined(NESHNY_WEBGPU)
 
-const auto g_WebGPUFormat = WGPUTextureFormat_BGRA8Unorm;
-const auto g_CorrectSDLFormat = SDL_PIXELFORMAT_ARGB8888; // not sure why this is the correct combo
+const auto g_WebGPUFormat = WGPUTextureFormat_BGRA8Unorm; // not sure why this is the correct combo with g_CorrectSDLFormat
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -298,21 +298,26 @@ public:
 
 	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) {
 
-		QByteArray bytes((const char*)data, length);
-		QImage im;
-		if (!im.loadFromData(bytes)) {
+		SDL_RWops* read_buffer = SDL_RWFromMem(data, length);
+		SDL_Surface* surface = IMG_Load_RW(read_buffer, 0);
+		if (!surface) {
+			SDL_FreeRW(read_buffer);
 			return false;
 		}
-		m_FullWidth = im.width();
-		m_FullHeight = im.height();
-		m_DepthBytes = im.depth() / 8;
-		im = im.mirrored();
+
+		if (surface->format->format != g_CorrectSDLFormat) {
+			SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+			SDL_FreeSurface(surface);
+			surface = converted_surface;
+		}
+		m_FullWidth = surface->w;
+		m_FullHeight = surface->h;
+		m_DepthBytes = surface->format->BytesPerPixel;
+		const unsigned char* image_data = (const unsigned char*)surface->pixels;
 
 		int num_wid = m_FullWidth / m_Params.p_TileWidth;
 		int num_hei = m_FullHeight / m_Params.p_TileHeight;
 		m_TileCount = num_wid * num_hei;
-
-		const unsigned char* image_data = im.bits();
 
 		int levels = m_Params.p_Mipmaps ? int(ceil(log(double(std::max(m_Params.p_TileWidth, m_Params.p_TileHeight))) / log(2))) : 1;
 
@@ -331,10 +336,10 @@ public:
 		for (int i = 0; i < m_TileCount; i++) {
 
 			int tx = i % num_wid;
-			int ty = num_hei - (i / num_wid) - 1;
+			int ty = i / num_wid;
 
 			for (int r = 0; r < m_Params.p_TileHeight; r++) {
-				int src_offset = (tx * row_size + ty * tile_size * num_wid) + r * row_size * num_wid;
+				int src_offset = (r + ty * m_Params.p_TileHeight) * surface->pitch + tx * row_size;
 				memcpy(layer_data + r * row_size, image_data + src_offset, row_size);
 			}
 
@@ -345,6 +350,9 @@ public:
 		if (m_Params.p_Mipmaps) {
 			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 		}
+
+		SDL_FreeSurface(surface);
+		SDL_FreeRW(read_buffer);
 
 		return true;
 	};
