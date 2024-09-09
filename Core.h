@@ -623,14 +623,14 @@ public:
 		return true;
 	}
 	template <class T>
-	static bool							SaveJSON					( T& item, std::string_view filename ) {
+	static bool							SaveJSON					( T& item, std::string_view filename, bool pretty_print = false ) {
 		std::ofstream file;
 		file.open(filename, std::ios::in | std::ios::trunc);
 		if (!file.is_open()) {
 			return false;
 		}
 		Json::ParseError err;
-		std::string data = Json::ToJson(item, err);
+		std::string data = Json::ToJson(item, err, pretty_print);
 		if (err) {
 			return false;
 		}

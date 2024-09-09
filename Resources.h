@@ -90,17 +90,6 @@ public:
 
 	inline const GLTexture& Get(void) const { return m_Texture; }
 
-	bool Save(std::string filename) {
-		int size = m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes();
-		unsigned char* data = new unsigned char[size];
-		glGetTextureImage(m_Texture.GetTexture(), 0, GL_RGBA, GL_UNSIGNED_BYTE, size, data);
-		QImage im(data, m_Texture.GetWidth(), m_Texture.GetHeight(), QImage::Format_RGBA8888);
-		im = im.mirrored();
-		bool result = im.save(filename.c_str());
-		delete[] data;
-		return result;
-	}
-
 	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
 	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes(); }
 
