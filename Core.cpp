@@ -4,8 +4,6 @@
 
 namespace Neshny {
 
-Core* g_StaticInstance = nullptr;
-
 #define EDITOR_INTERFACE_FILENAME "interface.json"
 //#define EDITOR_INTERFACE_FILENAME "interface.bin"
 
@@ -201,6 +199,36 @@ Token Core::SyncWithMainThread(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Core::ILog(std::string_view message, ImVec4 col) {
+
+	const auto now = std::chrono::system_clock::now();
+#if defined __APPLE__ || defined __EMSCRIPTEN__
+	const auto zoned_now = now; // TODO: update to use zoned time
+#else
+	const std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
+#endif
+
+#if defined __EMSCRIPTEN__
+	auto time_str = "_"; // cannot format time yet
+#else
+	auto time_str = std::format("{:%OH:%OM}:{:%S}", zoned_now, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()));
+#endif
+
+#ifdef __EMSCRIPTEN__
+	message += "\n";
+	printf(msg_str.c_str());
+#else
+	auto output = std::format("[{}] {} \n", time_str, message);
+	m_LogFile.write(output.data(), output.size());
+	m_LogFile.flush();
+#endif
+
+#ifdef NESHNY_EDITOR_VIEWERS
+	LogViewer::Singleton().Log({ time_str, std::string(message), col });
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool Core::LoopInit(IEngine* engine) {
 
 	// m_ResourceThreads started here so you have access to m_Window value
@@ -210,63 +238,15 @@ bool Core::LoopInit(IEngine* engine) {
 	m_ResourceThreads.Start(4);
 #endif
 
-	g_StaticInstance = this;
-
 	m_LogFile.open("Core.log", std::ios::out | std::ios::trunc);
 	if (!m_LogFile.is_open()) {
 		return false;
 	}
 
-	qInstallMessageHandler([](QtMsgType type, const QMessageLogContext& context, const QString& msg) {
-		auto msg_str = msg.toStdString();
-
-		const auto now = std::chrono::system_clock::now();
-#if defined __APPLE__ || defined __EMSCRIPTEN__
-		const auto zoned_now = now; // TODO: update to use zoned time
-#else
-		const std::chrono::zoned_time zoned_now{ std::chrono::current_zone(), now };
-#endif
-
-#if defined __EMSCRIPTEN__
-		auto time_str = "_"; // cannot format time yet
-#else
-		auto time_str = std::format("{:%OH:%OM}:{:%S}", zoned_now, std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()));
-#endif
-
-#ifdef __EMSCRIPTEN__
-		msg_str += "\n";
-		printf(msg_str.c_str());
-#else
-		switch (type) {
-			case QtDebugMsg:
-			case QtWarningMsg:
-			case QtCriticalMsg:
-			case QtFatalMsg: {
-				auto bytes = QString("[%1] %2 \n").arg(time_str.c_str()).arg(msg).toLocal8Bit();
-				g_StaticInstance->m_LogFile.write(bytes.data(), bytes.size());
-				g_StaticInstance->m_LogFile.flush();
-				break;
-			}
-			case QtInfoMsg: break;
-		}
-#endif
-#ifdef NESHNY_EDITOR_VIEWERS
-		ImVec4 col;
-		switch (type) {
-			case QtDebugMsg: col = ImVec4(0.8f, 0.8f, 0.8f, 1); break;
-			case QtWarningMsg: col = ImVec4(0.8f, 0.5f, 0.2f, 1); break;
-			case QtCriticalMsg: col = ImVec4(1.0f, 0.25f, 0.25f, 1); break;
-			case QtFatalMsg: col = ImVec4(0.8f, 0, 0, 1); break;
-			case QtInfoMsg: col = ImVec4(0.5f, 1.0f, 0.5f, 1); break;
-		}
-		LogViewer::Singleton().Log({ time_str, msg_str, col });
-#endif
-	});
-
-	qDebug() << "Core initializing...";
+	Core::Log("Core initializing...");
 
 	if (!engine->Init()) {
-		qDebug() << "Could not init engine";
+		Core::Log("Could not init engine");
 		return false;
 	}
 	m_Ticks = 0;
@@ -442,7 +422,7 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 	//delete engine;
 	//engine = nullptr;
 
-	qDebug() << "Finished";
+	Core::Log("Finished");
 
 	return true;
 }
@@ -828,7 +808,7 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 		SDLLoopInner();
 	}
 #endif
-	qDebug() << "Finished";
+	Core::Log("Finished");
 
 	return true;
 }
@@ -992,7 +972,7 @@ GLShader* Core::IGetShader(std::string_view name, std::string_view insertion) {
 	found_group->p_Instances.push_back({ new_shader, std::string(insertion) });
 	std::string err_msg = "";
 	if (!new_shader->Init(err_msg, m_EmbeddableLoader.value(), vertex_name, fragment_name, geometry_name, insertion)) {
-		qDebug() << err_msg;
+		Core::Log(err_msg);
 		m_Interface.p_ShaderView.p_Visible = true;
 	}
 	return new_shader;
@@ -1027,7 +1007,7 @@ GLShader* Core::IGetComputeShader(std::string_view name, std::string_view insert
 	std::string err_msg;
 	if (!new_shader->InitCompute(err_msg, m_EmbeddableLoader.value(), shader_name, insertion)) {
 		m_Interface.p_ShaderView.p_Visible = true;
-		qDebug() << err_msg;
+		Core::Log(err_msg);
 	}
 	return new_shader;
 }
@@ -1204,7 +1184,7 @@ WebGPUShader* Core::IGetShader(std::string_view name, std::string_view start_ins
 	std::string wgsl_name = std::format("{}.wgsl", name);
 	if (!new_shader->Init(m_EmbeddableLoader.value(), wgsl_name, start_insert, end_insert)) {
 		for (auto err : new_shader->GetErrors()) {
-			qDebug() << "COMPILE ERROR on line " << err.m_LineNum << ": " << err.m_Message;
+			Core::Log(std::format("COMPILE ERROR on line {}: {}", err.m_LineNum, err.m_Message));
 		}
 		m_Interface.p_ShaderView.p_Visible = true;
 	}

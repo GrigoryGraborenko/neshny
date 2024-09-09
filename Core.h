@@ -484,6 +484,8 @@ public:
 	inline void							SetTicksOverride			( int ticks ) { m_Ticks = ticks; }
 	Token								SyncWithMainThread			( void );
 
+	inline static void					Log							( std::string_view message, ImVec4 col = ImVec4(0.8f, 0.8f, 0.8f, 1) ) { Singleton().ILog(message, col); }
+
 	bool								LoopInit					( IEngine* engine );
 	void								LoopInner					( IEngine* engine, int width, int height );
 	void								LoopFinishImGui				( IEngine* engine, int width, int height );
@@ -721,6 +723,7 @@ private:
 	}
 	void								IRenderEditor				( void );
 	bool								IIsBufferEnabled			( QString name );
+	void								ILog						( std::string_view message, ImVec4 col );
 
 #if defined(NESHNY_GL)
 	std::vector<ShaderGroup>			m_ShaderGroups;

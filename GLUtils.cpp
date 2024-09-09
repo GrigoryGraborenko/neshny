@@ -76,14 +76,14 @@ GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<std::st
 		vertex_shader = CreateShader(err_msg, loader, vertex_shader_filename, GL_VERTEX_SHADER, insertion);
 		if (!vertex_shader) {
 			err_msg = std::format("Could not create {}: {}", vertex_shader_filename, err_msg);
-			qDebug() << err_msg;
+			Core::Log(err_msg);
 			return 0;
 		}
 	}
 	GLuint fragment_shader = CreateShader(err_msg, loader, fragment_shader_filename, GL_FRAGMENT_SHADER, insertion);
 	if (!fragment_shader) {
 		err_msg = std::format("Could not create {}: {}", fragment_shader_filename, err_msg);
-		qDebug() << err_msg;
+		Core::Log(err_msg);
 		return 0;
 	}
 
@@ -92,7 +92,7 @@ GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<std::st
 		geom_shader = CreateShader(err_msg, loader, geometry_shader_filename, GL_GEOMETRY_SHADER, insertion);
 		if (!geom_shader) {
 			err_msg = std::format("Could not create {}: {}", geometry_shader_filename, err_msg);
-			qDebug() << err_msg;
+			Core::Log(err_msg);
 			return 0;
 		}
 	}

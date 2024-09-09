@@ -34,23 +34,24 @@ void UnitTester::IRender(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 UnitTester::TestResult UnitTester::ExecuteTest(const UnitTest& test) {
-    qDebug() << "Starting test" << test.p_Label;
+    Neshny::Core::Log(std::format("Starting test {}", test.p_Label));
+    const ImVec4 fail_col(1.0f, 0.25f, 0.25f, 1);
     try {
         test.p_Func();
     } catch(const char* info) {
-        qWarning() << "Failure in " << test.p_Label << ": " << info;
+        Neshny::Core::Log(std::format("Failure in {}: {}", test.p_Label, info), fail_col);
         return { false, test.p_Label, info };
     } catch(Test::InfoException info) {
-        qWarning() << "Failure in " << test.p_Label << ": " << info.p_Info;
+        Neshny::Core::Log(std::format("Failure in {}: {}", test.p_Label, info.p_Info), fail_col);
         return { false, test.p_Label, info.p_Info };
     } catch(std::exception excp) {
-        qWarning() << "Failure in " << test.p_Label << ": " << excp.what();
+        Neshny::Core::Log(std::format("Failure in {}: {}", test.p_Label, excp.what()), fail_col);
         return { false, test.p_Label, excp.what() };
     } catch(...) {
-        qWarning() << "Failure in " << test.p_Label;
+        Neshny::Core::Log(std::format("Failure in {}", test.p_Label), fail_col);
         return { false, test.p_Label, "Unknown exception" };
     }
-    qDebug() << test.p_Label << "passed";
+    Neshny::Core::Log(std::format("{} passed", test.p_Label), ImVec4(0.5f, 0.8f, 0.2f, 1));
     return { true, test.p_Label };
 }
 
