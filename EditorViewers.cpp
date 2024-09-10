@@ -801,9 +801,9 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 
 	ImGui::SetNextItemWidth(300);
 	ImGui::InputText("Search", &data.p_Search);
-	QString search = QString();
+	std::string search;
 	if (!data.p_Search.empty()) {
-		search = data.p_Search.c_str();
+		search = data.p_Search;
 	}
 
 	ImGui::SameLine();
@@ -841,9 +841,9 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 #if defined(NESHNY_GL)
-InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search) {
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, std::string_view search) {
 #elif defined(NESHNY_WEBGPU)
-InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, QString search) {
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, std::string_view search) {
 #endif
 
 	const int context_lines = 4;
@@ -876,19 +876,22 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 #if defined(NESHNY_GL)
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {
-			ImGui::TextUnformatted(src.m_Type.toLocal8Bit().data());
+			ImGui::TextUnformatted(src.m_Type.c_str());
 
-			QStringList lines = src.m_Source.split('\n');
+			std::vector<std::string> lines;
+			for (const auto line : std::views::split(src.m_Source, std::string{ "\n" })) {
+				lines.push_back(std::string(line.data(), line.size()));
+			}
 
 			if (!src.m_Error.empty()) {
 				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), src.m_Error.data());
 			}
-			if (search.isNull()) {
+			if (search.empty()) {
 				for (int line = 0; line < lines.size(); line++) {
-					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), QString("%1").arg(line).toLocal8Bit().data());
+					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), std::format("{}", line).c_str());
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
-					ImGui::TextUnformatted(lines[line].toLocal8Bit().data());
+					ImGui::TextUnformatted(lines[line].c_str());
 				}
 			} else {
 
@@ -901,7 +904,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 				for(int line = 0; line < num_lines; line++) {
 					while (look_ahead_match.size() <= context_lines) {
 						int ahead = line + (int)look_ahead_match.size();
-						bool found = (ahead < num_lines) && lines[ahead].contains(search, Qt::CaseInsensitive);
+						bool found = (ahead < num_lines) && StringContains(lines[ahead], search, true);
 						match_count += found ? 1 : 0;
 						look_ahead_match.push_back(found);
 					}
@@ -918,12 +921,11 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 					if (last_line != (line - 1)) {
 						ImGui::Separator();
 					}
-					auto line_num_str = QString("%1").arg(line).toLocal8Bit();
-					auto line_str = lines[line].toLocal8Bit();
-					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.data());
+					auto line_num_str = std::format("{}", line);
+					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.c_str());
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
-					ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), line_str.data());
+					ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), lines[line].c_str());
 					last_line = line;
 
 					match_count -= found ? 1 : 0;
@@ -932,14 +934,20 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 		}
 #elif defined(NESHNY_WEBGPU)
 
-		QList<QByteArray> lines = QByteArray::fromStdString(data.p_ShowPreprocessed ? shader->GetSource() : shader->GetRawSource()).split('\n');
+		std::string_view shader_source = data.p_ShowPreprocessed ? shader->GetSource() : shader->GetRawSource();
+
+		std::vector<std::string> lines;
+		for (const auto line : std::views::split(shader_source, std::string{"\n"})) {
+			lines.push_back(std::string(line.data(), line.size()));
+		}
+
 		const auto& errors = shader->GetErrors();
 		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
 		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);
 		for (const auto& err : errors) {
 			ImGui::TextColored(error_col, err.m_Message.data());
 		}
-		if (search.isNull()) {
+		if (search.empty()) {
 			for (int line = 0; line < lines.size(); line++) {
 				bool err_found = false;
 				if (data.p_ShowPreprocessed) {
@@ -951,8 +959,8 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 							ImGui::SameLine();
 							ImGui::SetCursorPosX(number_width);
 
-							auto before_error = lines[line].left(err.m_LinePos + 1);
-							auto after_error = lines[line].right(lines[line].size() - err.m_LinePos - 1);
+							auto before_error = lines[line].substr(0, err.m_LinePos + 1);
+							auto after_error = lines[line].substr(err.m_LinePos + 1, lines[line].size() - err.m_LinePos - 1);
 
 							ImGui::TextUnformatted(before_error.data());
 							ImGui::SameLine(0.0, 0.0);
@@ -982,7 +990,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 			for(int line = 0; line < num_lines; line++) {
 				while (look_ahead_match.size() <= context_lines) {
 					int ahead = line + (int)look_ahead_match.size();
-					bool found = (ahead < num_lines) && QString(lines[ahead]).contains(search, Qt::CaseInsensitive);
+					bool found = (ahead < num_lines) && StringContains(lines[ahead], search, true);
 					match_count += found ? 1 : 0;
 					look_ahead_match.push_back(found);
 				}

@@ -141,14 +141,14 @@ GLuint GLShader::CreateProgram(std::string& err_msg, const std::function<std::st
 ////////////////////////////////////////////////////////////////////////////////
 GLuint GLShader::CreateShader(std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view filename, GLenum type, std::string_view insertion) {
 
-	QByteArray arr = QByteArray::fromStdString(loader(filename, err_msg));
-	if (arr.isNull()) {
+	std::string arr = loader(filename, err_msg);
+	if (arr.empty()) {
 		err_msg = "File error - " + err_msg; // TODO: better error handling than just last file error
 		return 0;
 	}
 
-	QString source_type = "Compute";
-	QString preamble = "#version 450\nprecision highp float;\nprecision highp int;\n";
+	std::string source_type = "Compute";
+	std::string preamble = "#version 450\nprecision highp float;\nprecision highp int;\n";
 	if (type == GL_VERTEX_SHADER) {
 		preamble += "#define IS_VERTEX_SHADER\n";
 		source_type = "Vertex";
@@ -159,47 +159,48 @@ GLuint GLShader::CreateShader(std::string& err_msg, const std::function<std::str
 		preamble += "#define IS_GEOMETRY_SHADER\n";
 		source_type = "Geometry";
 	}
-	preamble += QByteArray::fromStdString(std::string(insertion)) + "\n";
-	arr = preamble.toLocal8Bit() + arr;
+	preamble += std::format("{}\n", insertion);
+	arr = preamble + arr;
 
-	{ // replace all #include
-		QString search_term = "#include \"";
-		QRegularExpression regex(search_term + "(?<fileName>[\\w.\\w]+)\"");
-		QRegularExpressionMatchIterator includes = regex.globalMatch(arr);
-		std::vector<std::pair<QByteArray, QByteArray>> replacements;
-		while (includes.hasNext()) {
-			QRegularExpressionMatch match = includes.next();
-			QString include_filename = match.captured(1);
-			QByteArray include_data = (search_term + include_filename + "\"").toLocal8Bit();
+	// replace all #include
+	std::string search_term = "#include";
+	std::set<std::string> included_files;
+	while (true) {
+		auto found_pos = arr.find(search_term);
+		if (found_pos == std::string::npos) {
+			break;
+		}
+		auto first_quote = std::string::npos;
+		std::string include_filename;
 
-			bool found = false;
-			for (auto it = replacements.begin(); it != replacements.end(); it++) {
-				if (it->first == include_data) {
-					found = true;
-					break;
-				}
+		auto pos = found_pos + 1;
+		for (pos; pos < arr.size(); pos++) {
+			if (arr[pos] == '\n') {
+				break;
 			}
-			if (found) {
+			if (arr[pos] != '"') {
 				continue;
 			}
-
-			QByteArray loaded_data = QByteArray::fromStdString(loader(include_filename.toStdString(), err_msg));
-			if (loaded_data.isEmpty() || loaded_data.isNull()) {
-				err_msg = std::format("Include error, cannot open {} - {}", include_filename.toStdString(), err_msg);
+			if (first_quote == std::string::npos) {
+				first_quote = pos;
+				continue;
+			}
+			include_filename = arr.substr(first_quote + 1, pos - first_quote - 1);
+		}
+		if (include_filename.empty()) {
+			err_msg = "No include file specified";
+			return 0;
+		}
+		std::string loaded_data;
+		if (!included_files.contains(include_filename)) { // only include once
+			loaded_data = loader(include_filename, err_msg);
+			if (loaded_data.empty()) {
+				err_msg = std::format("Include error, cannot open {} - {}", include_filename, err_msg);
 				return 0;
 			}
-
-			replacements.push_back({ include_data, loaded_data });
+			included_files.insert(include_filename);
 		}
-		int replacePos = 0;
-		for (auto it = replacements.begin(); it != replacements.end(); it++) {
-			int foundPos = arr.indexOf(it->first, replacePos);
-			if (foundPos < 0) {
-				continue;
-			}
-			arr.replace(foundPos, it->first.length(), it->second);
-			replacePos = foundPos + it->second.length();
-		}
+		arr.replace(found_pos, pos - found_pos, loaded_data);
 	}
 
 	unsigned char* start = (unsigned char*)arr.data();

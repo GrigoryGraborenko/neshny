@@ -56,6 +56,7 @@ size_t HashMemory(unsigned char* mem, int size);
 bool NearlyEqual(double a, double b);
 std::string ReplaceAll(std::string_view str, std::string_view before, std::string_view after);
 std::string JoinStrings(const std::vector<std::string>& list, std::string_view insert_between);
+bool StringContains(std::string_view str, std::string_view search, bool case_insensitive = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

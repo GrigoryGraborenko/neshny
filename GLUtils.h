@@ -13,8 +13,8 @@ class GLShader {
 public:
 
 	struct SourceInfo {
-		QString		m_Type;
-		QString		m_Source;
+		std::string	m_Type;
+		std::string	m_Source;
 		std::string	m_Error;
 	};
 
@@ -149,7 +149,7 @@ public:
 
 #ifdef SSBO_DEBUG
 	inline int										GetNumResizes	( void ) { return m_NumberResizes; }
-	inline QByteArray								GetInfo			( void ) { return QString("%1 [%2]").arg(m_Size).arg(m_NumberResizes).toLocal8Bit(); }
+	inline std::string								GetInfo			( void ) { return std::format("{} [{}]", m_Size, m_NumberResizes); }
 #endif // SSBO_DEBUG
 
 protected:

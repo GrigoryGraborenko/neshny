@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <span>
 #include <sstream>
+#include <string_view>
 
 #ifdef NESHNY_GL
     #include "glad/glad.h"

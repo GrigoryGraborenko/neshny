@@ -93,4 +93,18 @@ std::string JoinStrings(const std::vector<std::string>& list, std::string_view i
     return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+bool StringContains(std::string_view str, std::string_view substr, bool case_insensitive) {
+
+    auto case_insensitive_compare = [] (char a, char b) -> bool {
+        return std::tolower(a) == std::tolower(b);
+    };
+    auto case_sensitive_compare = [] (char a, char b) -> bool {
+        return a == b;
+    };
+
+    auto it = std::search(str.begin(), str.end(), substr.begin(), substr.end(), case_insensitive ? case_insensitive_compare : case_sensitive_compare);
+    return it != str.end();
+}
+
 } // namespace Neshny

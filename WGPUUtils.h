@@ -31,8 +31,8 @@ public:
 	inline bool										IsValid					( void ) const { return (m_Shader != nullptr) && m_Errors.empty(); }
 
 	inline const std::vector<Error>&				GetErrors				( void ) const { return m_Errors; }
-	inline std::string								GetSource				( void ) const { return m_Source; }
-	inline std::string								GetRawSource			( void ) const { return m_SourcePrePreProcessor; }
+	inline std::string_view							GetSource				( void ) const { return m_Source; }
+	inline std::string_view							GetRawSource			( void ) const { return m_SourcePrePreProcessor; }
 
 private:
 

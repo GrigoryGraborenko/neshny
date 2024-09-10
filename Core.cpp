@@ -436,7 +436,7 @@ void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
 	if (WGPUErrorType_NoError == type) {
 		return;
 	}
-	qCritical() << "WebGPU validation error: " << message;
+	Core::Log(std::format("WebGPU validation error: {}", message), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,7 +575,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	dawnProcSetProcs(&backendProcs);
 
 	static auto cCallback = [](WGPUErrorType type, char const* message, void* userdata) -> void {
-		qWarning() << "Uncaptured error" << message;
+		Core::Log(std::format("Uncaptured error {}", message), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 	};
 	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 

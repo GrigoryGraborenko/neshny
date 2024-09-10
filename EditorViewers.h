@@ -269,9 +269,9 @@ class ShaderViewer {
 public:
 	static void						RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
 #if defined(NESHNY_GL)
-	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, QString search );
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, std::string_view search );
 #elif defined(NESHNY_WEBGPU)
-	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, QString search );
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, std::string_view search );
 #endif
 };
 
