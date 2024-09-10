@@ -1011,9 +1011,12 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 				ImGui::TextColored(line_num_col, line_num_str.data());
 				ImGui::SameLine();
 				ImGui::SetCursorPosX(number_width);
-				ImGui::TextColored(found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f), lines[line].data());
-				last_line = line;
 
+				ImGui::PushStyleColor(ImGuiCol_Text, found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+				ImGui::TextUnformatted(lines[line].data());
+				ImGui::PopStyleColor();
+
+				last_line = line;
 				match_count -= found ? 1 : 0;
 			}
 		}
