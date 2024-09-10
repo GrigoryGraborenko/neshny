@@ -406,20 +406,20 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	if (entity_processing && m_ReplaceMain) {
 		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
 		end_insertion +=
-			"fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+			QString("fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
 			"\tlet item_index = i32(global_id.x);\n"
 			"\tif (item_index >= Get_ioMaxIndex) { return; }\n"
-			"\tlet item: %1 = Get%1(item_index);";
+			"\tlet item: %1 = Get%1(item_index);").arg(m_Entity->GetName());
 		if (m_Entity->IsDoubleBuffering()) {
-			end_insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg("%1");
+			end_insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg(m_Entity->GetName());
 		} else {
 			end_insertion += QString("\tif (item.%1 < 0) { return; }").arg(m_Entity->GetIDName());
 		}
 		end_insertion +=
-			"\tvar new_item: %1 = item;\n"
+			QString("\tvar new_item: %1 = item;\n"
 			"\tlet should_destroy: bool = %1Main(item_index, item, &new_item);\n"
 			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
-			"}";
+			"}").arg(m_Entity->GetName());
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 
 		/*
@@ -436,14 +436,14 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	} else if (m_Entity && m_ReplaceMain) {
 		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
 		end_insertion +=
-			"fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+			QString("fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
 			"\tlet item_index = i32(global_id.x);\n"
 			"\tif (item_index >= Get_ioMaxIndex) { return; }\n"
-			"\tlet item: %1 = Get%1(item_index);";
+			"\tlet item: %1 = Get%1(item_index);").arg(m_Entity->GetName());
 		end_insertion += QString("\tif (item.%1 < 0) { return; }").arg(m_Entity->GetIDName());
 		end_insertion +=
-			"\t%1Main(item_index, item);\n"
-			"}\n////////////////";
+			QString("\t%1Main(item_index, item);\n"
+			"}\n////////////////").arg(m_Entity->GetName());
 	}
 
 	// WARNING: do NOT add to control buffer beyond this point
@@ -458,16 +458,16 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
-	QByteArray insertion_str = (m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n")).toLocal8Bit();
-	QByteArray end_insertion_str;
+	std::string insertion_str = insertion.join("\n").toStdString();
+	std::string end_insertion_str;
 	if (!end_insertion.empty()) {
-		end_insertion_str = "\n//////////\n" + (m_Entity ? QString(end_insertion.join("\n")).arg(m_Entity->GetName()) : end_insertion.join("\n")).toLocal8Bit();
+		end_insertion_str = "\n//////////\n" + end_insertion.join("\n").toStdString();
 	}
 
 	if (is_render) {
-		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str.toStdString(), end_insertion_str.toStdString());
+		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
 	} else {
-		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str.toStdString(), end_insertion_str.toStdString());
+		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
 	}
 
 	return result;

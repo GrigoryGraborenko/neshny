@@ -261,44 +261,44 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 
 	if (entity_processing && m_ReplaceMain) {
 		insertion +=
-			"bool %1Main(int item_index, %1 item, inout %1 new_item); // forward declaration\n"
+			QString("bool %1Main(int item_index, %1 item, inout %1 new_item); // forward declaration\n"
 			"void main() {\n"
 			"\tuvec3 global_id = gl_GlobalInvocationID;\n"
 			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
 			"\tif (item_index >= uCount) return;\n"
-			"\t%1 item = Get%1(item_index);";
+			"\t%1 item = Get%1(item_index);").arg(m_Entity->GetName());
 		if (m_Entity->IsDoubleBuffering()) {
-			insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg("%1");
+			insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg(m_Entity->GetName());
 		} else {
 			insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
 		}
 		insertion +=
-			"\t%1 new_item = item;\n"
+			QString("\t%1 new_item = item;\n"
 			"\tbool should_destroy = %1Main(item_index, item, new_item);\n"
 			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
-			"}\n////////////////";
+			"}\n////////////////").arg(m_Entity->GetName());
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 		insertion +=
-			"#ifdef IS_VERTEX_SHADER\n"
+			QString("#ifdef IS_VERTEX_SHADER\n"
 			"void %1Main(int item_index, %1 item); // forward declaration\n"
 			"void main() {\n"
-			"\t%1 item = Get%1(gl_InstanceID);";
+			"\t%1 item = Get%1(gl_InstanceID);").arg(m_Entity->GetName());
 		insertion += QString("\tif (item.%1 < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }").arg(m_Entity->GetIDName());
 		insertion +=
-			"\t%1Main(gl_InstanceID, item);\n"
-			"}\n#endif\n////////////////";
+			QString("\t%1Main(gl_InstanceID, item);\n"
+			"}\n#endif\n////////////////").arg(m_Entity->GetName());
 	} else if (m_Entity && m_ReplaceMain) {
 		insertion +=
-			"void %1Main(int item_index, %1 item); // forward declaration\n"
+			QString("void %1Main(int item_index, %1 item); // forward declaration\n"
 			"void main() {\n"
 			"\tuvec3 global_id = gl_GlobalInvocationID;\n"
 			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
 			"\tif (item_index >= uCount) return;\n"
-			"\t%1 item = Get%1(item_index);";
+			"\t%1 item = Get%1(item_index);").arg(m_Entity->GetName());
 		insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetIDName());
 		insertion +=
-			"\t%1Main(item_index, item);\n"
-			"}\n////////////////";
+			QString("\t%1Main(item_index, item);\n"
+			"}\n////////////////").arg(m_Entity->GetName());
 	}
 
 	// WARNING: do NOT add to control buffer beyond this point
@@ -341,7 +341,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
-	QString insertion_str = m_Entity ? QString(insertion.join("\n")).arg(m_Entity->GetName()) : insertion.join("\n");
+	QString insertion_str = insertion.join("\n");
 	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str.toStdString()) : Core::GetComputeShader(m_ShaderName, insertion_str.toStdString());
 	prog->UseProgram();
 
