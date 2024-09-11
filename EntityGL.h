@@ -147,9 +147,9 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str, QString entity_
 	lines += "}";
 	lines += functions.join("\n");
 
-	info.p_GPUReadOnlyInsertion = read_only_lines.join("\n");
-	lines.push_front(info.p_GPUReadOnlyInsertion);
-	info.p_GPUInsertion = lines.join("\n");
+	info.p_GPUReadOnlyInsertion = read_only_lines.join("\n").toStdString();
+	lines.push_front(QString::fromStdString(info.p_GPUReadOnlyInsertion));
+	info.p_GPUInsertion = lines.join("\n").toStdString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -163,9 +163,9 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 			insertion += m_Entity->GetGPUInsertion();
 		}
 		if (entity_processing) {
-			insertion += m_Entity->GetSpecs().p_GPUInsertion;
+			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUInsertion);
 		} else {
-			insertion += m_Entity->GetSpecs().p_GPUReadOnlyInsertion;
+			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
 		}
 	}
 
@@ -226,7 +226,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 		}
 
 		insertion += entity.GetGPUInsertion();
-		insertion += QString(entity.GetSpecs().p_GPUInsertion).arg(name);
+		insertion += QString(QString::fromStdString(entity.GetSpecs().p_GPUInsertion)).arg(name);
 
 		entity_controls.push_back({ entity.GetMaxIndex(), entity.GetNextId(), entity.GetFreeCount() });
 		if (m_Entities[e].p_Creatable) {
