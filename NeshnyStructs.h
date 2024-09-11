@@ -20,7 +20,7 @@ struct MemberSpec {
 		T_MAT4
 	};
 
-	static QString GetGPUType(Type type) {
+	static std::string GetGPUType(Type type) {
 #if defined(NESHNY_GL)
 		if (type == MemberSpec::T_INT) {
 			return "int";
@@ -70,7 +70,7 @@ struct MemberSpec {
 			return "mat4x4f";
 		}
 #endif
-		return QString();
+		return std::string();
 	}
 
 	static int GetGPUTypeSizeBytes(Type type) {
@@ -94,72 +94,72 @@ struct MemberSpec {
 		return sizeof(int);
 	}
 
-	static QString GetGPUGetSyntax(Type type, int index, QString entity_name) {
+	static std::string GetGPUGetSyntax(Type type, int index, std::string entity_name) {
 #if defined(NESHNY_GL)
 		if (type == MemberSpec::T_INT) {
-			return QString("%2_LOOKUP(base, %1)").arg(index).arg(entity_name);
+			return std::format("{}_LOOKUP(base, {})", entity_name, index);
 		} else if (type == MemberSpec::T_UINT) {
-			return QString("uint(%2_LOOKUP(base, %1))").arg(index).arg(entity_name);
+			return std::format("uint({}_LOOKUP(base, {}))", entity_name, index);
 		} else if (type == MemberSpec::T_FLOAT) {
-			return QString("intBitsToFloat(%2_LOOKUP(base, %1))").arg(index).arg(entity_name);
+			return std::format("intBitsToFloat({}_LOOKUP(base, {}))", entity_name, index);
 		} else if (type == MemberSpec::T_VEC2) {
-			return QString("vec2(intBitsToFloat(%3_LOOKUP(base, %1)), intBitsToFloat(%3_LOOKUP(base, %2)))").arg(index).arg(index + 1).arg(entity_name);
+			return std::format("vec2(intBitsToFloat({2}_LOOKUP(base, {0})), intBitsToFloat({2}_LOOKUP(base, {1})))", index, index + 1, entity_name);
 		} else if (type == MemberSpec::T_VEC3) {
-			return QString("vec3(intBitsToFloat(%4_LOOKUP(base, %1)), intBitsToFloat(%4_LOOKUP(base, %2)), intBitsToFloat(%4_LOOKUP(base, %3)))").arg(index).arg(index + 1).arg(index + 2).arg(entity_name);
+			return std::format("vec3(intBitsToFloat({3}_LOOKUP(base, {0})), intBitsToFloat({3}_LOOKUP(base, {1})), intBitsToFloat({3}_LOOKUP(base, {2})))", index, index + 1, index + 2, entity_name);
 		} else if (type == MemberSpec::T_VEC4) {
-			return QString("vec4(intBitsToFloat(%5_LOOKUP(base, %1)), intBitsToFloat(%5_LOOKUP(base, %2)), intBitsToFloat(%5_LOOKUP(base, %3)), intBitsToFloat(%5_LOOKUP(base, %4)))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg(entity_name);
+			return std::format("vec4(intBitsToFloat({4}_LOOKUP(base, {0})), intBitsToFloat({4}_LOOKUP(base, {1})), intBitsToFloat({4}_LOOKUP(base, {2})), intBitsToFloat({4}_LOOKUP(base, {3})))", index, index + 1, index + 2, index + 3, entity_name);
 		} else if (type == MemberSpec::T_IVEC2) {
-			return QString("ivec2(%3_LOOKUP(base, %1), %3_LOOKUP(base, %2))").arg(index).arg(index + 1).arg(entity_name);
+			return std::format("ivec2({2}_LOOKUP(base, {0}), {2}_LOOKUP(base, {1}))", index, index + 1, entity_name);
 		} else if (type == MemberSpec::T_IVEC3) {
-			return QString("ivec3(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg(entity_name);
+			return std::format("ivec3({3}_LOOKUP(base, {0}), {3}_LOOKUP(base, {1}), {3}_LOOKUP(base, {2}))", index, index + 1, index + 2, entity_name);
 		} else if (type == MemberSpec::T_IVEC4) {
-			return QString("ivec4(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg(entity_name);
+			return std::format("ivec4({4}_LOOKUP(base, {0}), {4}_LOOKUP(base, {1}), {4}_LOOKUP(base, {2}), {4}_LOOKUP(base, {3}))", index, index + 1, index + 2, index + 3, entity_name);
 		} else if (type == MemberSpec::T_MAT3) {
-			return QString("mat3(%10_LOOKUP(base, %1), %10_LOOKUP(base, %2), %10_LOOKUP(base, %3), %10_LOOKUP(base, %4), %10_LOOKUP(base, %5), %10_LOOKUP(base, %6), %10_LOOKUP(base, %7), %10_LOOKUP(base, %8), %10_LOOKUP(base, %9))")
-				.arg(index).arg(index + 1).arg(index + 2)
-				.arg(index + 3).arg(index + 4).arg(index + 5)
-				.arg(index + 6).arg(index + 7).arg(index + 8).arg(entity_name);
+			return std::format("mat3({9}_LOOKUP(base, {0}), {9}_LOOKUP(base, {1}), {9}_LOOKUP(base, {2}), {9}_LOOKUP(base, {3}), {9}_LOOKUP(base, {4}), {9}_LOOKUP(base, {5}), {9}_LOOKUP(base, {6}), {9}_LOOKUP(base, {7}), {9}_LOOKUP(base, {8}))"
+				,index, index + 1, index + 2
+				,index + 3, index + 4, index + 5
+				,index + 6, index + 7, index + 8, entity_name);
 		} else if (type == MemberSpec::T_MAT4) {
-			return QString("mat4(%17_LOOKUP(base, %1), %17_LOOKUP(base, %2), %17_LOOKUP(base, %3), %17_LOOKUP(base, %4), %17_LOOKUP(base, %5), %17_LOOKUP(base, %6), %17_LOOKUP(base, %7), %17_LOOKUP(base, %8), %17_LOOKUP(base, %9), %17_LOOKUP(base, %10), %17_LOOKUP(base, %11), %17_LOOKUP(base, %12), %17_LOOKUP(base, %13), %17_LOOKUP(base, %14), %17_LOOKUP(base, %15), %17_LOOKUP(base, %16))")
-				.arg(index).arg(index + 1).arg(index + 2).arg(index + 3)
-				.arg(index + 4).arg(index + 5).arg(index + 6).arg(index + 7)
-				.arg(index + 8).arg(index + 9).arg(index + 10).arg(index + 11)
-				.arg(index + 12).arg(index + 13).arg(index + 14).arg(index + 15).arg(entity_name);
+			return std::format("mat4({16}_LOOKUP(base, {0}), {16}_LOOKUP(base, {1}), {16}_LOOKUP(base, {2}), {16}_LOOKUP(base, {3}), {16}_LOOKUP(base, {4}), {16}_LOOKUP(base, {5}), {16}_LOOKUP(base, {6}), {16}_LOOKUP(base, {7}), {16}_LOOKUP(base, {8}), {16}_LOOKUP(base, {9}), {16}_LOOKUP(base, {10}), {16}_LOOKUP(base, {11}), {16}_LOOKUP(base, {12}), {16}_LOOKUP(base, {13}), {16}_LOOKUP(base, {14}), {16}_LOOKUP(base, {15}))"
+				,index, index + 1, index + 2, index + 3
+				,index + 4, index + 5, index + 6, index + 7
+				,index + 8, index + 9, index + 10, index + 11
+				,index + 12, index + 13, index + 14, index + 15, entity_name);
 		}
 #elif defined(NESHNY_WEBGPU)
 		if (type == MemberSpec::T_INT) {
-			return QString("%2_LOOKUP(base, %1)").arg(index).arg(entity_name);
+			return std::format("{}_LOOKUP(base, {})", entity_name, index);
 		} else if (type == MemberSpec::T_UINT) {
-			return QString("u32(%2_LOOKUP(base, %1))").arg(index).arg(entity_name);
+			return std::format("u32({}_LOOKUP(base, {}))", entity_name, index);
 		} else if (type == MemberSpec::T_FLOAT) {
-			return QString("bitcast<f32>(%2_LOOKUP(base, %1))").arg(index).arg(entity_name);
+			return std::format("bitcast<f32>({}_LOOKUP(base, {}))", entity_name, index);
 		} else if (type == MemberSpec::T_VEC2) {
-			return QString("vec2f(bitcast<f32>(%3_LOOKUP(base, %1)), bitcast<f32>(%3_LOOKUP(base, %2)))").arg(index).arg(index + 1).arg(entity_name);
+			return std::format("vec2f(bitcast<f32>({2}_LOOKUP(base, {0})), bitcast<f32>({2}_LOOKUP(base, {1})))", index, index + 1, entity_name);
 		} else if (type == MemberSpec::T_VEC3) {
-			return QString("vec3f(bitcast<f32>(%4_LOOKUP(base, %1)), bitcast<f32>(%4_LOOKUP(base, %2)), bitcast<f32>(%4_LOOKUP(base, %3)))").arg(index).arg(index + 1).arg(index + 2).arg(entity_name);
+			return std::format("vec3f(bitcast<f32>({3}_LOOKUP(base, {0})), bitcast<f32>({3}_LOOKUP(base, {1})), bitcast<f32>({3}_LOOKUP(base, {2})))", index, index + 1, index + 2, entity_name);
 		} else if (type == MemberSpec::T_VEC4) {
-			return QString("vec4f(bitcast<f32>(%5_LOOKUP(base, %1)), bitcast<f32>(%5_LOOKUP(base, %2)), bitcast<f32>(%5_LOOKUP(base, %3)), bitcast<f32>(%5_LOOKUP(base, %4)))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg(entity_name);
+			return std::format("vec4f(bitcast<f32>({4}_LOOKUP(base, {0})), bitcast<f32>({4}_LOOKUP(base, {1})), bitcast<f32>({4}_LOOKUP(base, {2})), bitcast<f32>({4}_LOOKUP(base, {3})))", index, index + 1, index + 2, index + 3, entity_name);
 		} else if (type == MemberSpec::T_IVEC2) {
-			return QString("vec2i(%3_LOOKUP(base, %1), %3_LOOKUP(base, %2))").arg(index).arg(index + 1).arg(entity_name);
+			return std::format("vec2i({2}_LOOKUP(base, {0}), {2}_LOOKUP(base, {1}))", index, index + 1, entity_name);
 		} else if (type == MemberSpec::T_IVEC3) {
-			return QString("vec3i(%4_LOOKUP(base, %1), %4_LOOKUP(base, %2), %4_LOOKUP(base, %3))").arg(index).arg(index + 1).arg(index + 2).arg(entity_name);
+			return std::format("vec3i({3}_LOOKUP(base, {0}), {3}_LOOKUP(base, {1}), {3}_LOOKUP(base, {2}))", index, index + 1, index + 2, entity_name);
 		} else if (type == MemberSpec::T_IVEC4) {
-			return QString("vec4i(%5_LOOKUP(base, %1), %5_LOOKUP(base, %2), %5_LOOKUP(base, %3), %5_LOOKUP(base, %4))").arg(index).arg(index + 1).arg(index + 2).arg(index + 3).arg(entity_name);
+			return std::format("vec4i({4}_LOOKUP(base, {0}), {4}_LOOKUP(base, {1}), {4}_LOOKUP(base, {2}), {4}_LOOKUP(base, {3}))", index, index + 1, index + 2, index + 3, entity_name);
 		} else if (type == MemberSpec::T_MAT3) {
-			return QString("mat3x3f(%10_LOOKUP(base, %1), %10_LOOKUP(base, %2), %10_LOOKUP(base, %3), %10_LOOKUP(base, %4), %10_LOOKUP(base, %5), %10_LOOKUP(base, %6), %10_LOOKUP(base, %7), %10_LOOKUP(base, %8), %10_LOOKUP(base, %9))")
-				.arg(index).arg(index + 1).arg(index + 2)
-				.arg(index + 3).arg(index + 4).arg(index + 5)
-				.arg(index + 6).arg(index + 7).arg(index + 8).arg(entity_name);
+			return std::format("mat3x3f({9}_LOOKUP(base, {0}), {9}_LOOKUP(base, {1}), {9}_LOOKUP(base, {2}), {9}_LOOKUP(base, {3}), {9}_LOOKUP(base, {4}), {9}_LOOKUP(base, {5}), {9}_LOOKUP(base, {6}), {9}_LOOKUP(base, {7}), {9}_LOOKUP(base, {8}))"
+				,index, index + 1, index + 2
+				,index + 3, index + 4, index + 5
+				,index + 6, index + 7, index + 8, entity_name);
 		} else if (type == MemberSpec::T_MAT4) {
-			return QString("mat4x4f(%17_LOOKUP(base, %1), %17_LOOKUP(base, %2), %17_LOOKUP(base, %3), %17_LOOKUP(base, %4), %17_LOOKUP(base, %5), %17_LOOKUP(base, %6), %17_LOOKUP(base, %7), %17_LOOKUP(base, %8), %17_LOOKUP(base, %9), %17_LOOKUP(base, %10), %17_LOOKUP(base, %11), %17_LOOKUP(base, %12), %17_LOOKUP(base, %13), %17_LOOKUP(base, %14), %17_LOOKUP(base, %15), %17_LOOKUP(base, %16))")
-				.arg(index).arg(index + 1).arg(index + 2).arg(index + 3)
-				.arg(index + 4).arg(index + 5).arg(index + 6).arg(index + 7)
-				.arg(index + 8).arg(index + 9).arg(index + 10).arg(index + 11)
-				.arg(index + 12).arg(index + 13).arg(index + 14).arg(index + 15).arg(entity_name);
+			return std::format("mat4x4f({16}_LOOKUP(base, {0}), {16}_LOOKUP(base, {1}), {16}_LOOKUP(base, {2}), {16}_LOOKUP(base, {3}), {16}_LOOKUP(base, {4}), {16}_LOOKUP(base, {5}), {16}_LOOKUP(base, {6}), {16}_LOOKUP(base, {7}), {16}_LOOKUP(base, {8}), {16}_LOOKUP(base, {9}), {16}_LOOKUP(base, {10}), {16}_LOOKUP(base, {11}), {16}_LOOKUP(base, {12}), {16}_LOOKUP(base, {13}), {16}_LOOKUP(base, {14}), {16}_LOOKUP(base, {15}))"
+				,index, index + 1, index + 2, index + 3
+				,index + 4, index + 5, index + 6, index + 7
+				,index + 8, index + 9, index + 10, index + 11
+				,index + 12, index + 13, index + 14, index + 15, entity_name);
 		}
 #endif
 
-		return QString();
+		return std::string();
 	}
 
 	QString		p_Name;

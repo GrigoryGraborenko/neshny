@@ -50,7 +50,7 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		insertion += QString("\t%1 %2;").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name);
+		insertion += QString("\t%1 %2;").arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(member.p_Name);
 
 		QString name = member.p_Name;
 		if (member.p_Type == MemberSpec::T_INT) {
@@ -200,7 +200,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 		int buffer_index = insertion_buffers.size();
 		auto& ssbo = m_SSBOs[b];
 		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(MemberSpec::GetGPUType(ssbo.p_Type)).arg(ssbo.p_Name).arg(ssbo.p_Access == BufferAccess::READ_ONLY ? "readonly " : "");
+		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(QString::fromStdString(MemberSpec::GetGPUType(ssbo.p_Type))).arg(ssbo.p_Name).arg(ssbo.p_Access == BufferAccess::READ_ONLY ? "readonly " : "");
 	}
 	for (const auto& tex : m_Textures) {
 		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);

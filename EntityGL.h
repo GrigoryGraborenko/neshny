@@ -74,7 +74,7 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str, QString entity_
 
 	read_only_lines += QString("struct %1 {").arg(entity_name);
 	for (auto member : info.p_Members) {
-		read_only_lines += QString("\t%1 %2;").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name);
+		read_only_lines += QString("\t%1 %2;").arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(member.p_Name);
 	}
 	read_only_lines += "};";
 
@@ -84,9 +84,9 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str, QString entity_
 	int pos_index = 0;
 	QStringList functions;
 	for (auto member : info.p_Members) {
-		QString get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
+		QString get_syntax = QString::fromStdString(MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name.toStdString()));
 		read_only_lines += QString("\tresult.%1 = %2;").arg(member.p_Name).arg(get_syntax);
-		functions += QString("%1 Get%3%2(int index) {\n").arg(MemberSpec::GetGPUType(member.p_Type)).arg(member.p_Name).arg(entity_name) + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
+		functions += QString("%1 Get%3%2(int index) {\n").arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(member.p_Name).arg(entity_name) + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
 		if (member.p_Type == MemberSpec::Type::T_INT) {
 			functions += QString("#define Access%3%1(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member.p_Name).arg(pos_index).arg(entity_name);
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
@@ -139,7 +139,7 @@ void SerializeStructInfo(StructInfo& info, QString get_base_str, QString entity_
 			value_mod_str = QString("\t%5_SET(base, %1, value.x); %5_SET(base, %2, value.y); %5_SET(base, %3, value.z); %5_SET(base, %4, value.w);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(entity_name);
 		}
 		lines += mod_str;
-		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type)).arg(entity_name) + get_base_str + QString("\n%1\n}").arg(value_mod_str);
+		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(entity_name) + get_base_str + QString("\n%1\n}").arg(value_mod_str);
 
 		pos_index += member.p_Size / sizeof(float);
 	}

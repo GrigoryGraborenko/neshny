@@ -69,7 +69,7 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+		members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
 
 		QString name = member.p_Name;
 		if (read_only) {
@@ -169,7 +169,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		int size = 0;
 		for (const auto& member : unform_members) {
 			size += member.p_Size;
-			members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+			members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
 		}
 		immediate_insertion += "struct UniformStruct {";
 		immediate_insertion += members.join(",\n");
@@ -258,13 +258,13 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		bool read_only = ssbo.p_Access == BufferAccess::READ_ONLY;
 		auto type_str = MemberSpec::GetGPUType(ssbo.p_Type);
 		if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
-			type_str = QString("atomic<%1>").arg(type_str);
+			type_str = std::format("atomic<{}>", type_str);
 		}
 		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> %3: array<%4>;")
 			.arg(insertion_buffers.size())
 			.arg(read_only ? "read" : "read_write")
 			.arg(ssbo.p_Name)
-			.arg(type_str);
+			.arg(QString::fromStdString(type_str));
 		result->m_Pipeline->AddBuffer(ssbo.p_Buffer, vis_flags, read_only);
 	}
 
@@ -272,7 +272,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 		QStringList members;
 		for (const auto& member : ssbo_spec.p_Members) {
-			members += QString("\t%1: %2").arg(member.p_Name).arg(MemberSpec::GetGPUType(member.p_Type));
+			members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
 		}
 		immediate_insertion += QString("struct %1 {").arg(ssbo_spec.p_StructName);
 		immediate_insertion += members.join(",\n");
