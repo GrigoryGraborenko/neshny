@@ -170,8 +170,8 @@ struct MemberSpec {
 
 struct StructInfo {
 	std::vector<MemberSpec>	p_Members;
-	QString					p_GPUInsertion;
-	QString					p_GPUReadOnlyInsertion;
+	std::string				p_GPUInsertion;
+	std::string				p_GPUReadOnlyInsertion;
 };
 
 } // namespace Neshny

@@ -191,7 +191,7 @@ public:
 	struct VertexFormatItem {
 		WGPUVertexFormat	p_Type;
 		int					p_Size;
-		QString				p_TypeName;
+		std::string			p_TypeName;
 	};
 
 													WebGPURenderBuffer		( void ) {}
