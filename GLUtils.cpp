@@ -56,14 +56,14 @@ void GLShader::UseProgram(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLuint GLShader::GetAttribute(QString name) {
+GLuint GLShader::GetAttribute(std::string_view name) {
 #pragma msg("cache these for later?")
-	return glGetAttribLocation(m_Program, name.toLocal8Bit().data());
+	return glGetAttribLocation(m_Program, name.data());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-GLint GLShader::GetUniform(QString name) {
-	GLint location = glGetUniformLocation(m_Program, name.toLocal8Bit().data());
+GLint GLShader::GetUniform(std::string_view name) {
+	GLint location = glGetUniformLocation(m_Program, name.data());
 	//assert(location >= 0);
 	return location;
 }
@@ -314,9 +314,9 @@ void GLBuffer::UseBuffer(GLShader* program) {
 			if (m_VertexSizes.size() == 1) {
 				stride = 0;
 			}
-			QString name = "aPosition";
+			std::string name = "aPosition";
 			if (index > 0) {
-				name += QString("%1").arg(index);
+				name += std::format("{}", index);
 			}
 			GLuint attribute = program->GetAttribute(name);
 			glBindBuffer(GL_ARRAY_BUFFER, m_VertexBuffer);

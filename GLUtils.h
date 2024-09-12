@@ -25,8 +25,8 @@ public:
 	bool											InitCompute			( std::string& err_msg, const std::function<std::string(std::string_view, std::string&)>& loader, std::string_view shader_filename, std::string_view insertion );
 
 	void											UseProgram			( void );
-	GLuint											GetAttribute		( QString name );
-	GLint											GetUniform			( QString name );
+	GLuint											GetAttribute		( std::string_view name );
+	GLint											GetUniform			( std::string_view name );
 
 	inline const std::vector<SourceInfo>&			GetSources			( void ) const { return m_Sources; }
 	inline bool										IsValid				( void ) const { return m_Program > 0; }

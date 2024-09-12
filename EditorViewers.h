@@ -16,11 +16,11 @@ public:
 
     inline void									AddLine             ( Vec3 a, Vec3 b, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Lines.push_back(SimpleLine{a, b, color, on_top}); }
     inline void									AddPoint            ( Vec3 pos, Vec4 color = Vec4(1.0, 1.0, 1.0, 1.0), bool on_top = false ) { m_Points.push_back(SimplePoint{pos, std::string(""), color, on_top}); }
-    inline void									AddPoint            ( Vec3 pos, std::string text, Vec4 color, bool on_top = true ) { m_Points.push_back(SimplePoint{pos, text, color, on_top}); }
+    inline void									AddPoint            ( Vec3 pos, std::string_view text, Vec4 color, bool on_top = true ) { m_Points.push_back(SimplePoint{pos, std::string(text), color, on_top}); }
     inline void									AddTriangle         ( Vec3 a, Vec3 b, Vec3 c, Vec4 color ) { m_Triangles.push_back(SimpleTriangle{a, b, c, color}); }
     inline void									AddCircle			( Vec3 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(SimpleCircle{a, radius, color, filled}); }
     inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(SimpleSquare{min_pos, max_pos, color, filled}); }
-    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, QString filename ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, filename }); }
+    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, std::string_view filename ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, std::string(filename) }); }
 
 protected:
 
@@ -63,7 +63,7 @@ protected:
 	struct SimpleTexture {
 		Vec3 p_MinPos;
 		Vec3 p_MaxPos;
-		QString p_Filename;
+		std::string p_Filename;
 	};
 
 #if defined(NESHNY_WEBGPU)
@@ -123,7 +123,7 @@ public:
 	static inline void                          Triangle			( Vec2 a, Vec2 b, Vec2 c, Vec4 color, double z_order = 0.0 ) { Singleton().AddTriangle(a.ToVec3(z_order), b.ToVec3(z_order), c.ToVec3(z_order), color); }
 	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
 	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
-	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, QString filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
+	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, std::string_view filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
 protected:
 												SimpleRender2D		( void ) {}
 };
@@ -269,9 +269,9 @@ class ShaderViewer {
 public:
 	static void						RenderImGui			( InterfaceShaderViewer& data );// { Singleton().IRenderImGui(data); }
 #if defined(NESHNY_GL)
-	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, std::string_view search );
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, std::string_view name, GLShader* shader, bool is_compute, std::string_view search );
 #elif defined(NESHNY_WEBGPU)
-	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, std::string_view search );
+	static InterfaceCollapsible*	RenderShader		( InterfaceShaderViewer& data, std::string_view name, WebGPUShader* shader, bool is_compute, std::string_view search );
 #endif
 };
 

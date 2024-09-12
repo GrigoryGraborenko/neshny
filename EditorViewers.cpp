@@ -131,7 +131,7 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 
 	// TODO: sort by texture name and render in batches
 	for (const auto& tex : m_Textures) {
-		auto texture = Core::GetResource<Texture2D>(tex.p_Filename.toStdString());
+		auto texture = Core::GetResource<Texture2D>(tex.p_Filename);
 		if (!texture.IsValid()) {
 			return;
 		}
@@ -744,8 +744,15 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 							}
 							if (cast_type == MemberSpec::T_FLOAT) {
 								float val = ((float*)rawptr)[row];
-								auto txt = QString("%1").arg(val, 0, 'f', fabs(val) < 1.0 ? (fabs(val) < 0.001 ? 10 : 6) : 4).toLocal8Bit();
-								ImGui::Text(txt.data());
+								std::string val_str;
+								if (val < 0.001) {
+									val_str = std::format("{:.10f}", val);
+								} else if (val < 1.0) {
+									val_str = std::format("{:.6f}", val);
+								} else {
+									val_str = std::format("{:.4f}", val);
+								}
+								ImGui::Text(val_str.c_str());
 							} else if (cast_type == MemberSpec::T_UINT) {
 								ImGui::Text("%i", ((unsigned int*)rawptr)[row]);
 							} else {
@@ -817,7 +824,7 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	for (const auto& group : shaders) {
 		int num_inst = (int)group.p_Instances.size();
 		for (int i = 0; i < num_inst; i++) {
-			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
+			std::string name = num_inst > 1 ? std::format("{} [{}]", group.p_Name, i) : group.p_Name;
 			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, false, search);
 			info->p_Open = (info->p_Open || all_open) && (!all_close);
 		}
@@ -828,7 +835,7 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 	for (const auto& group : compute_shaders) {
 		int num_inst = (int)group.p_Instances.size();
 		for (int i = 0; i < num_inst; i++) {
-			QString name = num_inst > 1 ? QString("%1 [%2]").arg(group.p_Name.c_str()).arg(i) : group.p_Name.c_str();
+			std::string name = num_inst > 1 ? std::format("{} [{}]", group.p_Name, i) : group.p_Name;
 			auto info = RenderShader(data, name, group.p_Instances[i].p_Shader, true, search);
 			info->p_Open = (info->p_Open || all_open) && (!all_close);
 		}
@@ -841,9 +848,9 @@ void ShaderViewer::RenderImGui(InterfaceShaderViewer& data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 #if defined(NESHNY_GL)
-InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, GLShader* shader, bool is_compute, std::string_view search) {
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, std::string_view name, GLShader* shader, bool is_compute, std::string_view search) {
 #elif defined(NESHNY_WEBGPU)
-InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QString name, WebGPUShader* shader, bool is_compute, std::string_view search) {
+InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, std::string_view name, WebGPUShader* shader, bool is_compute, std::string_view search) {
 #endif
 
 	const int context_lines = 4;
@@ -860,19 +867,19 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, QS
 
 	InterfaceCollapsible* found = nullptr;
 	for (auto& item : data.p_Items) {
-		if (item.p_Name == name.toStdString()) {
+		if (item.p_Name == name) {
 			found = &item;
 			break;
 		}
 	}
 	if (!found) {
-		data.p_Items.push_back({ name.toStdString(), false, false });
+		data.p_Items.push_back({ std::string(name), false, false });
 		found = &(data.p_Items.back());
 	}
 
 	ImGui::SetNextItemOpen(found->p_Open);
 
-	if ((found->p_Open = ImGui::CollapsingHeader(name.toLocal8Bit().data()))) {
+	if ((found->p_Open = ImGui::CollapsingHeader(name.data()))) {
 #if defined(NESHNY_GL)
 		auto& sources = shader->GetSources();
 		for (auto& src : sources) {

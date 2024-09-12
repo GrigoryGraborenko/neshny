@@ -819,7 +819,7 @@ void Core::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
 #ifdef NESHNY_EDITOR_VIEWERS
-	auto info_label = std::format("[{1} FPS] {0} info view###info_view", m_Interface.p_InfoView.p_Visible ? "Hide" : "Show", (double)ImGui::GetIO().Framerate, 0, 'f', 2);
+	auto info_label = std::format("[{1:.2f} FPS] {0} info view###info_view", m_Interface.p_InfoView.p_Visible ? "Hide" : "Show", (double)ImGui::GetIO().Framerate);
 	if (ImGui::Button(info_label.c_str(), ImVec2(250, 0))) {
 		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
 	}

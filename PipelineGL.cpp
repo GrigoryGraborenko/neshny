@@ -347,19 +347,15 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 
 	//DebugGPU::Checkpoint("PostRun", m_Entity);
 
-	//if (m_ControlBuffer) {
-	//	DebugGPU::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PreRun", *m_ControlBuffer);
-	//}
-
 	for (const auto& var: integer_vars) {
-		glUniform1i(prog->GetUniform(var.first), var.second);
+		glUniform1i(prog->GetUniform(var.first.toStdString()), var.second);
 	}
 	for (auto& ssbo : ssbo_binds) {
 		ssbo.first->Bind(ssbo.second);
 	}
 	for (int b = 0; b < m_Textures.size(); b++) {
 		auto& tex = m_Textures[b];
-		glUniform1i(prog->GetUniform(tex.p_Name), b);
+		glUniform1i(prog->GetUniform(tex.p_Name.toStdString()), b);
 		glActiveTexture(GL_TEXTURE0 + b);
 		glBindTexture(GL_TEXTURE_2D, tex.p_Tex);
 	}
