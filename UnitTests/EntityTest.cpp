@@ -536,7 +536,7 @@ namespace Test {
 #if defined(NESHNY_GL)
 		// TODO: test here as well
 #elif defined(NESHNY_WEBGPU)
-		std::vector<QString> shader_defines;
+		std::vector<std::string> shader_defines;
 		if (use_cursor) {
 			shader_defines.push_back("USE_CURSOR");
 		}

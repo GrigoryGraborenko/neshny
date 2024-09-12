@@ -138,11 +138,11 @@ public:
 				p_RollingAvSeconds = p_RollingAvSeconds ? p_RollingAvSeconds * roll_frac + av_secs * (1.0 - roll_frac) : av_secs;
 			}
 		}
-		QString Report(int64_t total_global_nanos) {
+		std::string Report(int64_t total_global_nanos) {
 			double total_av_secs = ((double)p_Nanos * NANO_CONVERT) / (double)p_NumCalls;
 			double percent = 100.0 * (double)p_Nanos / (double)total_global_nanos;
 			double max_secs = (double)p_MaxNanos * NANO_CONVERT;
-			return QString("%1: %2 sec [%3 sec av %4 calls, %5 %%] max %6").arg(p_Label).arg(p_RollingAvSeconds, 0, 'f', 9).arg(total_av_secs, 0, 'f', 9).arg(p_NumCalls).arg(percent, 0, 'f', 6).arg(max_secs, 0, 'f', 9);
+			return std::format("{}: {:.9f} sec [{:.9f} sec av {} calls, {:.6f} %] max {:.9f}", p_Label, p_RollingAvSeconds, total_av_secs, p_NumCalls, percent, max_secs);
 		}
 		const char* p_Label;
 		int64_t p_Nanos = 0; // TODO: use proper TimeNanos as a type for these durations?
@@ -160,7 +160,7 @@ public:
 	~DebugTiming(void);
 
 	void								Finish			( void );
-	static QStringList					Report			( void );
+	static std::vector<std::string>		Report			( void );
 
 	static std::vector<TimingInfo>&		GetTimings		( void ) { static std::vector<TimingInfo> timings = {}; return timings; }
 
@@ -527,7 +527,7 @@ public:
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
 	static inline const ResourceResult<T> GetResource(std::string_view path, P params = {}) { static_assert(std::is_pod<P>::value, "Plain old data expected for Params"); return Singleton().IGetResource<T>(std::string(path), params); }
 
-	static inline bool					IsBufferEnabled				( QString name ) { return Singleton().IIsBufferEnabled(name); }
+	static inline bool					IsBufferEnabled				( std::string_view name ) { return Singleton().IIsBufferEnabled(name); }
 	static inline const InterfaceCore&	GetInterfaceData			( void ) { return Singleton().m_Interface; }
 	static inline const std::map<std::string, ResourceContainer> GetResources ( void ) { return Singleton().m_Resources; }
 
@@ -722,7 +722,7 @@ private:
 		return ResourceResult<T>(resource);
 	}
 	void								IRenderEditor				( void );
-	bool								IIsBufferEnabled			( QString name );
+	bool								IIsBufferEnabled			( std::string_view name );
 	void								ILog						( std::string_view message, ImVec4 col );
 
 #if defined(NESHNY_GL)

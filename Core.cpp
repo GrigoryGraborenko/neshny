@@ -38,16 +38,16 @@ void DebugTiming::Finish(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QStringList DebugTiming::Report(void) {
+std::vector<std::string> DebugTiming::Report(void) {
 
 	auto& timings = GetTimings();
 	int64_t total_nanos = 0;
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
 		total_nanos += iter->p_Nanos;
 	}
-	QStringList result;
+	std::vector<std::string> result;
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
-		result += iter->Report(total_nanos);
+		result.push_back(iter->Report(total_nanos));
 	}
 	return result;
 }
@@ -819,8 +819,8 @@ void Core::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
 #ifdef NESHNY_EDITOR_VIEWERS
-	auto info_label = QString("[%2 FPS] %1 info view###info_view").arg(m_Interface.p_InfoView.p_Visible ? "Hide" : "Show").arg((double)ImGui::GetIO().Framerate, 0, 'f', 2).toLocal8Bit();
-	if (ImGui::Button(info_label.constData(), ImVec2(250, 0))) {
+	auto info_label = std::format("[{1} FPS] {0} info view###info_view", m_Interface.p_InfoView.p_Visible ? "Hide" : "Show", (double)ImGui::GetIO().Framerate, 0, 'f', 2);
+	if (ImGui::Button(info_label.c_str(), ImVec2(250, 0))) {
 		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
 	}
 	ImGui::SameLine();
@@ -856,20 +856,6 @@ void Core::IRenderEditor(void) {
 		ImGui::ShowDemoWindow();
 	}
 
-	/*
-	auto debug_strs = DebugRender::GetStrings();
-	for (auto str : debug_strs) {
-		auto byte_str = str.toLocal8Bit();
-		ImGui::Text(byte_str.data());
-	}
-	auto debug_persist_strs = DebugRender::GetPersistantStrings();
-	for (auto str : debug_persist_strs) {
-		auto byte_key_str = str.first.toLocal8Bit();
-		auto byte_val_str = str.second.toLocal8Bit();
-		ImGui::Text(byte_val_str.data());
-	}
-	*/
-
 #ifdef NESHNY_EDITOR_VIEWERS
 	InfoViewer::RenderImGui(m_Interface.p_InfoView);
 	LogViewer::Singleton().RenderImGui(m_Interface.p_LogView);
@@ -889,12 +875,12 @@ void Core::IRenderEditor(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Core::IIsBufferEnabled(QString name) {
+bool Core::IIsBufferEnabled(std::string_view name) {
 	if (m_Interface.p_BufferView.p_AllEnabled) {
 		return true;
 	}
 	for (auto& buff : m_Interface.p_BufferView.p_Items) {
-		if (buff.p_Name == name.toStdString()) {
+		if (buff.p_Name == name) {
 			return buff.p_Enabled;
 		}
 	}

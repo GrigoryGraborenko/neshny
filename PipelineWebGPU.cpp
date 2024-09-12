@@ -5,14 +5,14 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, std::vector<std::string>&& shader_defines, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
 	,m_Cache			( cache )
 	,m_ShaderName		( shader_name )
 	,m_ReplaceMain		( replace_main )
-	,m_ShaderDefines	( shader_defines )
+	,m_ShaderDefines	( std::move(shader_defines) )
 	,m_Iterations		( iterations )
 	,m_ControlSSBO		( control_ssbo )
 	,m_RenderParams		( render_params )
@@ -142,7 +142,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
 	for (auto str : m_ShaderDefines) {
-		immediate_insertion += QString("#define %1").arg(str);
+		immediate_insertion += QString::fromStdString(std::format("#define {}", str));
 	}
 	immediate_insertion += QString("#define ENTITY_OFFSET_INTS %1").arg(ENTITY_OFFSET_INTS);
 
@@ -507,7 +507,7 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 	if (!compute && m_Entity) {
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
-			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, iterations);
+			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName().toStdString(), Core::GetTicks() - time_slider, iterations);
 		}
 	}
 

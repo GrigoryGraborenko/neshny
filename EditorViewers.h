@@ -215,24 +215,24 @@ public:
 
 	inline static BufferViewer&	Singleton			( void ) { static BufferViewer instance; return instance; }
 
-	static inline void					Checkpoint			( QString name, QString stage, SSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
-	static inline void					Checkpoint			( QString name, QString stage, SSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
-	static inline void					Checkpoint			( QString stage, GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
+	static inline void					Checkpoint			( std::string_view name, std::string_view stage, SSBO& buffer, MemberSpec::Type type, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, nullptr, type); }
+	static inline void					Checkpoint			( std::string_view name, std::string_view stage, SSBO& buffer, const StructInfo& info, int count = -1 ) { Singleton().ICheckpoint(name, stage, buffer, count, &info, MemberSpec::Type::T_UNKNOWN); }
+	static inline void					Checkpoint			( std::string_view stage, GPUEntity& entity ) { Singleton().ICheckpoint(stage, entity); }
 
 	void								RenderImGui			( InterfaceBufferViewer& data );
 
-	static inline std::shared_ptr<SSBO> GetStoredFrameAt	( QString name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
+	static inline std::shared_ptr<SSBO> GetStoredFrameAt	( std::string_view name, int tick, int& count ) { return Singleton().IGetStoredFrameAt(name, tick, count); }
 
-	static inline void					Highlight			( QString name, int id ) { Singleton().IHighlight(name, id); }
-	static inline void					ClearHighlight		( void ) { Singleton().IHighlight(QString(), -1); }
+	static inline void					Highlight			( std::string_view name, int id ) { Singleton().IHighlight(name, id); }
+	static inline void					ClearHighlight		( void ) { Singleton().IHighlight(std::string(), -1); }
 
 	static std::optional<GPUVariable>	GetHoveredValue		( void ) { return Singleton().m_Hovered; }
 
 protected:
 
 	struct CheckpointData {
-		QString								p_Stage;
-		QString								p_Info;
+		std::string							p_Stage;
+		std::string							p_Info;
 		int									p_Count = 0;
 		int									p_Tick = -1;
 		bool								p_UsingFreeList = false;
@@ -248,16 +248,16 @@ protected:
 							BufferViewer		( void ) {}
 							~BufferViewer		( void ) {}
 
-	void					ICheckpoint			( QString name, QString stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
-	void					ICheckpoint			( QString stage, GPUEntity& entity );
-	std::shared_ptr<SSBO>	IGetStoredFrameAt	( QString name, int tick, int& count );
+	void					ICheckpoint			( std::string_view name, std::string_view stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type );
+	void					ICheckpoint			( std::string_view stage, GPUEntity& entity );
+	std::shared_ptr<SSBO>	IGetStoredFrameAt	( std::string_view name, int tick, int& count );
 
-	void					IStoreCheckpoint	( QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
-	void					IHighlight			( QString name, int id ) { m_HighlightName = name; m_HighlightID = id; }
-	void					UpdateCheckpoint	( QString name, int tick, int new_count, QString new_info, std::shared_ptr<unsigned char[]> new_data );
+	void					IStoreCheckpoint	( std::string name, CheckpointData data, const StructInfo* info, MemberSpec::Type type );
+	void					IHighlight			( std::string_view name, int id ) { m_HighlightName = name; m_HighlightID = id; }
+	void					UpdateCheckpoint	( std::string_view name, int tick, int new_count, std::string_view new_info, std::shared_ptr<unsigned char[]> new_data );
 
-	std::unordered_map<QString, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
-	QString										m_HighlightName;
+	std::unordered_map<std::string, CheckpointList>	m_Frames; // TODO: this doesn't really have to be a map, probably faster as a vector
+	std::string									m_HighlightName;
 	int											m_HighlightID = -1;
 	std::optional<GPUVariable>					m_Hovered = std::nullopt;
 };

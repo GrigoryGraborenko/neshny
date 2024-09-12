@@ -453,7 +453,7 @@ void LogViewer::IRenderImGui(InterfaceLogViewer& data) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::ICheckpoint(QString name, QString stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
+void BufferViewer::ICheckpoint(std::string_view name, std::string_view stage, SSBO& buffer, int count, const StructInfo* info, MemberSpec::Type type) {
 	int item_size = MemberSpec::GetGPUTypeSizeBytes(type);
 	count = count >= 0 ? count : buffer.GetSizeBytes() / item_size;
 
@@ -461,37 +461,37 @@ void BufferViewer::ICheckpoint(QString name, QString stage, SSBO& buffer, int co
 	if (Core::IsBufferEnabled(name)) {
 		mem = buffer.MakeCopy(count * item_size);
 	}
-	IStoreCheckpoint(name, { stage, "", count, Core::GetTicks(), false, mem }, info, type);
+	IStoreCheckpoint(std::string(name), { std::string(stage), "", count, Core::GetTicks(), false, mem }, info, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::ICheckpoint(QString stage, GPUEntity& buffer) {
-	if (!Core::IsBufferEnabled(buffer.GetName())) {
+void BufferViewer::ICheckpoint(std::string_view stage, GPUEntity& buffer) {
+	if (!Core::IsBufferEnabled(buffer.GetName().toStdString())) {
 		return;
 	}
 #if defined(NESHNY_GL)
 	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopySync();
-	IStoreCheckpoint(buffer.GetName(), { stage, buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(buffer.GetName().toStdString(), { std::string(stage), buffer.GetDebugInfo().toStdString(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 #elif defined(NESHNY_WEBGPU)
 
 	int ticks = Core::GetTicks();
-	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {
+	buffer.AccessData([buffer_name = buffer.GetName().toStdString(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {
 		unsigned char* copy = new unsigned char[size_bytes];
 		memcpy(copy, data, size_bytes);
 		std::shared_ptr<unsigned char[]> mem(copy);
 
-		QString new_info = QString("# %1 mx %2 id %3 free %4").arg(info.p_Count).arg(info.p_MaxIndex).arg(info.p_NextId).arg(info.p_FreeCount);
+		std::string new_info = std::format("# {} mx {} id {} free {}", info.p_Count, info.p_MaxIndex, info.p_NextId, info.p_FreeCount);
 		BufferViewer::Singleton().UpdateCheckpoint(buffer_name, ticks, info.p_MaxIndex, new_info, mem);
 	});
-	IStoreCheckpoint(buffer.GetName(), { stage, QString(), 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(buffer.GetName().toStdString(), { std::string(stage), {}, 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 
 #endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, int& count) {
+std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(std::string_view name, int tick, int& count) {
 
-	auto existing = m_Frames.find(name);
+	auto existing = m_Frames.find(std::string(name));
 	if (existing == m_Frames.end()) {
 		return nullptr;
 	}
@@ -509,7 +509,7 @@ std::shared_ptr<SSBO> BufferViewer::IGetStoredFrameAt(QString name, int tick, in
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {
+void BufferViewer::IStoreCheckpoint(std::string name, CheckpointData data, const StructInfo* info, MemberSpec::Type type) {
 	auto existing = m_Frames.find(name);
 	if (existing == m_Frames.end()) {
 		existing = m_Frames.insert_or_assign(name, info ? CheckpointList{ info->p_Members } : CheckpointList{ { MemberSpec{ "", type, MemberSpec::GetGPUTypeSizeBytes(type) } } }).first;
@@ -526,8 +526,8 @@ void BufferViewer::IStoreCheckpoint(QString name, CheckpointData data, const Str
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, QString new_info, std::shared_ptr<unsigned char[]> new_data) {
-	auto existing = m_Frames.find(name);
+void BufferViewer::UpdateCheckpoint(std::string_view name, int tick, int new_count, std::string_view new_info, std::shared_ptr<unsigned char[]> new_data) {
+	auto existing = m_Frames.find(std::string(name));
 	if (existing == m_Frames.end()) {
 		return;
 	}
@@ -535,7 +535,7 @@ void BufferViewer::UpdateCheckpoint(QString name, int tick, int new_count, QStri
 		if (iter->p_Tick == tick) {
 			iter->p_Count = new_count;
 			iter->p_Data = new_data;
-			iter->p_Info = new_info;
+			iter->p_Info = std::string(new_info);
 			return;
 		}
 	}
@@ -592,27 +592,27 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 	const int MAX_COLS = 50;
 	for (auto& buffer : m_Frames) {
 		const auto& frames = buffer.second.p_Frames;
-		auto header = (buffer.first + (frames.empty() ? "" : frames.begin()->p_Info) + "###" + buffer.first).toLocal8Bit();
+		auto header = (buffer.first + (frames.empty() ? "" : frames.begin()->p_Info) + "###" + buffer.first);
 		bool highlight_buffer = buffer.first == m_HighlightName;
 
 		InterfaceCollapsible* found = nullptr;
 		for (auto& item: data.p_Items) {
-			if (item.p_Name == buffer.first.toStdString()) {
+			if (item.p_Name == buffer.first) {
 				found = &item;
 				break;
 			}
 		}
 		if (!found) {
-			data.p_Items.push_back({ buffer.first.toStdString(), false, false });
+			data.p_Items.push_back({ buffer.first, false, false });
 			found = &(data.p_Items.back());
 		}
 
-		auto check_header = ("###" + buffer.first).toLocal8Bit();
+		auto check_header = ("###" + buffer.first);
 
 		if (data.p_AllEnabled) {
 			ImGui::BeginDisabled();
 		}
-		ImGui::Checkbox(check_header, &found->p_Enabled);
+		ImGui::Checkbox(check_header.c_str(), &found->p_Enabled);
 		if (data.p_AllEnabled) {
 			ImGui::EndDisabled();
 		}
@@ -675,8 +675,8 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 
 				ImGui::TableSetupColumn("-", ImGuiTableColumnFlags_WidthFixed, struct_types.empty() ? 50 : 100);
 				for (int column = 0; column < max_frames; column++) {
-					auto head_name = QString("%1 %2 [%3]").arg(frames[column].p_Stage).arg(column).arg(frames[column].p_Tick).toLocal8Bit();
-					ImGui::TableSetupColumn(head_name, ImGuiTableColumnFlags_WidthFixed, 100);
+					auto head_name = std::format("{} {} [{}]", frames[column].p_Stage, column, frames[column].p_Tick);
+					ImGui::TableSetupColumn(head_name.c_str(), ImGuiTableColumnFlags_WidthFixed, 100);
 				}
 
 				ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
@@ -686,7 +686,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 					ImGui::PushID(column);
 					ImGui::TableHeader(column_name);
 					if ((column > 0) && ImGui::IsItemHovered()) {
-						auto info = frames[column - 1].p_Info.toLocal8Bit();
+						auto info = frames[column - 1].p_Info;
 						if (info.length() > 0) {
 							ImGui::BeginTooltip();
 							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);

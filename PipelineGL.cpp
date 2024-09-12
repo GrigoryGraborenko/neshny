@@ -116,7 +116,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
-			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
+			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName().toStdString(), Core::GetTicks() - time_slider, num_entities);
 		}
 	} else if(m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
 		insertion_uniforms += "uniform int uCount;";
@@ -421,8 +421,8 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	if (entity_processing) {
 		if ((m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) && (entity_deaths > 0)) {
 			m_Entity->ProcessMoveDeaths(entity_deaths);
-			if (true) {
-				BufferViewer::Checkpoint(QString("%1 Death Control").arg(m_Entity->GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
+			if (false) {
+				BufferViewer::Checkpoint(std::format("{} Death Control", m_Entity->GetName().toStdString()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
 			}
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			m_Entity->ProcessStableDeaths(entity_deaths);
