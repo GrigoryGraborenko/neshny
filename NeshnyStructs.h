@@ -162,7 +162,7 @@ struct MemberSpec {
 		return std::string();
 	}
 
-	QString		p_Name;
+	std::string	p_Name;
 	Type		p_Type;
 	int			p_Size;
 	bool		p_IsID = false;

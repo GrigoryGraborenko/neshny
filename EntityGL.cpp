@@ -99,7 +99,7 @@ void GPUEntity::DeleteInstance(int index) {
 
 		int pos_index = 0;
 		for (const auto& member : m_Specs.p_Members) {
-			if (member.p_Name == m_IDName) {
+			if (member.p_Name == m_IDName.toStdString()) {
 				break;
 			}
 			pos_index += member.p_Size;

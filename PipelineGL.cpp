@@ -50,9 +50,9 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		insertion += QString("\t%1 %2;").arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(member.p_Name);
+		insertion += QString::fromStdString(std::format("\t{} {};", MemberSpec::GetGPUType(member.p_Type), member.p_Name));
 
-		QString name = member.p_Name;
+		QString name = QString::fromStdString(member.p_Name);
 		if (member.p_Type == MemberSpec::T_INT) {
 			function += QString("\titem.%1 = b_Control.i[index + %2];").arg(name).arg(pos_index);
 		} else if (member.p_Type == MemberSpec::T_FLOAT) {

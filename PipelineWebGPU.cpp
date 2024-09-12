@@ -69,9 +69,9 @@ QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect,
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
+		members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 
-		QString name = member.p_Name;
+		QString name = QString::fromStdString(member.p_Name);
 		if (read_only) {
 
 			if (member.p_Type == MemberSpec::T_INT) {
@@ -169,7 +169,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		int size = 0;
 		for (const auto& member : unform_members) {
 			size += member.p_Size;
-			members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
+			members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 		}
 		immediate_insertion += "struct UniformStruct {";
 		immediate_insertion += members.join(",\n");
@@ -272,7 +272,7 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 		QStringList members;
 		for (const auto& member : ssbo_spec.p_Members) {
-			members += QString("\t%1: %2").arg(member.p_Name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type)));
+			members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 		}
 		immediate_insertion += QString("struct %1 {").arg(ssbo_spec.p_StructName);
 		immediate_insertion += members.join(",\n");

@@ -20,7 +20,7 @@ public:
 	template<typename Member>
 	void operator()(Member& member) {
 		//member.getPtr();
-		QString name = member.getName();
+		std::string name = member.getName();
 		using CurrentMemberType = meta::get_member_type<decltype(member)>;
 
 		MemberSpec::Type type = MemberSpec::T_UNKNOWN;
@@ -75,7 +75,7 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	{
 		std::vector<std::string> member_vars;
 		for (auto member : info.p_Members) {
-			member_vars.push_back(std::format("\t{}: {}", member.p_Name.toStdString(), MemberSpec::GetGPUType(member.p_Type)));
+			member_vars.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 		}
 		read_only_lines.push_back(JoinStrings(member_vars, ",\n"));
 	}
@@ -87,7 +87,7 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	int pos_index = 0;
 	std::vector<std::string> functions;
 	for (auto member : info.p_Members) {
-		auto member_name = member.p_Name.toStdString();
+		auto member_name = member.p_Name;
 		std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
 		read_only_lines.push_back(std::format("\tresult.{} = {};", member_name, get_syntax));
 		functions.push_back(std::format("fn Get{2}{1}(index: i32) -> {0} {{\n", MemberSpec::GetGPUType(member.p_Type), member_name, entity_name) + get_base_str + std::format("\n\treturn {};\n}}", get_syntax));
@@ -116,7 +116,7 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	pos_index = 0;
 	functions = {};
 	for (auto member : info.p_Members) {
-		std::string name = member.p_Name.toStdString();
+		std::string name = member.p_Name;
 		std::string mod_str;
 		std::string value_mod_str;
 		if (member.p_Type == MemberSpec::T_INT) {
@@ -180,7 +180,7 @@ public:
 
 		int pos_index = 0;
 		for (const auto& member : m_Specs.p_Members) {
-			if (member.p_Name == QString::fromStdString(m_IDName)) {
+			if (member.p_Name == m_IDName) {
 				m_IdOffset = pos_index;
 				break;
 			}

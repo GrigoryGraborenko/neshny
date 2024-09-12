@@ -632,7 +632,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 				ImGui::TableSetupScrollFreeze(1, 1); // Make top row + left col always visible
 
 				struct StructType {
-					QString				p_Name;
+					std::string			p_Name;
 					MemberSpec::Type	p_Type;
 					MemberSpec::Type	p_FullType;
 					int					p_FullOffset = 0;
@@ -712,8 +712,8 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 						int struct_ind = cycles ? row % cycles : 0;
 						if (!struct_types.empty()) {
 							const auto& spec = struct_types[struct_ind];
-							auto info = QString("%1%2").arg(struct_ind ? "" : QString("[%1] ").arg(real_count)).arg(spec.p_Name).toLocal8Bit();
-							ImGui::Text(info.data());
+							auto info = std::format("{}{}", struct_ind ? "" : std::format("[{}] ", real_count), spec.p_Name);
+							ImGui::Text(info.c_str());
 							cast_type = spec.p_Type;
 							full_cast_type = spec.p_FullType;
 							full_type_offet = spec.p_FullOffset;
