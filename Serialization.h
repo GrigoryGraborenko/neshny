@@ -515,6 +515,20 @@ inline void SerialiseByType(const std::string& val, std::stringstream& stream, P
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+inline void SerialiseByType(const std::vector<bool>& obj, std::stringstream& stream, ParseError& err) {
+    int32_t size = (int32_t)obj.size();
+    Serialise(size, stream, err);
+    int i = 0;
+    for (bool elem: obj) {
+        Serialise(elem, stream, err);
+        if (err) {
+            return err.AddMessage(std::format("Parsing bool at index {} in array", i));
+        }
+        i++;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 template <typename T>
 inline void SerialiseByType(const std::vector<T>& obj, std::stringstream& stream, ParseError& err) {
     int32_t size = (int32_t)obj.size();

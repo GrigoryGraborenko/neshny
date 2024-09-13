@@ -43,7 +43,7 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool PipelineStage::OutputResults::GetValue(QString name, int& value) const {
+bool PipelineStage::OutputResults::GetValue(std::string_view name, int& value) const {
 	for (const auto& result : p_Results) {
 		if (result.first == name) {
 			value = result.second;
@@ -54,72 +54,72 @@ bool PipelineStage::OutputResults::GetValue(QString name, int& value) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, bool read_only) {
+std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, bool read_only) {
 
-	QStringList insertion;
-	insertion += QString("struct %1 {").arg(data_vect.p_Name);
+	std::vector<std::string> insertion;
+	insertion.push_back(std::format("struct {0} {{", data_vect.p_Name));
 
-	QStringList function(QString("fn Get%1(base_index: i32) -> %1 { // use io%1Num for count\n\tvar item: %1;").arg(data_vect.p_Name));
-	QStringList members;
+	std::vector<std::string> function{ std::format("fn Get{0}(base_index: i32) -> {0} {{ // use io{0}Num for count\n\tvar item: {0};", data_vect.p_Name) };
+	std::vector<std::string> members;
 	if (read_only) {
-		function += QString("\tlet index = io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+		function.push_back(std::format("\tlet index = io{0}Offset + (base_index * {1});", data_vect.p_Name, data_vect.p_NumIntsPerItem));
 	} else {
-		function += QString("\tlet index = Get_io%1Offset + (base_index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+		function.push_back(std::format("\tlet index = Get_io{0}Offset + (base_index * {1});", data_vect.p_Name, data_vect.p_NumIntsPerItem));
 	}
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+		members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 
-		QString name = QString::fromStdString(member.p_Name);
+		std::string name = member.p_Name;
 		if (read_only) {
 
 			if (member.p_Type == MemberSpec::T_INT) {
-				function += QString("\titem.%1 = b_Control[index + %2];").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = b_Control[index + {1}];", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_FLOAT) {
-				function += QString("\titem.%1 = bitcast<f32>(b_Control[index + %2]);").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = bitcast<f32>(b_Control[index + {1}]);", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC2) {
-				function += QString("\titem.%1 = vec2f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec2f(bitcast<f32>(b_Control[index + {1}]), bitcast<f32>(b_Control[index + {1} + 1]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC3) {
-				function += QString("\titem.%1 = vec3f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]), bitcast<f32>(b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec3f(bitcast<f32>(b_Control[index + {1}]), bitcast<f32>(b_Control[index + {1} + 1]), bitcast<f32>(b_Control[index + {1} + 2]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC4) {
-				function += QString("\titem.%1 = vec4f(bitcast<f32>(b_Control[index + %2]), bitcast<f32>(b_Control[index + %2 + 1]), bitcast<f32>(b_Control[index + %2 + 2]), bitcast<f32>(b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec4f(bitcast<f32>(b_Control[index + {1}]), bitcast<f32>(b_Control[index + {1} + 1]), bitcast<f32>(b_Control[index + {1} + 2]), bitcast<f32>(b_Control[index + {1} + 3]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC2) {
-				function += QString("\titem.%1 = vec2i(b_Control[index + %2], b_Control[index + %2 + 1]);").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec2i(b_Control[index + {1}], b_Control[index + {1} + 1]);", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC3) {
-				function += QString("\titem.%1 = vec3i(b_Control[index + %2], b_Control[index + %2 + 1], b_Control[index + %2 + 2]);").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec3i(b_Control[index + {1}], b_Control[index + {1} + 1], b_Control[index + {1} + 2]);", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC4) {
-				function += QString("\titem.%1 = vec4i(b_Control[index + %2], b_Control[index + %2 + 1], b_Control[index + %2 + 2], b_Control[index + %2 + 3]);").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec4i(b_Control[index + {1}], b_Control[index + {1} + 1], b_Control[index + {1} + 2], b_Control[index + {1} + 3]);", name, pos_index));
 			}
 
 		} else {
 			if (member.p_Type == MemberSpec::T_INT) {
-				function += QString("\titem.%1 = atomicLoad(&b_Control[index + %2]);").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = atomicLoad(&b_Control[index + {1}]);", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_FLOAT) {
-				function += QString("\titem.%1 = bitcast<f32>(atomicLoad(&b_Control[index + %2]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = bitcast<f32>(atomicLoad(&b_Control[index + {1}]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC2) {
-				function += QString("\titem.%1 = vec2f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec2f(bitcast<f32>(atomicLoad(&b_Control[index + {1}])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 1])));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC3) {
-				function += QString("\titem.%1 = vec3f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec3f(bitcast<f32>(atomicLoad(&b_Control[index + {1}])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 1])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 2])));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_VEC4) {
-				function += QString("\titem.%1 = vec4f(bitcast<f32>(atomicLoad(&b_Control[index + %2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 1])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 2])), bitcast<f32>(atomicLoad(&b_Control[index + %2 + 3])));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec4f(bitcast<f32>(atomicLoad(&b_Control[index + {1}])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 1])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 2])), bitcast<f32>(atomicLoad(&b_Control[index + {1} + 3])));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC2) {
-				function += QString("\titem.%1 = vec2i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec2i(atomicLoad(&b_Control[index + {1}]), atomicLoad(&b_Control[index + {1} + 1]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC3) {
-				function += QString("\titem.%1 = vec3i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec3i(atomicLoad(&b_Control[index + {1}]), atomicLoad(&b_Control[index + {1} + 1]), atomicLoad(&b_Control[index + {1} + 2]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC4) {
-				function += QString("\titem.%1 = vec4i(atomicLoad(&b_Control[index + %2]), atomicLoad(&b_Control[index + %2 + 1]), atomicLoad(&b_Control[index + %2 + 2]), atomicLoad(&b_Control[index + %2 + 3]));").arg(name).arg(pos_index);
+				function.push_back(std::format("\titem.{0} = vec4i(atomicLoad(&b_Control[index + {1}]), atomicLoad(&b_Control[index + {1} + 1]), atomicLoad(&b_Control[index + {1} + 2]), atomicLoad(&b_Control[index + {1} + 3]));", name, pos_index));
 			}
 		}
 		pos_index += member.p_Size / sizeof(int);
 	}
-	function += "\treturn item;\n};";
+	function.push_back("\treturn item;\n};");
 
-	insertion += members.join(",\n");
-	insertion += "};";
-	insertion += function.join("\n");
+	insertion.push_back(JoinStrings(members, ",\n"));
+	insertion.push_back("};");
+	insertion.push_back(JoinStrings(function, "\n"));
 
-	return insertion.join("\n");
+	return JoinStrings(insertion, "\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,25 +134,25 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 
 	result->m_Pipeline = new WebGPUPipeline();
 
-	QStringList immediate_insertion;
-	QStringList insertion;
-	QStringList end_insertion;
+	std::vector<std::string> immediate_insertion;
+	std::list<std::string> insertion;
+	std::vector<std::string> end_insertion;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
 	for (auto str : m_ShaderDefines) {
-		immediate_insertion += QString::fromStdString(std::format("#define {}", str));
+		immediate_insertion.push_back(std::format("#define {}", str));
 	}
-	immediate_insertion += QString("#define ENTITY_OFFSET_INTS %1").arg(ENTITY_OFFSET_INTS);
+	immediate_insertion.push_back(std::format("#define ENTITY_OFFSET_INTS {0}", ENTITY_OFFSET_INTS));
 
-	QStringList insertion_buffers;
+	std::vector<std::string> insertion_buffers;
 	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
 	if (result->m_ControlSSBO) {
 		if (is_render) {
-			insertion_buffers += "@group(0) @binding(0) var<storage, read> b_Control: array<i32>;";
+			insertion_buffers.push_back("@group(0) @binding(0) var<storage, read> b_Control: array<i32>;");
 		} else {
-			insertion_buffers += "@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;";
+			insertion_buffers.push_back("@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;");
 		}
 		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, is_render);
 	}
@@ -165,41 +165,41 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if(!unform_members.empty()) { // uniform
-		QStringList members;
+		std::vector<std::string> members;
 		int size = 0;
 		for (const auto& member : unform_members) {
 			size += member.p_Size;
-			members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 		}
-		immediate_insertion += "struct UniformStruct {";
-		immediate_insertion += members.join(",\n");
-		immediate_insertion += "};";
+		immediate_insertion.push_back("struct UniformStruct {");
+		immediate_insertion.push_back(JoinStrings(members, ",\n"));
+		immediate_insertion.push_back("};");
 
-		insertion_buffers += QString("@group(0) @binding(%1) var<uniform> Uniform: UniformStruct;").arg(insertion_buffers.size());
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> Uniform: UniformStruct;", insertion_buffers.size()));
 		result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, size);
 		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
 	}
 
 	if (m_Entity && is_render) {
-		insertion += QString("#define Get_ioMaxIndex (b_%1[3])").arg(m_Entity->GetName());
+		insertion.push_back(std::format("#define Get_ioMaxIndex (b_{0}[3])", m_Entity->GetName()));
 	} else if (m_Entity) {
-		insertion += QString("#define Get_ioMaxIndex (atomicLoad(&b_%1[3]))").arg(m_Entity->GetName());
+		insertion.push_back(std::format("#define Get_ioMaxIndex (atomicLoad(&b_{0}[3]))", m_Entity->GetName()));
 	}
 	if (entity_processing) {
 		m_Vars.push_back({ "ioEntityDeaths" });
-		insertion += QString("#define ioEntityCount b_%1[0]").arg(m_Entity->GetName());
-		insertion += QString("#define ioEntityFreeCount b_%1[1]").arg(m_Entity->GetName());
+		insertion.push_back(std::format("#define ioEntityCount b_{0}[0]", m_Entity->GetName()));
+		insertion.push_back(std::format("#define ioEntityFreeCount b_{0}[1]", m_Entity->GetName()));
 	}
-	
+
 	if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
-		end_insertion += "//////////////// Data vector helpers";
+		end_insertion.push_back("//////////////// Data vector helpers");
 		for (const auto& data_vect : m_DataVectors) {
 
-			QString count_var = QString("io%1Count").arg(data_vect.p_Name);
-			QString offset_var = QString("io%1Offset").arg(data_vect.p_Name);
-			QString num_var = QString("io%1Num").arg(data_vect.p_Name);
+			auto count_var = std::format("io{0}Count", data_vect.p_Name);
+			auto offset_var = std::format("io{0}Offset", data_vect.p_Name);
+			auto num_var = std::format("io{0}Num", data_vect.p_Name);
 
-			end_insertion += GetDataVectorStructCode(data_vect, is_render);
+			end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
 			m_Vars.push_back({ count_var });
 			m_Vars.push_back({ offset_var });
 			m_Vars.push_back({ num_var });
@@ -210,49 +210,49 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	result->m_UsingRandom = !is_render;
 	if (result->m_UsingRandom) {
 		m_Vars.push_back({ "ioRandSeed" });
-		insertion += "#include \"Random.wgsl\"\n";
-		insertion += QString("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
-		insertion += QString("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
+		insertion.push_back("#include \"Random.wgsl\"\n");
+		insertion.push_back("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
+		insertion.push_back("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
 	}
 
 	if(m_Entity) {
 		bool input_read_only = is_render;
 		result->m_Pipeline->AddBuffer(*m_Entity->GetSSBO(), vis_flags, input_read_only);
 		result->m_EntityBufferIndex = insertion_buffers.size();
-		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> b_%3: array<%4>;").arg(insertion_buffers.size()).arg(input_read_only ? "read" : "read_write").arg(m_Entity->GetName()).arg(input_read_only ? "i32" : "atomic<i32>");
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> b_{2}: array<{3}>;", insertion_buffers.size(), input_read_only ? "read" : "read_write", m_Entity->GetName(), input_read_only ? "i32" : "atomic<i32>"));
 
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
 			result->m_Pipeline->AddBuffer(*m_Entity->GetOuputSSBO(), vis_flags, false);
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Output%2: array<i32>;").arg(insertion_buffers.size()).arg(m_Entity->GetName());
-			insertion += m_Entity->GetDoubleBufferGPUInsertion();
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Output{1}: array<i32>;", insertion_buffers.size(), m_Entity->GetName()));
+			insertion.push_back(std::string(m_Entity->GetDoubleBufferGPUInsertion()));
 		} else {
-			insertion += m_Entity->GetGPUInsertion();
+			insertion.push_back(std::string(m_Entity->GetGPUInsertion()));
 		}
 		if (!input_read_only) {
-			insertion += QString("#define %1_LOOKUP(base, index) (atomicLoad(&b_%1[(base) + (index)]))").arg(m_Entity->GetName());
+			insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", m_Entity->GetName()));
 		}
 
 		if (entity_processing) {
-			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUInsertion);
+			insertion.push_back(m_Entity->GetSpecs().p_GPUInsertion);
 		} else {
-			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
+			insertion.push_back(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
 		}
 	}
 
 	if(entity_processing) {
 		result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
-		insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_FreeList: array<i32>;").arg(insertion_buffers.size());
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_FreeList: array<i32>;", insertion_buffers.size()));
 
-		insertion += QString("fn Destroy%1(index: i32) {").arg(m_Entity->GetName());
-		insertion += QString("\tlet base = index * FLOATS_PER_%1 + ENTITY_OFFSET_INTS;").arg(m_Entity->GetName());
-		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetName());
-		insertion += "\tatomicAdd(&ioEntityDeaths, 1);";
-		insertion += "\tatomicAdd(&ioEntityCount, -1);";
-		insertion += "\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);";
-		insertion += "\tb_FreeList[free_index] = index;";
-		insertion += "}";
+		insertion.push_back(std::format("fn Destroy{0}(index: i32) {{", m_Entity->GetName()));
+		insertion.push_back(std::format("\tlet base = index * FLOATS_PER_{0} + ENTITY_OFFSET_INTS;", m_Entity->GetName()));
+		insertion.push_back(std::format("\t{0}_SET(base, 0, -1);",m_Entity->GetName()));
+		insertion.push_back("\tatomicAdd(&ioEntityDeaths, 1);");
+		insertion.push_back("\tatomicAdd(&ioEntityCount, -1);");
+		insertion.push_back("\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);");
+		insertion.push_back("\tb_FreeList[free_index] = index;");
+		insertion.push_back("}");
 	}
-	
+
 	for (const auto& ssbo: m_SSBOs) {
 		int buffer_index = insertion_buffers.size();
 		bool read_only = ssbo.p_Access == BufferAccess::READ_ONLY;
@@ -260,45 +260,48 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
 			type_str = std::format("atomic<{}>", type_str);
 		}
-		insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> %3: array<%4>;")
-			.arg(insertion_buffers.size())
-			.arg(read_only ? "read" : "read_write")
-			.arg(ssbo.p_Name)
-			.arg(QString::fromStdString(type_str));
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: array<{3}>;"
+			,insertion_buffers.size()
+			,read_only ? "read" : "read_write"
+			,ssbo.p_Name
+			,type_str
+		));
 		result->m_Pipeline->AddBuffer(ssbo.p_Buffer, vis_flags, read_only);
 	}
 
 	for (const auto& ssbo_spec : m_StructBuffers) {
 
-		QStringList members;
+		std::vector<std::string> members;
 		for (const auto& member : ssbo_spec.p_Members) {
-			members += QString::fromStdString(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 		}
-		immediate_insertion += QString("struct %1 {").arg(ssbo_spec.p_StructName);
-		immediate_insertion += members.join(",\n");
-		immediate_insertion += "};";
+		immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
+		immediate_insertion.push_back(JoinStrings(members, ",\n"));
+		immediate_insertion.push_back("};");
 
 		int buffer_index = insertion_buffers.size();
 		bool read_only = ssbo_spec.p_Access == BufferAccess::READ_ONLY;
 		auto type_str = ssbo_spec.p_StructName;
 		if (ssbo_spec.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
-			type_str = QString("atomic<%1>").arg(type_str);
+			type_str = std::format("atomic<{0}>", type_str);
 		}
 		if (ssbo_spec.p_IsArray) {
-			type_str = QString("array<%1>").arg(type_str);
+			type_str = std::format("array<{0}>", type_str);
 		}
 		if (ssbo_spec.p_Buffer.GetUsageFlags() & WGPUBufferUsage_Uniform) {
 			read_only = true;
-			insertion_buffers += QString("@group(0) @binding(%1) var<uniform> %2: %3;")
-				.arg(insertion_buffers.size())
-				.arg(ssbo_spec.p_Name)
-				.arg(type_str);
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> {1}: {2};"
+				,insertion_buffers.size()
+				,ssbo_spec.p_Name
+				,type_str
+			));
 		} else {
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, %2> %3: %4;")
-				.arg(insertion_buffers.size())
-				.arg(read_only ? "read" : "read_write")
-				.arg(ssbo_spec.p_Name)
-				.arg(type_str);
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: {3};"
+				,insertion_buffers.size()
+				,read_only ? "read" : "read_write"
+				,ssbo_spec.p_Name
+				,type_str
+			));
 		}
 
 		result->m_Pipeline->AddBuffer(ssbo_spec.p_Buffer, vis_flags, read_only);
@@ -309,67 +312,66 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			continue;
 		}
 		GPUEntity& entity = *entity_spec.p_Entity;
-		QString name = entity.GetName();
-		insertion += QString("//////////////// Entity %1").arg(name);
+		insertion.push_back(std::format("//////////////// Entity {0}", entity.GetName()));
 
-		insertion += QString("#define io%1Count b_%1[0]").arg(entity.GetName());
+		insertion.push_back(std::format("#define io{0}Count b_{0}[0]", entity.GetName()));
 
 		bool read_only_entity = is_render;
 		if (read_only_entity) {
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read> b_%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read> b_{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
 			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, true);
 
-			insertion += entity.GetGPUInsertion();
-			insertion += QString::fromStdString(entity.GetSpecs().p_GPUReadOnlyInsertion);
+			insertion.push_back(std::string(entity.GetGPUInsertion()));
+			insertion.push_back(entity.GetSpecs().p_GPUReadOnlyInsertion);
 
 		} else {
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_%2: array<atomic<i32>>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_{1}: array<atomic<i32>>;", insertion_buffers.size(), entity.GetName()));
 			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
 
-			insertion += entity.GetGPUInsertion();
-			// replace non-atomic getters and setters with atomic ones
-			insertion += QString("#define %1_LOOKUP(base, index) (atomicLoad(&b_%1[(base) + (index)]))").arg(name);
-			insertion += QString("#define %1_SET(base, index, value) atomicStore(&b_%1[(base) + (index)], (value))").arg(name);
-			insertion += QString::fromStdString(entity.GetSpecs().p_GPUInsertion);
+			insertion.push_back(std::string(entity.GetGPUInsertion()));
+			// this will replace non-atomic getters and setters with atomic ones
+			insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", entity.GetName()));
+			insertion.push_back(std::format("#define {0}_SET(base, index, value) atomicStore(&b_{0}[(base) + (index)], (value))", entity.GetName()));
+			insertion.push_back(entity.GetSpecs().p_GPUInsertion);
 		}
 
 		if (entity_spec.p_Creatable) {
 
-			insertion += QString("#define io%1FreeCount b_%1[1]").arg(entity.GetName());
-			insertion += QString("#define io%1NextId b_%1[2]").arg(entity.GetName());
-			insertion += QString("#define io%1MaxIndex b_%1[3]").arg(entity.GetName());
+			insertion.push_back(std::format("#define io{0}FreeCount b_{0}[1]", entity.GetName()));
+			insertion.push_back(std::format("#define io{0}NextId b_{0}[2]", entity.GetName()));
+			insertion.push_back(std::format("#define io{0}MaxIndex b_{0}[3]", entity.GetName()));
 
-			QString next_id = QString("io%1NextId").arg(name);
-			QString max_index = QString("io%1MaxIndex").arg(name);
-			QString free_count = QString("io%1FreeCount").arg(name);
+			auto next_id = std::format("io{0}NextId", entity.GetName());
+			auto max_index = std::format("io{0}MaxIndex", entity.GetName());
+			auto free_count = std::format("io{0}FreeCount", entity.GetName());
 
-			insertion += QString("fn Create%1(input_item: %1) {").arg(name);
-			insertion += "\tvar item = input_item;";
-			insertion += QString("\tlet item_id: i32 = atomicAdd(&%1, 1);").arg(next_id);
-			
-			insertion_buffers += QString("@group(0) @binding(%1) var<storage, read_write> b_Free%2: array<i32>;").arg(insertion_buffers.size()).arg(entity.GetName());
+			insertion.push_back(std::format("fn Create{0}(input_item: {0}) {{", entity.GetName()));
+			insertion.push_back("\tvar item = input_item;");
+			insertion.push_back(std::format("\tlet item_id: i32 = atomicAdd(&{0}, 1);", next_id));
+
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Free{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
 			result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
 
-			insertion += "\tvar item_pos: i32 = 0;";
-			insertion += QString("\tatomicAdd(&io%1Count, 1);").arg(entity.GetName());
-			insertion += QString("\tlet free_count: i32 = atomicAdd(&%1, -1);").arg(free_count);
-			insertion += QString("\tatomicMax(&%1, 0);").arg(free_count); // ensure this is never negative after completion
-			insertion += "\tif(free_count > 0) {";
-				insertion += QString("\t\titem_pos = b_Free%1[free_count - 1];").arg(entity.GetName());
-			insertion += "\t} else {";
-				insertion += QString("\t\titem_pos = atomicAdd(&%1, 1);").arg(max_index);
-			insertion += "\t}";
+			insertion.push_back("\tvar item_pos: i32 = 0;");
+			insertion.push_back(std::format("\tatomicAdd(&io{0}Count, 1);", entity.GetName()));
+			insertion.push_back(std::format("\tlet free_count: i32 = atomicAdd(&{0}, -1);", free_count));
+			insertion.push_back(std::format("\tatomicMax(&{0}, 0);", free_count)); // ensure this is never negative after completion
+			insertion.push_back("\tif(free_count > 0) {");
+				insertion.push_back(std::format("\t\titem_pos = b_Free{0}[free_count - 1];", entity.GetName()));
+			insertion.push_back("\t} else {");
+				insertion.push_back(std::format("\t\titem_pos = atomicAdd(&{0}, 1);", max_index));
+			insertion.push_back("\t}");
 
-			insertion += QString("\titem.%1 = item_id;").arg(entity.GetIDName());
-			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
+			insertion.push_back(std::format("\titem.{0} = item_id;", entity.GetIDName()));
+			insertion.push_back(std::format("\tSet{0}(item, item_pos);\n}}", entity.GetName()));
 		}
 	}
-	
+
 	for (const auto& tex : m_Textures) {
 
 #pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern")
 		auto dim = tex.p_Tex->GetViewDimension();
-		QString tex_spec;
+		std::string tex_spec;
 		if (dim == WGPUTextureViewDimension_1D) {
 			tex_spec = "texture_1d<f32>";
 		} else if (dim == WGPUTextureViewDimension_2D) {
@@ -383,11 +385,11 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 		} else if (dim == WGPUTextureViewDimension_3D) {
 			tex_spec = "texture_3d<f32>";
 		}
-		insertion_buffers += QString("@group(0) @binding(%1) var %2: %3;").arg(insertion_buffers.size()).arg(tex.p_Name).arg(tex_spec);
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: {2};", insertion_buffers.size(), tex.p_Name, tex_spec));
 		result->m_Pipeline->AddTexture(tex.p_Tex->GetViewDimension(), tex.p_Tex->GetTextureView());
 	}
 	for (const auto& sampler : m_Samplers) {
-		insertion_buffers += QString("@group(0) @binding(%1) var %2: sampler;").arg(insertion_buffers.size()).arg(sampler.p_Name);
+		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));
 		result->m_Pipeline->AddSampler(*sampler.p_Sampler);
 	}
 
@@ -396,72 +398,70 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 	for (int i = 0; i < m_Vars.size(); i++) {
 		const auto& var = m_Vars[i];
-		insertion.push_front(QString("#define Get_%1 (atomicLoad(&b_Control[%2]))").arg(var.p_Name).arg(i));
-		insertion.push_front(QString("#define %1 (b_Control[%2])").arg(var.p_Name).arg(i));
-		result->m_VarNames += var.p_Name;
+		insertion.push_front(std::format("#define Get_{0} (atomicLoad(&b_Control[{1}]))", var.p_Name, i));
+		insertion.push_front(std::format("#define {0} (b_Control[{1}])", var.p_Name, i));
+		result->m_VarNames.push_back(var.p_Name);
 	}
 
-	insertion += "////////////////";
+	insertion.push_back("////////////////");
 
 	if (entity_processing && m_ReplaceMain) {
-		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
-		end_insertion +=
-			QString("fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+		end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
+		end_insertion.push_back(std::format(
+			"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
 			"\tlet item_index = i32(global_id.x);\n"
-			"\tif (item_index >= Get_ioMaxIndex) { return; }\n"
-			"\tlet item: %1 = Get%1(item_index);").arg(m_Entity->GetName());
+			"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+			"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
 		if (m_Entity->IsDoubleBuffering()) {
-			end_insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetIDName()).arg(m_Entity->GetName());
+			end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ Set{1}(item, item_index); return; }}", m_Entity->GetIDName(), m_Entity->GetName()));
 		} else {
-			end_insertion += QString("\tif (item.%1 < 0) { return; }").arg(m_Entity->GetIDName());
+			end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
 		}
-		end_insertion +=
-			QString("\tvar new_item: %1 = item;\n"
-			"\tlet should_destroy: bool = %1Main(item_index, item, &new_item);\n"
-			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
-			"}").arg(m_Entity->GetName());
+		end_insertion.push_back(std::format(
+			"\tvar new_item: {0} = item;\n"
+			"\tlet should_destroy: bool = {0}Main(item_index, item, &new_item);\n"
+			"\tif(should_destroy) {{ Destroy{0}(item_index); }} else {{ Set{0}(new_item, item_index); }}\n"
+			"}}", m_Entity->GetName()));
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 
 		/*
 		end_insertion +=
 			"@vertex\n"
-			"void %1Main(int item_index, %1 item); // forward declaration\n"
+			"void {0}Main(int item_index, {0} item); // forward declaration\n"
 			"void main() {\n"
-			"\t%1 item = Get%1(gl_InstanceID);";
-		end_insertion += QString("\tif (item.%1 < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }").arg(m_Entity->GetIDName());
-		end_insertion +=
-			"\t%1Main(gl_InstanceID, item);\n"
-			"}\n#endif\n////////////////";
+			"\t{0} item = Get{0}(gl_InstanceID);";
+		end_insertion.push_back(std::format("\tif (item.{0} < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }", m_Entity->GetIDName());
+		end_insertion.push_back(
+			"\t{0}Main(gl_InstanceID, item);\n"
+			"}\n#endif\n////////////////");
 			*/
 	} else if (m_Entity && m_ReplaceMain) {
-		end_insertion += QString("@compute @workgroup_size(%1, %2, %3)").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
-		end_insertion +=
-			QString("fn main(@builtin(global_invocation_id) global_id: vec3u) {\n"
+		end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
+		end_insertion.push_back(std::format(
+			"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
 			"\tlet item_index = i32(global_id.x);\n"
-			"\tif (item_index >= Get_ioMaxIndex) { return; }\n"
-			"\tlet item: %1 = Get%1(item_index);").arg(m_Entity->GetName());
-		end_insertion += QString("\tif (item.%1 < 0) { return; }").arg(m_Entity->GetIDName());
-		end_insertion +=
-			QString("\t%1Main(item_index, item);\n"
-			"}\n////////////////").arg(m_Entity->GetName());
+			"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+			"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
+		end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
+		end_insertion.push_back(std::format(
+			"\t{0}Main(item_index, item);\n"
+			"}}\n////////////////", m_Entity->GetName()));
 	}
 
-	// WARNING: do NOT add to control buffer beyond this point
-
-	if (!m_ExtraCode.isNull()) {
-		insertion += "////////////////";
-		insertion += m_ExtraCode;
+	if (!m_ExtraCode.empty()) {
+		insertion.push_back("////////////////");
+		insertion.push_back(m_ExtraCode);
 	}
 
-	insertion.push_front(insertion_buffers.join("\n"));
-	insertion.push_front(immediate_insertion.join("\n"));
+	insertion.push_front(JoinStrings(insertion_buffers, "\n"));
+	insertion.push_front(JoinStrings(immediate_insertion, "\n"));
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
-	std::string insertion_str = insertion.join("\n").toStdString();
+	std::string insertion_str = JoinStrings(insertion, "\n");
 	std::string end_insertion_str;
 	if (!end_insertion.empty()) {
-		end_insertion_str = "\n//////////\n" + end_insertion.join("\n").toStdString();
+		end_insertion_str = "\n//////////\n" + JoinStrings(end_insertion, "\n");
 	}
 
 	if (is_render) {
@@ -480,7 +480,7 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
+PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
@@ -507,7 +507,7 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 	if (!compute && m_Entity) {
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
-			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName().toStdString(), Core::GetTicks() - time_slider, iterations);
+			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, iterations);
 		}
 	}
 
@@ -516,8 +516,8 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 			m_Pipeline->ReplaceBuffer(*pair.p_Entity->GetOuputSSBO(), *pair.p_Entity->GetSSBO());
 		}
 	}
-	
-	auto fill_var_data = [this, &variables] (QString name, int& value) {
+
+	auto fill_var_data = [this, &variables] (std::string_view name, int& value) {
 		for (const auto& var: variables) {
 			if (var.first == name) {
 				value = var.second;
@@ -607,11 +607,11 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 
 #ifdef NESHNY_ENTITY_DEBUG
 	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
-		BufferViewer::Checkpoint(QString("%1 Death").arg(m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT);
+		BufferViewer::Checkpoint(std::format("{0} Death", m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
 	if (entity_processing) {
-		BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity->GetName()), "PostRun", *m_ControlSSBO, MemberSpec::Type::T_INT);
-		BufferViewer::Checkpoint(QString("%1 Free").arg(m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity->GetFreeCount());
+		BufferViewer::Checkpoint(std::format("{0} Control", m_Entity->GetName()), "PostRun", *m_ControlSSBO, MemberSpec::Type::T_INT);
+		BufferViewer::Checkpoint(std::format("{0} Free", m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity->GetFreeCount());
 	}
 #endif
 
@@ -643,18 +643,18 @@ QueryEntities::QueryEntities(GPUEntity& entity) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec2 pos) {
+QueryEntities& QueryEntities::ByNearestPosition(std::string_view param_name, fVec2 pos) {
 	m_Query = QueryType::Position2D;
 	m_QueryParam = pos;
-	m_ParamName = param_name;
+	m_ParamName = std::string(param_name);
 	return *this;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec3 pos) {
+QueryEntities& QueryEntities::ByNearestPosition(std::string_view param_name, fVec3 pos) {
 	m_Query = QueryType::Position3D;
 	m_QueryParam = pos;
-	m_ParamName = param_name;
+	m_ParamName = std::string(param_name);
 	return *this;
 }
 
@@ -678,7 +678,7 @@ int QueryEntities::ExecuteQuery(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-Grid2DCache::Grid2DCache(GPUEntity& entity, QString pos_name) :
+Grid2DCache::Grid2DCache(GPUEntity& entity, std::string_view pos_name) :
 	m_Entity		( entity )
 	,m_PosName		( pos_name )
 #if defined(NESHNY_WEBGPU)
@@ -702,9 +702,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
 
 	if (!m_CacheIndex) {
-		QString main_func =
-			QString("fn %1Main(item_index: i32, item: %1) { ItemMain(item_index, item.%2); }")
-			.arg(m_Entity.GetName()).arg(m_PosName);
+		std::string main_func = std::format("fn {0}Main(item_index: i32, item: {0}) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
 
 		m_CacheIndex = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_INDEX" })
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
@@ -744,23 +742,20 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 
 	auto name = m_Entity.GetName();
 
-	target_stage.AddBuffer(QString("b_%1GridIndices").arg(name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
-	target_stage.AddBuffer(QString("b_%1GridItems").arg(name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
 
-	target_stage.AddStructBuffer<Grid2DCacheUniform>(QString("b_%1GridUniform").arg(name), QString("%1GridUniformStruct").arg(name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
+	target_stage.AddStructBuffer<Grid2DCacheUniform>(std::format("b_{0}GridUniform", name), std::format("{0}GridUniformStruct", name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
 
 	std::string err_msg;
-	auto utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);
+	std::string utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);
 	if (utils_file.empty()) {
 		Core::Log(std::format("could not open 'GridCache2D.wgsl.template' {}", err_msg), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 		target_stage.AddCode("#error could not open 'GridCache2D.wgsl.template'");
 		return;
 	}
-	target_stage.AddCode(
-		QString::fromStdString(utils_file)
-		.arg(name)
-		.arg(m_Entity.GetIDName())
-	);
+
+	target_stage.AddCode(ReplaceAll(ReplaceAll(utils_file, "<<NAME>>", name), "<<ID>>", m_Entity.GetIDName()));
 }
 
 } // namespace Neshny

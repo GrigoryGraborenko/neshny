@@ -94,6 +94,21 @@ std::string JoinStrings(const std::vector<std::string>& list, std::string_view i
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+std::string JoinStrings(const std::list<std::string>& list, std::string_view insert_between) {
+    std::string result;
+    bool first = true;
+    for (const auto& str: list) {
+        if (first) {
+            result += str;
+            first = false;
+        } else {
+            result += std::format("{}{}", insert_between, str);
+        }
+    }
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 bool StringContains(std::string_view str, std::string_view substr, bool case_insensitive) {
 
     auto case_insensitive_compare = [] (char a, char b) -> bool {

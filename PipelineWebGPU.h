@@ -31,8 +31,8 @@ public:
 	};
 
 	struct OutputResults {
-		bool GetValue(QString name, int& value) const;
-		std::vector<std::pair<QString, int>> p_Results;
+		bool GetValue(std::string_view name, int& value) const;
+		std::vector<std::pair<std::string, int>> p_Results;
 	};
 
 	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
@@ -47,17 +47,17 @@ public:
 		GPUEntity*					m_Entity = nullptr; // not owned, do not delete
 		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
 		class BaseCache*			m_Cache = nullptr; // not owned, do not delete
-		QStringList					m_VarNames;
+		std::vector<std::string>	m_VarNames;
 		std::vector<AddedEntity>	m_Entities;
 		bool						m_UsingRandom;
 		bool						m_ReadRequired = false;
 		std::shared_ptr<SSBO>		m_TemporaryFrame; // used for time travel feature
 
 		struct DataVectorInfo {
-			QString			m_Name;
-			QString			m_CountVar;
-			QString			m_OffsetVar;
-			QString			m_NumVar;
+			std::string		m_Name;
+			std::string		m_CountVar;
+			std::string		m_OffsetVar;
+			std::string		m_NumVar;
 			unsigned char*	m_Data = nullptr;
 			int				m_SizeInts = 0;
 			int				m_NumItems = 0;
@@ -70,7 +70,7 @@ public:
 							~Prepared	( void );
 
 		template <class T>
-		Prepared&			WithDataVector	( QString name, const std::vector<T>& items ) {
+		Prepared&			WithDataVector	( std::string_view name, const std::vector<T>& items ) {
 			for (auto& vect : m_DataVectors) {
 				if (vect.m_Name == name) {
 					vect.m_Data = (unsigned char*)items.data();
@@ -81,22 +81,23 @@ public:
 			}
 			return *this;
 		}
+		// todo: create WithTexture and WithBuffer functions for swapping out textures and buffers after prep
 
 		template <class UniformSpec>
 		void						Render		( RTT& rtt, const UniformSpec& uniform ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt, std::nullopt); }
 		template <class UniformSpec>
 		void						Render		( RTT& rtt, const UniformSpec& uniform, int iterations ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt, std::nullopt); }
 		template <class UniformSpec>
-		void						Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<QString, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int>>>(variables), 1, &rtt, std::nullopt); }
+		void						Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
 
 		template <class UniformSpec>
 		AsyncOutputResults			Run			( const UniformSpec& uniform ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr, std::nullopt); }
 		template <class UniformSpec>
 		AsyncOutputResults			Run			( const UniformSpec& uniform, int iterations ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr, std::nullopt); }
 		template <class UniformSpec>
-		AsyncOutputResults			Run			( const UniformSpec& uniform, std::vector<std::pair<QString, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<QString, int>>>(variables), 1, nullptr, std::move(callback)); }
+		AsyncOutputResults			Run			( const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
 	private:
-		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<QString, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
+		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 
 	static PipelineStage ModifyEntity(GPUEntity& entity, std::string_view shader_name, bool replace_main, std::vector<std::string>&& shader_defines = {}, class BaseCache* cache = nullptr) {
@@ -119,20 +120,20 @@ public:
 
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
-	PipelineStage&				AddBuffer			( QString name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, name, array_type, access }); return *this; }
-	PipelineStage&				AddCode				( QString code ) { m_ExtraCode += code; return *this; }
+	PipelineStage&				AddBuffer			( std::string_view name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, std::string(name), array_type, access }); return *this; }
+	PipelineStage&				AddCode				( std::string_view code ) { m_ExtraCode += code; return *this; }
 
-	PipelineStage&				AddInputOutputVar	( QString name ) { m_Vars.push_back({ name, true }); return *this; }
-	PipelineStage&				AddInputVar			( QString name ) { m_Vars.push_back({ name, false }); return *this; }
-	PipelineStage&				AddTexture			( QString name, const WebGPUTexture* texture ) { m_Textures.push_back({ name, texture }); return *this; }
-	PipelineStage&				AddSampler			( QString name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ name, sampler }); return *this; }
+	PipelineStage&				AddInputOutputVar	( std::string_view name ) { m_Vars.push_back({ std::string(name), true }); return *this; }
+	PipelineStage&				AddInputVar			( std::string_view name ) { m_Vars.push_back({ std::string(name), false }); return *this; }
+	PipelineStage&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
+	PipelineStage&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
 
 	template <class T>
-	PipelineStage&				AddStructBuffer		( QString name, QString struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
+	PipelineStage&				AddStructBuffer		( std::string_view name, std::string_view struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
 		std::vector<MemberSpec> members;
 		Serialiser<T> serializeFunc(members);
 		meta::doForAllMembers<T>(serializeFunc);
-		m_StructBuffers.push_back({ ssbo, name, struct_name, std::move(members), access, is_array });
+		m_StructBuffers.push_back({ ssbo, std::string(name), std::string(struct_name), std::move(members), access, is_array });
 		return *this;
 	}
 
@@ -145,9 +146,9 @@ public:
 	}
 
 	template <class T>
-	PipelineStage& AddDataVector(QString name) {
+	PipelineStage& AddDataVector(std::string_view name) {
 		int ints_per = sizeof(T) / sizeof(int);
-		m_DataVectors.push_back({ name, ints_per });
+		m_DataVectors.push_back({ std::string(name), ints_per });
 		AddedDataVector& ref = m_DataVectors.back();
 		Serialiser<T> serializeFunc(ref.p_Members);
 		meta::doForAllMembers<T>(serializeFunc);
@@ -170,19 +171,19 @@ protected:
 
 	struct AddedSSBO {
 		SSBO& p_Buffer;
-		QString					p_Name;
+		std::string				p_Name;
 		MemberSpec::Type		p_Type;
 		BufferAccess			p_Access;
 	};
 	struct AddedDataVector {
-		QString					p_Name;
+		std::string				p_Name;
 		int						p_NumIntsPerItem;
 		std::vector<MemberSpec> p_Members;
 	};
 	struct AddedStructBuffer {
 		SSBO&					p_Buffer;
-		QString					p_Name;
-		QString					p_StructName;
+		std::string				p_Name;
+		std::string				p_StructName;
 		std::vector<MemberSpec> p_Members;
 		BufferAccess			p_Access;
 		bool					p_IsArray;
@@ -191,20 +192,21 @@ protected:
 	std::unique_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
 
 	struct AddedInOut {
-		QString		p_Name;
+		std::string	p_Name;
 		bool		p_ReadBack = true;
 	};
 
 	struct AddedTexture {
-		QString					p_Name;
+		std::string				p_Name;
 		const WebGPUTexture*	p_Tex;
 	};
 	struct AddedSampler {
-		QString					p_Name;
+		std::string				p_Name;
 		const WebGPUSampler*	p_Sampler;
 	};
 
-	static QString				GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
+	static std::string			GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
+
 	RunType							m_RunType;
 	GPUEntity*						m_Entity = nullptr;
 	RenderableBuffer*				m_Buffer = nullptr;
@@ -215,7 +217,7 @@ protected:
 	iVec3							m_LocalSize = iVec3(8, 8, 8);
 	int								m_Iterations = 0;
 	SSBO*							m_ControlSSBO = nullptr;
-	QString							m_ExtraCode;
+	std::string						m_ExtraCode;
 	WebGPUPipeline::RenderParams	m_RenderParams;
 
 	std::vector<AddedEntity>		m_Entities;
@@ -244,8 +246,8 @@ public:
 
 								QueryEntities		( GPUEntity& entity );
 
-	QueryEntities&				ByNearestPosition	( QString param_name, fVec2 pos );
-	QueryEntities&				ByNearestPosition	( QString param_name, fVec3 pos );
+	QueryEntities&				ByNearestPosition	( std::string_view param_name, fVec2 pos );
+	QueryEntities&				ByNearestPosition	( std::string_view param_name, fVec3 pos );
 	QueryEntities&				ById				( int id );
 
 	std::optional<int>			Run					( void ) {
@@ -280,7 +282,7 @@ private:
 
 	GPUEntity&							m_Entity;
 	QueryType							m_Query;
-	QString								m_ParamName;
+	std::string							m_ParamName;
 	std::variant<fVec2, fVec3, int>		m_QueryParam;
 };
 
@@ -291,7 +293,7 @@ class Grid2DCache : public BaseCache {
 
 public:
 
-								Grid2DCache		( GPUEntity& entity, QString pos_name );
+								Grid2DCache		( GPUEntity& entity, std::string_view pos_name );
 	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
 	virtual void				Bind			( PipelineStage& target_stage ) override;
@@ -299,7 +301,7 @@ public:
 private:
 
 	GPUEntity&					m_Entity;
-	QString						m_PosName;
+	std::string					m_PosName;
 
 	SSBO						m_GridIndices;
 	SSBO						m_GridItems;

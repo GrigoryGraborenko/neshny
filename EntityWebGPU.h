@@ -247,7 +247,7 @@ public:
 	inline int					GetLastKnownCount		( void ) const { return m_LastKnownInfo.p_Count; }
 	inline int					GetCountSync			( void ) { SyncInfo(); return m_LastKnownInfo.p_Count; }
 
-	inline QString				GetName					( void ) const { return QString::fromStdString(m_Name); }
+	inline std::string_view		GetName					( void ) const { return m_Name; }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
@@ -256,9 +256,9 @@ public:
 
 	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
-	inline QString				GetGPUInsertion			( void ) const { return QString::fromStdString(m_GPUInsertion); }
-	inline QString				GetDoubleBufferGPUInsertion	( void ) const { return QString::fromStdString(m_GPUInsertionDoubleBuffer); }
-	inline QString				GetIDName				( void ) const { return QString::fromStdString(m_IDName); }
+	inline std::string_view		GetGPUInsertion			( void ) const { return m_GPUInsertion; }
+	inline std::string_view		GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
+	inline std::string_view		GetIDName				( void ) const { return m_IDName; }
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
 	void						SwapInputOutputSSBOs	( void );

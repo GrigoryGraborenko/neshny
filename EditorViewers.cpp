@@ -475,7 +475,7 @@ void BufferViewer::ICheckpoint(std::string_view stage, GPUEntity& buffer) {
 #elif defined(NESHNY_WEBGPU)
 
 	int ticks = Core::GetTicks();
-	buffer.AccessData([buffer_name = buffer.GetName().toStdString(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {
+	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {
 		unsigned char* copy = new unsigned char[size_bytes];
 		memcpy(copy, data, size_bytes);
 		std::shared_ptr<unsigned char[]> mem(copy);
@@ -483,7 +483,7 @@ void BufferViewer::ICheckpoint(std::string_view stage, GPUEntity& buffer) {
 		std::string new_info = std::format("# {} mx {} id {} free {}", info.p_Count, info.p_MaxIndex, info.p_NextId, info.p_FreeCount);
 		BufferViewer::Singleton().UpdateCheckpoint(buffer_name, ticks, info.p_MaxIndex, new_info, mem);
 	});
-	IStoreCheckpoint(buffer.GetName().toStdString(), { std::string(stage), {}, 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+	IStoreCheckpoint(std::string(buffer.GetName()), { std::string(stage), {}, 0, ticks, true, nullptr }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 
 #endif
 }
