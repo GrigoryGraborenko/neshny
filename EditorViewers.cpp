@@ -368,7 +368,7 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 		ImGui::EndTable();
 	}
 
-	qint64 total_nanos = 0;
+	int64_t total_nanos = 0;
 	for (auto iter = timings.begin(); iter != timings.end(); iter++) {
 		total_nanos += iter->p_Nanos;
 	}
@@ -466,13 +466,16 @@ void BufferViewer::ICheckpoint(std::string_view name, std::string_view stage, SS
 
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(std::string_view stage, GPUEntity& buffer) {
+#if defined(NESHNY_GL)
 	if (!Core::IsBufferEnabled(buffer.GetName().toStdString())) {
 		return;
 	}
-#if defined(NESHNY_GL)
 	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopySync();
 	IStoreCheckpoint(buffer.GetName().toStdString(), { std::string(stage), buffer.GetDebugInfo().toStdString(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
 #elif defined(NESHNY_WEBGPU)
+	if (!Core::IsBufferEnabled(buffer.GetName())) {
+		return;
+	}
 
 	int ticks = Core::GetTicks();
 	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {

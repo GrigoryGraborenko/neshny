@@ -14,23 +14,14 @@ public:
 	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err) = 0;
 
 	bool				Load(std::string_view path, std::string& err) {
-
-		QFile file(path.data());
-		if (!file.open(QIODevice::ReadOnly)) {
-			err = file.errorString().toStdString();
-
+		std::ifstream file(std::string(path), std::ios::in | std::ios::binary);
+		if (!file.is_open()) {
+			err = std::format("Could not open {} for reading", path);
 			return false;
 		}
-		auto data = file.readAll();
-
-		//std::ifstream file(std::string(path), std::ios::in | std::ios::binary);
-		//if (!file.is_open()) {
-		//	err = std::format("Could not open {} for reading", path);
-		//	return false;
-		//}
-		//std::ostringstream data_stream;
-		//data_stream << file.rdbuf();
-		//std::string data = data_stream.str();
+		std::ostringstream data_stream;
+		data_stream << file.rdbuf();
+		std::string data = data_stream.str();
 
 		return FileInit(path, (unsigned char*)data.data(), data.size(), err);
 	};

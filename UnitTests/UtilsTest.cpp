@@ -38,15 +38,15 @@ namespace Test {
 		struct TestResource {
 			uint64_t	p_Memory;
 			uint64_t	p_GPUMemory;
-			float		p_MinutesAge;
+			double		p_MinutesAge;
 			bool		p_ExpectDelete;
 		};
 
 		TestEngine* engine = new TestEngine;
-		constexpr float minutes_to_ticks = 30 * 60;
+		constexpr double minutes_to_ticks = 30 * 60;
 		std::string found_err;
 
-		auto Meg = [](int megabytes) { return (qint64)megabytes * 1024ll * 1024ll; };
+		auto Meg = [](int megabytes) { return (int64_t)megabytes * 1024ll * 1024ll; };
 
 		auto test_scenario = [engine, minutes_to_ticks, &found_err](std::string scenario, uint64_t max_ram, uint64_t max_gpu_ram, const std::vector<TestResource>& resources) {
 			engine->SetMaxMem(max_ram, max_gpu_ram);
@@ -64,7 +64,7 @@ namespace Test {
 					entries.reserve(resources.size());
 					int ind = 0;
 					for (const auto& resource : resources) {
-						entries.emplace_back(nullptr, std::format("{}", ind++), resource.p_Memory, resource.p_GPUMemory, resource.p_MinutesAge * minutes_to_ticks);
+						entries.emplace_back(nullptr, std::format("{}", ind++), resource.p_Memory, resource.p_GPUMemory, (int)(resource.p_MinutesAge * minutes_to_ticks));
 					}
 				}
 				,[&resources, scenario, &found_err](const std::vector<Neshny::ResourceManagementToken::ResourceEntry>& entries) {
