@@ -5,7 +5,7 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, const std::vector<QString>& shader_defines, SSBO* control_ssbo, int iterations) :
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, const std::vector<std::string>& shader_defines, SSBO* control_ssbo, int iterations) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
@@ -40,49 +40,48 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, QStringList& insertion_uniforms, std::vector<std::pair<QString, int>>& integer_vars, int offset) {
+std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, std::vector<std::string>& insertion_uniforms, std::vector<std::pair<std::string, int>>& integer_vars, int offset) {
 
-	QStringList insertion;
-	insertion += QString("struct %1 {").arg(data_vect.p_Name);
+	std::vector<std::string> insertion;
+	insertion.push_back(std::format("struct {0} {{", data_vect.p_Name));
 
-	QStringList function(QString("%1 Get%1(int index) {\n\t%1 item;").arg(data_vect.p_Name));
-	function += QString("\tindex = u%1Offset + (index * %2);").arg(data_vect.p_Name).arg(data_vect.p_NumIntsPerItem);
+	std::vector<std::string> function{ std::format("{0} Get{0}(int index) {{\n\t{0} item;", data_vect.p_Name) };
+	function.push_back(std::format("\tindex = u{0}Offset + (index * {1});", data_vect.p_Name, data_vect.p_NumIntsPerItem));
 
 	int pos_index = 0;
 	for (const auto& member : data_vect.p_Members) {
-		insertion += QString::fromStdString(std::format("\t{} {};", MemberSpec::GetGPUType(member.p_Type), member.p_Name));
+		insertion.push_back(std::format("\t{} {};", MemberSpec::GetGPUType(member.p_Type), member.p_Name));
 
-		QString name = QString::fromStdString(member.p_Name);
 		if (member.p_Type == MemberSpec::T_INT) {
-			function += QString("\titem.%1 = b_Control.i[index + %2];").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = b_Control.i[index + {1}];", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_FLOAT) {
-			function += QString("\titem.%1 = intBitsToFloat(b_Control.i[index + %2]);").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = intBitsToFloat(b_Control.i[index + {1}]);", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_VEC2) {
-			function += QString("\titem.%1 = vec2(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]));").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = vec2(intBitsToFloat(b_Control.i[index + {1}]), intBitsToFloat(b_Control.i[index + {1} + 1]));", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_VEC3) {
-			function += QString("\titem.%1 = vec3(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]), intBitsToFloat(b_Control.i[index + %2 + 2]));").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = vec3(intBitsToFloat(b_Control.i[index + {1}]), intBitsToFloat(b_Control.i[index + {1} + 1]), intBitsToFloat(b_Control.i[index + {1} + 2]));", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_VEC4) {
-			function += QString("\titem.%1 = vec4(intBitsToFloat(b_Control.i[index + %2]), intBitsToFloat(b_Control.i[index + %2 + 1]), intBitsToFloat(b_Control.i[index + %2 + 2]), intBitsToFloat(b_Control.i[index + %2 + 3]));").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = vec4(intBitsToFloat(b_Control.i[index + {1}]), intBitsToFloat(b_Control.i[index + {1} + 1]), intBitsToFloat(b_Control.i[index + {1} + 2]), intBitsToFloat(b_Control.i[index + {1} + 3]));", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_IVEC2) {
-			function += QString("\titem.%1 = ivec2(b_Control.i[index + %2], b_Control.i[index + %2 + 1]);").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = ivec2(b_Control.i[index + {1}], b_Control.i[index + {1} + 1]);", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_IVEC3) {
-			function += QString("\titem.%1 = ivec3(b_Control.i[index + %2], b_Control.i[index + %2 + 1], b_Control.i[index + %2 + 2]);").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = ivec3(b_Control.i[index + {1}], b_Control.i[index + {1} + 1], b_Control.i[index + {1} + 2]);", member.p_Name, pos_index));
 		} else if (member.p_Type == MemberSpec::T_IVEC4) {
-			function += QString("\titem.%1 = ivec4(b_Control.i[index + %2], b_Control.i[index + %2 + 1], b_Control.i[index + %2 + 2], b_Control.i[index + %2 + 3]);").arg(name).arg(pos_index);
+			function.push_back(std::format("\titem.{0} = ivec4(b_Control.i[index + {1}], b_Control.i[index + {1} + 1], b_Control.i[index + {1} + 2], b_Control.i[index + {1} + 3]);", member.p_Name, pos_index));
 		}
 		pos_index += member.p_Size / sizeof(float);
 	}
-	function += "\treturn item;\n};";
+	function.push_back("\treturn item;\n};");
 
-	insertion += "};";
-	insertion += function.join("\n");
+	insertion.push_back("};");
+	insertion.push_back(JoinStrings(function, "\n"));
 
-	insertion_uniforms += QString("uniform int u%1Count;").arg(data_vect.p_Name);
-	integer_vars.emplace_back(QString("u%1Count").arg(data_vect.p_Name), data_vect.p_NumItems);
+	insertion_uniforms.push_back(std::format("uniform int u{0}Count;", data_vect.p_Name));
+	integer_vars.emplace_back(std::format("u{0}Count", data_vect.p_Name), data_vect.p_NumItems);
 
-	insertion_uniforms += QString("uniform int u%1Offset;").arg(data_vect.p_Name);
-	integer_vars.emplace_back(QString("u%1Offset").arg(data_vect.p_Name), offset);
-	return insertion.join("\n");
+	insertion_uniforms.push_back(std::format("uniform int u{0}Offset;", data_vect.p_Name));
+	integer_vars.emplace_back(std::format("u{0}Offset", data_vect.p_Name), offset);
+	return JoinStrings(insertion, "\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,41 +90,41 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	// TODO: investigate GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS
 	// TODO: debug of SSBOs is optional
 
-	QStringList insertion;
+	std::list<std::string> insertion;
 	int entity_deaths = 0;
 	int entity_free_count = m_Entity ? m_Entity->GetFreeCount() : 0; // only used for DeleteMode::STABLE_WITH_GAPS
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 
-	QStringList insertion_images;
-	QStringList insertion_buffers;
-	QStringList insertion_uniforms;
-	std::vector<std::pair<QString, int>> integer_vars;
+	std::vector<std::string> insertion_images;
+	std::vector<std::string> insertion_buffers;
+	std::vector<std::string> insertion_uniforms;
+	std::vector<std::pair<std::string, int>> integer_vars;
 	std::vector<std::pair<GLSSBO*, int>> ssbo_binds;
 	std::vector<std::pair<int, int*>> var_vals;
 
 	if (!is_render) {
-		insertion += QString("layout(local_size_x = %1, local_size_y = %2, local_size_z = %3) in;").arg(m_LocalSize.x).arg(m_LocalSize.y).arg(m_LocalSize.z);
+		insertion.push_back(std::format("layout(local_size_x = {0}, local_size_y = {1}, local_size_z = {2}) in;", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
 	}
 
 	std::shared_ptr<GLSSBO> replace = nullptr;
 	int num_entities = m_Entity ? m_Entity->GetMaxIndex() : 0;
 	if (is_render && m_Entity) {
-		insertion_uniforms += "uniform int uCount;";
-		integer_vars.push_back({ QString("u%1Count").arg(m_Entity->GetQTName()), num_entities });
+		insertion_uniforms.push_back("uniform int uCount;");
+		integer_vars.push_back({ std::format("u{0}Count", m_Entity->GetName()), num_entities });
 
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
 			replace = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, num_entities);
 		}
 	} else if(m_Entity || (m_RunType == RunType::BASIC_COMPUTE)) {
-		insertion_uniforms += "uniform int uCount;";
-		insertion_uniforms += "uniform int uOffset;";
+		insertion_uniforms.push_back("uniform int uCount;");
+		insertion_uniforms.push_back("uniform int uOffset;");
 	}
 	for (auto str : m_ShaderDefines) {
-		insertion += QString("#define %1").arg(str);
+		insertion.push_back(std::format("#define {0}", str));
 	}
-	insertion_buffers += "layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;";
+	insertion_buffers.push_back("layout(std430, binding = 0) buffer ControlBuffer { int i[]; } b_Control;");
 	if(entity_processing) {
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
 			m_Vars.push_back({ "ioEntityDeaths", &entity_deaths });
@@ -135,7 +134,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 		}
 	}
 	for (const auto& var : m_Vars) {
-		insertion += QString("#define %1 (b_Control.i[%2])").arg(var.p_Name).arg((int)var_vals.size());
+		insertion.push_back(std::format("#define {0} (b_Control.i[{1}])", var.p_Name, (int)var_vals.size()));
 		var_vals.push_back({ var.p_Ptr ? *var.p_Ptr : 0, var.p_Ptr });
 	}
 	const bool rand_gen = true; // add by default, why not
@@ -145,27 +144,27 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 		int seed = rand();
 		var_vals.push_back({ seed, nullptr });
 
-		insertion += "#include \"Random.glsl\"\n";
-		insertion += QString("float Random(float min_val = 0.0, float max_val = 1.0) { return GetRandom(min_val, max_val, atomicAdd(b_Control.i[%1], 1)); }").arg(control_ind);
+		insertion.push_back("#include \"Random.glsl\"\n");
+		insertion.push_back(std::format("float Random(float min_val = 0.0, float max_val = 1.0) {{ return GetRandom(min_val, max_val, atomicAdd(b_Control.i[{0}], 1)); }}", control_ind));
 	}
 
 	if(m_Entity) {
 		int buffer_index = insertion_buffers.size();
 		ssbo_binds.push_back({ replace.get() ? replace.get() : m_Entity->GetSSBO(), buffer_index });
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
-			insertion_buffers += QString("layout(std430, binding = %1) readonly buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity->GetQTName());
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) readonly buffer MainEntityBuffer {{ int i[]; }} b_{1};", buffer_index, m_Entity->GetName()));
 			buffer_index++;
 			ssbo_binds.push_back({ m_Entity->GetOuputSSBO(), buffer_index });
-			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer MainEntityOutputBuffer { int i[]; } b_Output%2;").arg(buffer_index).arg(m_Entity->GetQTName());
-			insertion += QString::fromStdString(std::string(m_Entity->GetDoubleBufferGPUInsertion()));
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) writeonly buffer MainEntityOutputBuffer {{ int i[]; }} b_Output{1};", buffer_index, m_Entity->GetName()));
+			insertion.push_back(std::string(m_Entity->GetDoubleBufferGPUInsertion()));
 		} else {
-			insertion_buffers += QString("layout(std430, binding = %1) buffer MainEntityBuffer { int i[]; } b_%2;").arg(buffer_index).arg(m_Entity->GetQTName());
-			insertion += QString::fromStdString(std::string(m_Entity->GetGPUInsertion()));
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) buffer MainEntityBuffer {{ int i[]; }} b_{1};", buffer_index, m_Entity->GetName()));
+			insertion.push_back(std::string(m_Entity->GetGPUInsertion()));
 		}
 		if (entity_processing) {
-			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUInsertion);
+			insertion.push_back(std::string(m_Entity->GetSpecs().p_GPUInsertion));
 		} else {
-			insertion += QString::fromStdString(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
+			insertion.push_back(std::string(m_Entity->GetSpecs().p_GPUReadOnlyInsertion));
 		}
 	}
 
@@ -174,36 +173,36 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 			int buffer_index = insertion_buffers.size();
 			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int));
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
-			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer DeathBuffer { int i[]; } b_Death;").arg(buffer_index);
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) writeonly buffer DeathBuffer {{ int i[]; }} b_Death;", buffer_index));
 		} else if(m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 			int buffer_index = insertion_buffers.size();
 			m_Entity->GetFreeListSSBO()->EnsureSizeBytes((num_entities + m_Entity->GetFreeCount()) * sizeof(int), false);
 			m_Entity->GetFreeListSSBO()->Bind(buffer_index);
-			insertion_buffers += QString("layout(std430, binding = %1) writeonly buffer FreeBuffer { int i[]; } b_FreeList;").arg(buffer_index);
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) writeonly buffer FreeBuffer {{ int i[]; }} b_FreeList;", buffer_index));
 		}
-		insertion += QString("void Destroy%1(int index) {").arg(m_Entity->GetQTName());
-		insertion += QString("\tint base = index * FLOATS_PER_%1;").arg(m_Entity->GetQTName());
-		insertion += QString("\t%1_SET(base, 0, -1);").arg(m_Entity->GetQTName());
+		insertion.push_back(std::format("void Destroy{0}(int index) {{", m_Entity->GetName()));
+		insertion.push_back(std::format("\tint base = index * FLOATS_PER_{0};", m_Entity->GetName()));
+		insertion.push_back(std::format("\t{0}_SET(base, 0, -1);", m_Entity->GetName()));
 
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT) {
-			insertion += "\tint death_index = atomicAdd(ioEntityDeaths, 1);";
-			insertion += QString("\tb_Death.i[death_index] = index;");
+			insertion.push_back("\tint death_index = atomicAdd(ioEntityDeaths, 1);");
+			insertion.push_back(std::format("\tb_Death.i[death_index] = index;"));
 		} else if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			insertion += "\tatomicAdd(ioEntityDeaths, 1);";
-			insertion += "\tint free_index = atomicAdd(ioEntityFreeCount, 1);";
-			insertion += "\tb_FreeList.i[free_index] = index;";
+			insertion.push_back("\tatomicAdd(ioEntityDeaths, 1);");
+			insertion.push_back("\tint free_index = atomicAdd(ioEntityFreeCount, 1);");
+			insertion.push_back("\tb_FreeList.i[free_index] = index;");
 		}
-		insertion += "}";
+		insertion.push_back("}");
 	}
 
 	for (int b = 0; b < m_SSBOs.size(); b++) {
 		int buffer_index = insertion_buffers.size();
 		auto& ssbo = m_SSBOs[b];
 		ssbo_binds.push_back({ &ssbo.p_Buffer, buffer_index });
-		insertion_buffers += QString("layout(std430, binding = %1) %4buffer GenericBuffer%1 { %2 i[]; } %3;").arg(buffer_index).arg(QString::fromStdString(MemberSpec::GetGPUType(ssbo.p_Type))).arg(ssbo.p_Name).arg(ssbo.p_Access == BufferAccess::READ_ONLY ? "readonly " : "");
+		insertion_buffers.push_back(std::format("layout(std430, binding = {0}) {3}buffer GenericBuffer{0} {{ {1} i[]; }} {2};", buffer_index, MemberSpec::GetGPUType(ssbo.p_Type), ssbo.p_Name, ssbo.p_Access == BufferAccess::READ_ONLY ? "readonly " : ""));
 	}
 	for (const auto& tex : m_Textures) {
-		insertion_uniforms += QString("uniform sampler2D %1;").arg(tex.p_Name);
+		insertion_uniforms.push_back(std::format("uniform sampler2D {0};", tex.p_Name));
 	}
 	
 	struct EntityControl {
@@ -215,18 +214,17 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	entity_controls.reserve(m_Entities.size()); // reserve to avoid reallocations, so you can have pointers to it
 	for (int e = 0; e < m_Entities.size(); e++) {
 		GPUEntity& entity = *m_Entities[e].p_Entity; // assume this is set
-		QString name = entity.GetQTName();
-		insertion += QString("//////////////// Entity %1").arg(name);
-		integer_vars.push_back({ QString("u%1Count").arg(name), entity.GetMaxIndex() });
-		insertion_uniforms += QString("uniform int u%1Count;").arg(name);
+		insertion.push_back(std::format("//////////////// Entity {0}", entity.GetName()));
+		integer_vars.push_back({ std::format("u{0}Count", entity.GetName()), entity.GetMaxIndex() });
+		insertion_uniforms.push_back(std::format("uniform int u{0}Count;", entity.GetName()));
 		{
 			int buffer_index = insertion_buffers.size();
 			ssbo_binds.push_back({ entity.GetSSBO(), buffer_index });
-			insertion_buffers += QString("layout(std430, binding = %1) buffer EntityBuffer%1 { int i[]; } b_%2;").arg(buffer_index).arg(entity.GetQTName());
+			insertion_buffers.push_back(std::format("layout(std430, binding = {0}) buffer EntityBuffer{0} {{ int i[]; }} b_{1};", buffer_index, entity.GetName()));
 		}
 
-		insertion += QString(QString::fromStdString(std::string(entity.GetGPUInsertion())));
-		insertion += QString(QString::fromStdString(entity.GetSpecs().p_GPUInsertion)).arg(name);
+		insertion.push_back(std::string(entity.GetGPUInsertion()));
+		insertion.push_back(std::string(entity.GetSpecs().p_GPUInsertion));
 
 		entity_controls.push_back({ entity.GetMaxIndex(), entity.GetNextId(), entity.GetFreeCount() });
 		if (m_Entities[e].p_Creatable) {
@@ -235,70 +233,70 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 			var_vals.push_back({ curr.p_NextId, &curr.p_NextId });
 			var_vals.push_back({ curr.p_MaxIndex, &curr.p_MaxIndex });
 
-			insertion += QString("void Create%1(%1 item) {").arg(name);
-			insertion += QString("\tint item_id = atomicAdd(b_Control.i[%1], 1);").arg(control_index);
+			insertion.push_back(std::format("void Create{0}({0} item) {{", entity.GetName()));
+			insertion.push_back(std::format("\tint item_id = atomicAdd(b_Control.i[{0}], 1);", control_index));
 			if (entity.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
 				int buffer_index = insertion_buffers.size();
-				insertion_buffers += QString("layout(std430, binding = %1) buffer FreeEntityBuffer%1 { int i[]; } b_Free%2;").arg(buffer_index).arg(entity.GetQTName());
+				insertion_buffers.push_back(std::format("layout(std430, binding = {0}) buffer FreeEntityBuffer{0} {{ int i[]; }} b_Free{1};", buffer_index, entity.GetName()));
 				ssbo_binds.push_back({ entity.GetFreeListSSBO(), buffer_index });
 				var_vals.push_back({ curr.p_FreeCount, &curr.p_FreeCount });
-				insertion += "\tint item_pos = 0;";
-				insertion += QString("\tint free_count = atomicAdd(b_Control.i[%1], -1);").arg(control_index + 2);
-				insertion += "\tif(free_count > 0) {";
-					insertion += QString("\t\titem_pos = b_Free%1.i[free_count - 1];").arg(entity.GetQTName());
-				insertion += "\t} else {";
-					insertion += QString("\t\titem_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
-				insertion += "\t}";
+				insertion.push_back("\tint item_pos = 0;");
+				insertion.push_back(std::format("\tint free_count = atomicAdd(b_Control.i[{0}], -1);", control_index + 2));
+				insertion.push_back("\tif(free_count > 0) {");
+					insertion.push_back(std::format("\t\titem_pos = b_Free{0}.i[free_count - 1];", entity.GetName()));
+				insertion.push_back("\t} else {");
+					insertion.push_back(std::format("\t\titem_pos = atomicAdd(b_Control.i[{0}], 1);", control_index + 1));
+				insertion.push_back("\t}");
 			} else {
-				insertion += QString("\tint item_pos = atomicAdd(b_Control.i[%1], 1);").arg(control_index + 1);
+				insertion.push_back(std::format("\tint item_pos = atomicAdd(b_Control.i[{0}], 1);", control_index + 1));
 			}
-			insertion += QString("\titem.%1 = item_id;").arg(entity.GetQTIDName());
-			insertion += QString("\tSet%1(item, item_pos);\n}").arg(name);
+			insertion.push_back(std::format("\titem.{0} = item_id;", entity.GetIDName()));
+			insertion.push_back(std::format("\tSet{0}(item, item_pos);\n}}", entity.GetName()));
 		}
 	}
 
-	insertion += "////////////////";
+	insertion.push_back("////////////////");
 
 	if (entity_processing && m_ReplaceMain) {
-		insertion +=
-			QString("bool %1Main(int item_index, %1 item, inout %1 new_item); // forward declaration\n"
-			"void main() {\n"
+		insertion.push_back(std::format(
+			"bool {0}Main(int item_index, {0} item, inout {0} new_item); // forward declaration\n"
+			"void main() {{\n"
 			"\tuvec3 global_id = gl_GlobalInvocationID;\n"
 			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
 			"\tif (item_index >= uCount) return;\n"
-			"\t%1 item = Get%1(item_index);").arg(m_Entity->GetQTName());
+			"\t{0} item = Get{0}(item_index);", m_Entity->GetName()));
 		if (m_Entity->IsDoubleBuffering()) {
-			insertion += QString("\tif (item.%1 < 0) { Set%2(item, item_index); return; }").arg(m_Entity->GetQTIDName()).arg(m_Entity->GetQTName());
+			insertion.push_back(std::format("\tif (item.{0} < 0) {{ Set{1}(item, item_index); return; }}", m_Entity->GetIDName(), m_Entity->GetName()));
 		} else {
-			insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetQTIDName());
+			insertion.push_back(std::format("\tif (item.{0} < 0) return;", m_Entity->GetIDName()));
 		}
-		insertion +=
-			QString("\t%1 new_item = item;\n"
-			"\tbool should_destroy = %1Main(item_index, item, new_item);\n"
-			"\tif(should_destroy) { Destroy%1(item_index); } else { Set%1(new_item, item_index); }\n"
-			"}\n////////////////").arg(m_Entity->GetQTName());
+		insertion.push_back(std::format(
+			"\t{0} new_item = item;\n"
+			"\tbool should_destroy = {0}Main(item_index, item, new_item);\n"
+			"\tif(should_destroy) {{ Destroy{0}(item_index); }} else {{ Set{0}(new_item, item_index); }}\n"
+			"}}\n////////////////", m_Entity->GetName()));
 	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
-		insertion +=
-			QString("#ifdef IS_VERTEX_SHADER\n"
-			"void %1Main(int item_index, %1 item); // forward declaration\n"
-			"void main() {\n"
-			"\t%1 item = Get%1(gl_InstanceID);").arg(m_Entity->GetQTName());
-		insertion += QString("\tif (item.%1 < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }").arg(m_Entity->GetQTIDName());
-		insertion +=
-			QString("\t%1Main(gl_InstanceID, item);\n"
-			"}\n#endif\n////////////////").arg(m_Entity->GetQTName());
+		insertion.push_back(std::format(
+			"#ifdef IS_VERTEX_SHADER\n"
+			"void {0}Main(int item_index, {0} item); // forward declaration\n"
+			"void main() {{\n"
+			"\t{0} item = Get{0}(gl_InstanceID);", m_Entity->GetName()));
+		insertion.push_back(std::format("\tif (item.{0} < 0) {{ gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }}", m_Entity->GetIDName()));
+		insertion.push_back(std::format(
+			"\t{0}Main(gl_InstanceID, item);\n"
+			"}}\n#endif\n////////////////", m_Entity->GetName()));
 	} else if (m_Entity && m_ReplaceMain) {
-		insertion +=
-			QString("void %1Main(int item_index, %1 item); // forward declaration\n"
-			"void main() {\n"
+		insertion.push_back(std::format(
+			"void {0}Main(int item_index, {0} item); // forward declaration\n"
+			"void main() {{\n"
 			"\tuvec3 global_id = gl_GlobalInvocationID;\n"
 			"\tint item_index = int(global_id.x) + (int(global_id.y) + int(global_id.z) * 32) * 32 + uOffset;\n"
 			"\tif (item_index >= uCount) return;\n"
-			"\t%1 item = Get%1(item_index);").arg(m_Entity->GetQTName());
-		insertion += QString("\tif (item.%1 < 0) return;").arg(m_Entity->GetQTIDName());
-		insertion +=
-			QString("\t%1Main(item_index, item);\n"
-			"}\n////////////////").arg(m_Entity->GetQTName());
+			"\t{0} item = Get{0}(item_index);", m_Entity->GetName()));
+		insertion.push_back(std::format("\tif (item.{0} < 0) return;", m_Entity->GetIDName()));
+		insertion.push_back(std::format(
+			"\t{0}Main(item_index, item);\n"
+			"}}\n////////////////", m_Entity->GetName()));
 	}
 
 	// WARNING: do NOT add to control buffer beyond this point
@@ -314,7 +312,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 
 		// allocate some space for vectors on the control buffer and copy data over
 		if (!m_DataVectors.empty()) {
-			insertion += "//////////////// Data vector helpers";
+			insertion.push_back("//////////////// Data vector helpers");
 		}
 		for (const auto& data_vect : m_DataVectors) {
 			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
@@ -322,7 +320,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 			control_size += data_size;
 			values.resize(control_size);
 			memcpy((unsigned char*)&(values[offset]), (unsigned char*)&(data_vect.p_Data[0]), sizeof(int) * data_size);
-			insertion += GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset);
+			insertion.push_back(GetDataVectorStructCode(data_vect, insertion_uniforms, integer_vars, offset));
 		}
 
 		control_ssbo->EnsureSizeBytes(control_size * sizeof(int));
@@ -330,32 +328,32 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 		control_ssbo->SetValues(values);
 	}
 
-	if (!m_ExtraCode.isNull()) {
-		insertion += "////////////////";
-		insertion += m_ExtraCode;
+	if (!m_ExtraCode.empty()) {
+		insertion.push_back("////////////////");
+		insertion.push_back(m_ExtraCode);
 	}
 
-	insertion.push_front(insertion_images.join("\n"));
-	insertion.push_front(insertion_buffers.join("\n"));
-	insertion.push_front(insertion_uniforms.join("\n"));
+	insertion.push_front(JoinStrings(insertion_images, "\n"));
+	insertion.push_front(JoinStrings(insertion_buffers, "\n"));
+	insertion.push_front(JoinStrings(insertion_uniforms, "\n"));
 
 	//DebugGPU::Checkpoint("PreRun", m_Entity);
 
-	QString insertion_str = insertion.join("\n");
-	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str.toStdString()) : Core::GetComputeShader(m_ShaderName, insertion_str.toStdString());
+	std::string insertion_str = JoinStrings(insertion, "\n");
+	GLShader* prog = is_render ? Core::GetShader(m_ShaderName, insertion_str) : Core::GetComputeShader(m_ShaderName, insertion_str);
 	prog->UseProgram();
 
 	//DebugGPU::Checkpoint("PostRun", m_Entity);
 
 	for (const auto& var: integer_vars) {
-		glUniform1i(prog->GetUniform(var.first.toStdString()), var.second);
+		glUniform1i(prog->GetUniform(var.first), var.second);
 	}
 	for (auto& ssbo : ssbo_binds) {
 		ssbo.first->Bind(ssbo.second);
 	}
 	for (int b = 0; b < m_Textures.size(); b++) {
 		auto& tex = m_Textures[b];
-		glUniform1i(prog->GetUniform(tex.p_Name.toStdString()), b);
+		glUniform1i(prog->GetUniform(tex.p_Name), b);
 		glActiveTexture(GL_TEXTURE0 + b);
 		glBindTexture(GL_TEXTURE_2D, tex.p_Tex);
 	}
@@ -389,7 +387,7 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 	////////////////////////////////////////////////////
 
 	if (entity_processing && (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::MOVING_COMPACT)) {
-		//DebugGPU::Checkpoint(QString("%1 Death").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT);
+		//DebugGPU::Checkpoint(std::format("{0} Death", m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
 
 	if (control_ssbo) {
@@ -424,11 +422,11 @@ void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_
 			m_Entity->ProcessStableDeaths(entity_deaths);
 		}
 
-		//BufferViewer::Checkpoint(QString("%1 Control").arg(m_Entity.GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
+		//BufferViewer::Checkpoint(std::format("{0} Control", m_Entity.GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
 
 		//BufferViewer::Checkpoint("PostRun", m_Entity);
 		if (m_Entity->GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS) {
-			//BufferViewer::Checkpoint(QString("%1 Free").arg(m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
+			//BufferViewer::Checkpoint(std::format("{0} Free", m_Entity.GetName()), "PostRun", *m_Entity.GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity.GetFreeCount());
 		}
 	}
 }
@@ -444,7 +442,7 @@ QueryEntities::QueryEntities(GPUEntity& entity) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec2 pos) {
+QueryEntities& QueryEntities::ByNearestPosition(std::string_view param_name, fVec2 pos) {
 	m_Query = QueryType::Position2D;
 	m_QueryParam = pos;
 	m_ParamName = param_name;
@@ -452,7 +450,7 @@ QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec2 pos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec3 pos) {
+QueryEntities& QueryEntities::ByNearestPosition(std::string_view param_name, fVec3 pos) {
 	m_Query = QueryType::Position3D;
 	m_QueryParam = pos;
 	m_ParamName = param_name;
@@ -463,14 +461,14 @@ QueryEntities& QueryEntities::ByNearestPosition(QString param_name, fVec3 pos) {
 QueryEntities& QueryEntities::ById(int id) {
 	m_Query = QueryType::ID;
 	m_QueryParam = id;
-	m_ParamName = QString::fromStdString(std::string(m_Entity.GetIDName()));
+	m_ParamName = std::string(m_Entity.GetIDName());
 	return *this;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 int QueryEntities::ExecuteQuery(void) {
 
-	QString main_name;
+	std::string main_name;
 	if (m_Query == QueryType::Position2D) {
 		main_name = "Nearest2D";
 	} else if (m_Query == QueryType::Position3D) {
@@ -479,9 +477,7 @@ int QueryEntities::ExecuteQuery(void) {
 		main_name = "IsID";
 	}
 
-	QString main_func =
-		QString("void ItemMain%3(int item_index, vec2 pos);\nvoid %1Main(int item_index, %1 item) { ItemMain%3(item_index, item.%2); }")
-		.arg(m_Entity.GetQTName()).arg(m_ParamName).arg(main_name);
+	auto main_func = std::format("void ItemMain{2}(int item_index, vec2 pos);\nvoid {0}Main(int item_index, {0} item) {{ ItemMain{2}(item_index, item.{1}); }}", m_Entity.GetName(), m_ParamName, main_name);
 
 	int best_index = -1;
 	int best_dist = std::numeric_limits<int>::max();
@@ -514,7 +510,7 @@ int QueryEntities::ExecuteQuery(void) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-Grid2DCache::Grid2DCache(GPUEntity& entity, QString pos_name) :
+Grid2DCache::Grid2DCache(GPUEntity& entity, std::string_view pos_name) :
 	m_Entity		( entity )
 	,m_PosName		( pos_name )
 {
@@ -532,9 +528,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int), true);
 	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
 
-	QString main_func =
-		QString("void ItemMain(int item_index, vec2 pos);\nvoid %1Main(int item_index, %1 item) { ItemMain(item_index, item.%2); }")
-		.arg(m_Entity.GetQTName()).arg(m_PosName);
+	std::string main_func = std::format("void ItemMain(int item_index, vec2 pos);\nvoid {0}Main(int item_index, {0} item) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
 
 	PipelineStage::IterateEntity(
 		m_Entity
@@ -589,34 +583,33 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 ////////////////////////////////////////////////////////////////////////////////
 void Grid2DCache::Bind(PipelineStage& target_stage) {
 
-	auto name = m_Entity.GetQTName();
+	auto name = m_Entity.GetName();
 
-	target_stage.AddBuffer(QString("b_%1GridIndices").arg(name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
-	target_stage.AddBuffer(QString("b_%1GridItems").arg(name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
 
-	target_stage.AddCode(QString(
+	target_stage.AddCode(std::format(
 			"ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size); // forward declare \n"
-			"ivec2 Get%1IndexRangeAt(ivec2 grid_pos) {\n"
-			"\tint index = (grid_pos.x + grid_pos.y * %6) * 3;\n"
-			"\tint start = b_%1GridIndices.i[index + 1];\n"
-			"\tint count = b_%1GridIndices.i[index + 2];\n"
+			"ivec2 Get{0}IndexRangeAt(ivec2 grid_pos) {{\n"
+			"\tint index = (grid_pos.x + grid_pos.y * {5}) * 3;\n"
+			"\tint start = b_{0}GridIndices.i[index + 1];\n"
+			"\tint count = b_{0}GridIndices.i[index + 2];\n"
 			"\treturn ivec2(start, start + count);\n"
-			"}\n"
-			"int Get%1IndexAtCache(int index) {\n"
-			"\treturn b_%1GridItems.i[index];\n"
-			"}\n"
-			"ivec2 Get%1GridPosAt(vec2 pos) {\n"
-			"\treturn GetGridPos(pos, vec2(%2, %3), vec2(%4, %5), ivec2(%6, %7));\n" // TODO: should you be hardcoding in the grid params?
-			"}"
-		)
-		.arg(name)
-		.arg(m_GridMin.x, 0, 'f', 6)
-		.arg(m_GridMin.y, 0, 'f', 6)
-		.arg(m_GridMax.x, 0, 'f', 6)
-		.arg(m_GridMax.y, 0, 'f', 6)
-		.arg(m_GridSize.x)
-		.arg(m_GridSize.y)
-	);
+			"}}\n"
+			"int Get{0}IndexAtCache(int index) {{\n"
+			"\treturn b_{0}GridItems.i[index];\n"
+			"}}\n"
+			"ivec2 Get{0}GridPosAt(vec2 pos) {{\n"
+			"\treturn GetGridPos(pos, vec2({1:.6f}, {2:.6f}), vec2({3:.6f}, {4:.6f}), ivec2({5}, {6}));\n" // TODO: should you be hardcoding in the grid params?
+			"}}"
+		,name
+		,m_GridMin.x
+		,m_GridMin.y
+		,m_GridMax.x
+		,m_GridMax.y
+		,m_GridSize.x
+		,m_GridSize.y
+	));
 }
 
 } // namespace Neshny

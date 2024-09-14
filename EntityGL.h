@@ -232,7 +232,6 @@ public:
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
 
 	inline std::string_view		GetName					( void ) const { return m_Name; }
-	inline QString				GetQTName				( void ) const { return QString::fromStdString(m_Name); }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
@@ -248,7 +247,6 @@ public:
 	inline std::string_view		GetGPUInsertion			( void ) const { return m_GPUInsertion; }
 	inline std::string_view		GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
 	inline std::string_view		GetIDName				( void ) const { return m_IDName; }
-	inline QString				GetQTIDName				( void ) const { return QString::fromStdString(m_IDName); }
 
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 

@@ -9,9 +9,6 @@
 #define SDL_WEBGPU_LOOP
 #define NESHNY_WEBGPU_PROFILE
 
-#include <QString>
-#include <QFile>
-
 #ifdef __EMSCRIPTEN__
     #include <emscripten.h>
 	#include <emscripten/html5_webgpu.h>
