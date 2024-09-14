@@ -466,16 +466,13 @@ void BufferViewer::ICheckpoint(std::string_view name, std::string_view stage, SS
 
 ////////////////////////////////////////////////////////////////////////////////
 void BufferViewer::ICheckpoint(std::string_view stage, GPUEntity& buffer) {
-#if defined(NESHNY_GL)
-	if (!Core::IsBufferEnabled(buffer.GetName().toStdString())) {
-		return;
-	}
-	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopySync();
-	IStoreCheckpoint(buffer.GetName().toStdString(), { std::string(stage), buffer.GetDebugInfo().toStdString(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
-#elif defined(NESHNY_WEBGPU)
 	if (!Core::IsBufferEnabled(buffer.GetName())) {
 		return;
 	}
+#if defined(NESHNY_GL)
+	std::shared_ptr<unsigned char[]> mem = buffer.MakeCopySync();
+	IStoreCheckpoint(std::string(buffer.GetName()), { std::string(stage), buffer.GetDebugInfo(), buffer.GetMaxIndex(), Core::GetTicks(), buffer.GetDeleteMode() == GPUEntity::DeleteMode::STABLE_WITH_GAPS, mem }, &buffer.GetSpecs(), MemberSpec::Type::T_UNKNOWN);
+#elif defined(NESHNY_WEBGPU)
 
 	int ticks = Core::GetTicks();
 	buffer.AccessData([buffer_name = buffer.GetName(), ticks](unsigned char* data, int size_bytes, EntityInfo info) {

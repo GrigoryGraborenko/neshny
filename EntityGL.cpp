@@ -99,7 +99,7 @@ void GPUEntity::DeleteInstance(int index) {
 
 		int pos_index = 0;
 		for (const auto& member : m_Specs.p_Members) {
-			if (member.p_Name == m_IDName.toStdString()) {
+			if (member.p_Name == m_IDName) {
 				break;
 			}
 			pos_index += member.p_Size;
@@ -182,8 +182,8 @@ void GPUEntity::SwapInputOutputSSBOs(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-QString GPUEntity::GetDebugInfo(void) {
-	return QString("# %1 mx %2 id %3 free %4").arg(m_Info.p_Count).arg(m_Info.p_MaxIndex).arg(m_Info.p_NextId).arg(m_Info.p_FreeCount);
+std::string GPUEntity::GetDebugInfo(void) {
+	return std::format("# {} mx {} id {} free {}", m_Info.p_Count, m_Info.p_MaxIndex, m_Info.p_NextId, m_Info.p_FreeCount);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

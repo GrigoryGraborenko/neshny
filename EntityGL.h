@@ -64,93 +64,90 @@ private:
 };
 
 template<typename T>
-void SerializeStructInfo(StructInfo& info, QString get_base_str, QString entity_name) {
+void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string_view entity_name) {
 	Serialiser<T> serializeFunc(info.p_Members);
 	meta::doForAllMembers<T>(serializeFunc);
 
-	// %1 is entity name
-	QStringList read_only_lines;
-	QStringList lines;
+	std::vector<std::string> read_only_lines;
+	std::list<std::string> lines;
 
-	read_only_lines += QString("struct %1 {").arg(entity_name);
+	read_only_lines.push_back(std::format("struct {0} {{", entity_name));
 	for (auto member : info.p_Members) {
-		read_only_lines += QString::fromStdString(std::format("\t{} {};", MemberSpec::GetGPUType(member.p_Type), member.p_Name));
+		read_only_lines.push_back(std::format("\t{} {};", MemberSpec::GetGPUType(member.p_Type), member.p_Name));
 	}
-	read_only_lines += "};";
+	read_only_lines.push_back("};");
 
-	read_only_lines += QString("%1 Get%1(int index) {").arg(entity_name);
-	read_only_lines += get_base_str;
-	read_only_lines += QString("\t%1 result;").arg(entity_name);
+	read_only_lines.push_back(std::format("{0} Get{0}(int index) {{", entity_name));
+	read_only_lines.push_back(get_base_str);
+	read_only_lines.push_back(std::format("\t{0} result;", entity_name));
 	int pos_index = 0;
-	QStringList functions;
+	std::vector<std::string> functions;
 	for (auto member : info.p_Members) {
-		QString member_name = QString::fromStdString(member.p_Name);
-		QString get_syntax = QString::fromStdString(MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name.toStdString()));
-		read_only_lines += QString("\tresult.%1 = %2;").arg(member_name).arg(get_syntax);
-		functions += QString("%1 Get%3%2(int index) {\n").arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(member_name).arg(entity_name) + get_base_str + QString("\n\treturn %1;\n}").arg(get_syntax);
+		std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, std::string(entity_name));
+		read_only_lines.push_back(std::format("\tresult.{0} = {1};", member.p_Name, get_syntax));
+		functions.push_back(std::format("{0} Get{2}{1}(int index) {{\n", MemberSpec::GetGPUType(member.p_Type), member.p_Name, entity_name) + get_base_str + std::format("\n\treturn {0};\n}}", get_syntax));
 		if (member.p_Type == MemberSpec::Type::T_INT) {
-			functions += QString("#define Access%3%1(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member_name).arg(pos_index).arg(entity_name);
+			functions.push_back(std::format("#define Access{2}{0}(index) (b_{2}.i[(index) * FLOATS_PER_{2} + {1}])\n", member.p_Name, pos_index, entity_name));
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
-			functions += QString("#define Access%3%1_X(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member_name).arg(pos_index).arg(entity_name);
-			functions += QString("#define Access%3%1_Y(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member_name).arg(pos_index + 1).arg(entity_name);
+			functions.push_back(std::format("#define Access{2}{0}_X(index) (b_{2}.i[(index) * FLOATS_PER_{2} + {1}])\n", member.p_Name, pos_index, entity_name));
+			functions.push_back(std::format("#define Access{2}{0}_Y(index) (b_{2}.i[(index) * FLOATS_PER_{2} + {1}])\n", member.p_Name, pos_index + 1, entity_name));
 			if (member.p_Type != MemberSpec::Type::T_IVEC2) {
-				functions += QString("#define Access%3%1_Z(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member_name).arg(pos_index + 2).arg(entity_name);
+				functions.push_back(std::format("#define Access{2}{0}_Z(index) (b_{2}.i[(index) * FLOATS_PER_{2} + {1}])\n", member.p_Name, pos_index + 2, entity_name));
 				if (member.p_Type == MemberSpec::Type::T_IVEC4) {
-					functions += QString("#define Access%3%1_W(index) (b_%3.i[(index) * FLOATS_PER_%3 + %2])\n").arg(member_name).arg(pos_index + 3).arg(entity_name);
+					functions.push_back(std::format("#define Access{2}{0}_W(index) (b_{2}.i[(index) * FLOATS_PER_{2} + {1}])\n", member.p_Name, pos_index + 3, entity_name));
 				}
 			}
 		}
 
 		pos_index += member.p_Size / sizeof(float);
 	}
-	read_only_lines += "\treturn result;\n}";
-	read_only_lines += functions.join("\n");
+	read_only_lines.push_back("\treturn result;\n}");
+	read_only_lines.push_back(JoinStrings(functions, "\n"));
 
-	lines += QString("void Set%1(%1 item, int index) {").arg(entity_name);
-	lines += get_base_str;
+	lines.push_back(std::format("void Set{0}({0} item, int index) {{", entity_name));
+	lines.push_back(get_base_str);
 	pos_index = 0;
-	functions = QStringList();
+	functions = {};
 	for (auto member : info.p_Members) {
-		QString name = QString::fromStdString(member.p_Name);
-		QString mod_str;
-		QString value_mod_str;
+		std::string mod_str;
+		std::string value_mod_str;
 		if (member.p_Type == MemberSpec::T_INT) {
-			mod_str = QString("\t%3_SET(base, %1, item.%2);").arg(pos_index).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%2_SET(base, %1, value);").arg(pos_index).arg(entity_name);
+			mod_str = std::format("\t{2}_SET(base, {0}, item.{1});", pos_index, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{1}_SET(base, {0}, value);", pos_index, entity_name);
 		} else if (member.p_Type == MemberSpec::T_FLOAT) {
-			mod_str = QString("\t%3_SET(base, %1, floatBitsToInt(item.%2));").arg(pos_index).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%2_SET(base, %1, floatBitsToInt(value));").arg(pos_index).arg(entity_name);
+			mod_str = std::format("\t{2}_SET(base, {0}, floatBitsToInt(item.{1}));", pos_index, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{1}_SET(base, {0}, floatBitsToInt(value));", pos_index, entity_name);
 		} else if (member.p_Type == MemberSpec::T_VEC2) {
-			mod_str = QString("\t%4_SET(base, %1, floatBitsToInt(item.%3.x)); %4_SET(base, %2, floatBitsToInt(item.%3.y));").arg(pos_index).arg(pos_index + 1).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%3_SET(base, %1, floatBitsToInt(value.x)); %3_SET(base, %2, floatBitsToInt(value.y));").arg(pos_index).arg(pos_index + 1).arg(entity_name);
+			mod_str = std::format("\t{3}_SET(base, {0}, floatBitsToInt(item.{2}.x)); {3}_SET(base, {1}, floatBitsToInt(item.{2}.y));", pos_index, pos_index + 1, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{2}_SET(base, {0}, floatBitsToInt(value.x)); {2}_SET(base, {1}, floatBitsToInt(value.y));", pos_index, pos_index + 1, entity_name);
 		} else if (member.p_Type == MemberSpec::T_VEC3) {
-			mod_str = QString("\t%5_SET(base, %1, floatBitsToInt(item.%4.x)); %5_SET(base, %2, floatBitsToInt(item.%4.y)); %5_SET(base, %3, floatBitsToInt(item.%4.z));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%4_SET(base, %1, floatBitsToInt(value.x)); %4_SET(base, %2, floatBitsToInt(value.y)); %4_SET(base, %3, floatBitsToInt(value.z));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(entity_name);
+			mod_str = std::format("\t{4}_SET(base, {0}, floatBitsToInt(item.{3}.x)); {4}_SET(base, {1}, floatBitsToInt(item.{3}.y)); {4}_SET(base, {2}, floatBitsToInt(item.{3}.z));", pos_index, pos_index + 1, pos_index + 2, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{3}_SET(base, {0}, floatBitsToInt(value.x)); {3}_SET(base, {1}, floatBitsToInt(value.y)); {3}_SET(base, {2}, floatBitsToInt(value.z));", pos_index, pos_index + 1, pos_index + 2, entity_name);
 		} else if (member.p_Type == MemberSpec::T_VEC4) {
-			mod_str = QString("\t%6_SET(base, %1, floatBitsToInt(item.%5.x)); %6_SET(base, %2, floatBitsToInt(item.%5.y)); %6_SET(base, %3, floatBitsToInt(item.%5.z)); %6_SET(base, %4, floatBitsToInt(item.%5.w));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%5_SET(base, %1, floatBitsToInt(value.x)); %5_SET(base, %2, floatBitsToInt(value.y)); %5_SET(base, %3, floatBitsToInt(value.z)); %5_SET(base, %4, floatBitsToInt(value.w));").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(entity_name);
+			mod_str = std::format("\t{5}_SET(base, {0}, floatBitsToInt(item.{4}.x)); {5}_SET(base, {1}, floatBitsToInt(item.{4}.y)); {5}_SET(base, {2}, floatBitsToInt(item.{4}.z)); {5}_SET(base, {3}, floatBitsToInt(item.{4}.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{4}_SET(base, {0}, floatBitsToInt(value.x)); {4}_SET(base, {1}, floatBitsToInt(value.y)); {4}_SET(base, {2}, floatBitsToInt(value.z)); {4}_SET(base, {3}, floatBitsToInt(value.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
 		} else if (member.p_Type == MemberSpec::T_IVEC2) {
-			mod_str = QString("\t%4_SET(base, %1, item.%3.x); %4_SET(base, %2, item.%3.y);").arg(pos_index).arg(pos_index + 1).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%3_SET(base, %1, value.x); %3_SET(base, %2, value.y);").arg(pos_index).arg(pos_index + 1).arg(entity_name);
+			mod_str = std::format("\t{3}_SET(base, {0}, item.{2}.x); {3}_SET(base, {1}, item.{2}.y);", pos_index, pos_index + 1, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{2}_SET(base, {0}, value.x); {2}_SET(base, {1}, value.y);", pos_index, pos_index + 1, entity_name);
 		} else if (member.p_Type == MemberSpec::T_IVEC3) {
-			mod_str = QString("\t%5_SET(base, %1, item.%4.x); %5_SET(base, %2, item.%4.y); %5_SET(base, %3, item.%4.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%4_SET(base, %1, value.x); %4_SET(base, %2, value.y); %4_SET(base, %3, value.z);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(entity_name);
+			mod_str = std::format("\t{4}_SET(base, {0}, item.{3}.x); {4}_SET(base, {1}, item.{3}.y); {4}_SET(base, {2}, item.{3}.z);", pos_index, pos_index + 1, pos_index + 2, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{3}_SET(base, {0}, value.x); {3}_SET(base, {1}, value.y); {3}_SET(base, {2}, value.z);", pos_index, pos_index + 1, pos_index + 2, entity_name);
 		} else if (member.p_Type == MemberSpec::T_IVEC4) {
-			mod_str = QString("\t%6_SET(base, %1, item.%5.x); %6_SET(base, %2, item.%5.y); %6_SET(base, %3, item.%5.z); %6_SET(base, %4, item.%5.w);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(name).arg(entity_name);
-			value_mod_str = QString("\t%5_SET(base, %1, value.x); %5_SET(base, %2, value.y); %5_SET(base, %3, value.z); %5_SET(base, %4, value.w);").arg(pos_index).arg(pos_index + 1).arg(pos_index + 2).arg(pos_index + 3).arg(entity_name);
+			mod_str = std::format("\t{5}_SET(base, {0}, item.{4}.x); {5}_SET(base, {1}, item.{4}.y); {5}_SET(base, {2}, item.{4}.z); {5}_SET(base, {3}, item.{4}.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, member.p_Name, entity_name);
+			value_mod_str = std::format("\t{4}_SET(base, {0}, value.x); {4}_SET(base, {1}, value.y); {4}_SET(base, {2}, value.z); {4}_SET(base, {3}, value.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
 		}
-		lines += mod_str;
-		functions += QString("void Set%3%1(int index, %2 value) {\n").arg(name).arg(QString::fromStdString(MemberSpec::GetGPUType(member.p_Type))).arg(entity_name) + get_base_str + QString("\n%1\n}").arg(value_mod_str);
+		lines.push_back(mod_str);
+		functions.push_back(std::format("void Set{2}{0}(int index, {1} value) {{\n", member.p_Name, MemberSpec::GetGPUType(member.p_Type), entity_name) + get_base_str + std::format("\n{0}\n}}", value_mod_str));
 
 		pos_index += member.p_Size / sizeof(float);
 	}
 
-	lines += "}";
-	lines += functions.join("\n");
+	lines.push_back("}");
+	lines.push_back(JoinStrings(functions, "\n"));
 
-	info.p_GPUReadOnlyInsertion = read_only_lines.join("\n").toStdString();
-	lines.push_front(QString::fromStdString(info.p_GPUReadOnlyInsertion));
-	info.p_GPUInsertion = lines.join("\n").toStdString();
+	info.p_GPUReadOnlyInsertion = JoinStrings(read_only_lines, "\n");
+	lines.push_front(info.p_GPUReadOnlyInsertion);
+	info.p_GPUInsertion = JoinStrings(lines, "\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,25 +164,25 @@ public:
 
 	// TODO: figure out better way of passing in T, perhaps template entire class
 
-	template <typename T> GPUEntity(QString name, DeleteMode delete_mode, int T::* id_ptr, QString id_name, bool double_buffer = true) :
+	template <typename T> GPUEntity(std::string_view name, DeleteMode delete_mode, int T::* id_ptr, std::string_view id_name, bool double_buffer = true) :
 			m_DeleteMode(delete_mode)
 			,m_Name(name)
 			,m_NumDataFloats(sizeof(T) / sizeof(float))
 			,m_IDName(id_name)
 			,m_DoubleBuffering(double_buffer)
 		{
-		QString get_base_str = QString("\tint base = index * FLOATS_PER_%1;").arg(m_Name);
+		std::string get_base_str = std::format("\tint base = index * FLOATS_PER_{0};", m_Name);
 
 		SerializeStructInfo<T>(m_Specs, get_base_str, name);
 
-		QStringList insertion;
-		insertion += QString("#define FLOATS_PER_%1 %2").arg(m_Name).arg(m_NumDataFloats);
-		insertion += QString("#define %1_LOOKUP(base, index) (b_%1.i[(base) + (index)])").arg(m_Name);
-		QStringList insertion_double_buffer = insertion;
-		insertion += QString("#define %1_SET(base, index, value) (b_%1.i[(base) + (index)] = (value))").arg(m_Name);
-		insertion_double_buffer += QString("#define %1_SET(base, index, value) (b_Output%1.i[(base) + (index)] = (value))").arg(m_Name);
-		m_GPUInsertion = insertion.join("\n");
-		m_GPUInsertionDoubleBuffer = insertion_double_buffer.join("\n");
+		std::vector<std::string> insertion;
+		insertion.push_back(std::format("#define FLOATS_PER_{0} {1}", m_Name, m_NumDataFloats));
+		insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (b_{0}.i[(base) + (index)])", m_Name));
+		std::vector<std::string> insertion_double_buffer = insertion;
+		insertion.push_back(std::format("#define {0}_SET(base, index, value) (b_{0}.i[(base) + (index)] = (value))", m_Name));
+		insertion_double_buffer.push_back(std::format("#define {0}_SET(base, index, value) (b_Output{0}.i[(base) + (index)] = (value))", m_Name));
+		m_GPUInsertion = JoinStrings(insertion, "\n");
+		m_GPUInsertionDoubleBuffer = JoinStrings(insertion_double_buffer, "\n");
 	}
 	~GPUEntity(void) { Destroy(); }
 
@@ -231,10 +228,11 @@ public:
 	int							AddInstance				( void* data, int* index = nullptr );
 	void						DeleteInstance			( int index );
 
-	QString						GetDebugInfo			( void );
+	std::string					GetDebugInfo			( void );
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
 
-	inline QString				GetName					( void ) const { return m_Name; }
+	inline std::string_view		GetName					( void ) const { return m_Name; }
+	inline QString				GetQTName				( void ) const { return QString::fromStdString(m_Name); }
 	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
 	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
 	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
@@ -247,9 +245,11 @@ public:
 
 	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
 	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
-	inline QString				GetGPUInsertion			( void ) const { return m_GPUInsertion; }
-	inline QString				GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
-	inline QString				GetIDName				( void ) const { return m_IDName; }
+	inline std::string_view		GetGPUInsertion			( void ) const { return m_GPUInsertion; }
+	inline std::string_view		GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
+	inline std::string_view		GetIDName				( void ) const { return m_IDName; }
+	inline QString				GetQTIDName				( void ) const { return QString::fromStdString(m_IDName); }
+
 	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
 	inline DeleteMode			GetDeleteMode			( void ) const { return m_DeleteMode; }
@@ -267,11 +267,11 @@ protected:
 	void						Destroy					( void );
 
 	DeleteMode					m_DeleteMode;
-	QString						m_Name;
+	std::string					m_Name;
 	StructInfo					m_Specs;
-	QString						m_GPUInsertion;
-	QString						m_GPUInsertionDoubleBuffer;
-	QString						m_IDName;
+	std::string					m_GPUInsertion;
+	std::string					m_GPUInsertionDoubleBuffer;
+	std::string					m_IDName;
 	int							m_MaxItems;
 	int							m_IdOffset = -1;
 	int							m_NumDataFloats = 0;
