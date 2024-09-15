@@ -2,8 +2,8 @@
 
 set(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
-
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
+
 # startup project for VS
 set_property(DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
@@ -18,6 +18,8 @@ add_compile_definitions(NESHNY_DIR="${NESHNY_DIR}" PROJECT_SHADER_PATH="${SHADER
 ###############################################################################
 message(STATUS "Setting up compilation")
 
+set(CMAKE_AUTOMOC ON)
+
 # add the executable
 add_executable(${PROJECT_NAME} src/main.cpp)
 
@@ -31,34 +33,19 @@ if (NOT APPLE)
         set(SDL2_IMAGE_LIB_DIR "${SDL2_IMAGE_DIR}/lib/x86")
         set(SDL2_MIXER_LIB_DIR "${SDL2_MIXER_DIR}/lib/x86")
     endif()
+    if (NOT EMSCRIPTEN)
+        set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;${SDL2_IMAGE_LIB_DIR}/SDL2_image.lib;${SDL2_MIXER_LIB_DIR}/SDL2_mixer.lib;")
+    endif()
 endif()
 
 if (EMSCRIPTEN)
-
     set(CMAKE_PREFIX_PATH "${QT_WASM_DIR}/lib/cmake")
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "build")
-    find_package(Qt6 COMPONENTS Core Gui REQUIRED)
-    target_link_libraries(${PROJECT_NAME}
-        Qt6::Core
-        Qt6::Gui
-    )
-
     set(SDL2_LIBRARIES "")
-
-else()
-    set(CMAKE_PREFIX_PATH ${QT_DIR})
-    find_package(Qt6 COMPONENTS Core Gui REQUIRED)
-
-    target_link_libraries(${PROJECT_NAME}
-        Qt6::Core
-        Qt6::Gui
-    )
-
-    if (NOT APPLE)
-        set(SDL2_LIBRARIES "${SDL2_LIB_DIR}/SDL2.lib;${SDL2_LIB_DIR}/SDL2main.lib;${SDL2_IMAGE_LIB_DIR}/SDL2_image.lib;${SDL2_MIXER_LIB_DIR}/SDL2_mixer.lib;")
-    endif()
-
 endif()
+
+set(CMAKE_PREFIX_PATH ${QT_DIR})
+find_package(Qt6 COMPONENTS Core Gui REQUIRED)
 
 # include files
 target_include_directories(${PROJECT_NAME}
@@ -79,6 +66,8 @@ endif()
 
 # lib files
 target_link_libraries(${PROJECT_NAME}
+    Qt6::Core
+    Qt6::Gui
     ${SDL2_LIBRARIES}
 )
 
@@ -228,8 +217,9 @@ if (WIN32)
     configure_file(${SDL2_MIXER_LIB_DIR}/SDL2_mixer.dll ${CMAKE_BINARY_DIR}/release/SDL2_mixer.dll COPYONLY)
     
     configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
-    configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
     configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
+
+    configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
     configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
 elseif (APPLE)
     # TODO
