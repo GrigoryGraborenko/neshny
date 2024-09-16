@@ -215,8 +215,8 @@ void Core::ILog(std::string_view message, ImVec4 col) {
 #endif
 
 #ifdef __EMSCRIPTEN__
-	message += "\n";
-	printf(msg_str.c_str());
+	auto formatted_message = std::format("{}\n", message);
+	printf(formatted_message.c_str());
 #else
 	auto output = std::format("[{}] {} \n", time_str, message);
 	m_LogFile.write(output.data(), output.size());

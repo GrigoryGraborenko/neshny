@@ -11,6 +11,7 @@ There are two main ways to use it - with OpenGL or with WebGPU. The two are mutu
 * CMake >= 3.18
 * NodeJS >= 16.0
 * Python >= 3.0 (for now)
+* Emscripten >= 3.1.41
 
 ## <b>Installation</b>
 Clone this repo to a location of your choice:

@@ -25,4 +25,6 @@ else()
     project(${PROJECT_NAME})
 endif()
 
-include(${NESHNY_DIR}/CMake/WebGPU_Jumbo.txt)
+set(WEBGPU true)
+
+include(${NESHNY_DIR}/CMake/Jumbo.txt)
