@@ -818,38 +818,50 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 void Core::IRenderEditor(void) {
 
 	ImGui::SetCursorPos(ImVec2(10.0, 10.0));
+
+	const char* close_string = "(*)";
+	const char* open_string = "( )";
+
 #ifdef NESHNY_EDITOR_VIEWERS
-	auto info_label = std::format("[{1:.2f} FPS] {0} info view###info_view", m_Interface.p_InfoView.p_Visible ? "Hide" : "Show", (double)ImGui::GetIO().Framerate);
+	auto info_label = std::format("{0} [{1:.2f} FPS] Info###info_view", m_Interface.p_InfoView.p_Visible ? close_string : open_string, (double)ImGui::GetIO().Framerate);
 	if (ImGui::Button(info_label.c_str(), ImVec2(250, 0))) {
 		m_Interface.p_InfoView.p_Visible = !m_Interface.p_InfoView.p_Visible;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_LogView.p_Visible ? "Hide log view" : "Show log view")) {
+	if (ImGui::Button((std::format("{} Logs", m_Interface.p_LogView.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_LogView.p_Visible = !m_Interface.p_LogView.p_Visible;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_BufferView.p_Visible ? "Hide buffer view" : "Show buffer view")) {
+	if (ImGui::Button((std::format("{} Buffers", m_Interface.p_BufferView.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_BufferView.p_Visible = !m_Interface.p_BufferView.p_Visible;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_ShaderView.p_Visible ? "Hide shader view" : "Show shader view")) {
+	if (ImGui::Button((std::format("{} Shaders", m_Interface.p_ShaderView.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_ShaderView.p_Visible = !m_Interface.p_ShaderView.p_Visible;
 	}
+
+#ifdef NESHNY_WEBGPU
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_ResourceView.p_Visible ? "Hide resource view" : "Show resource view")) {
+	if (ImGui::Button((std::format("{} Pipelines", m_Interface.p_PipelineView.p_Visible ? close_string : open_string)).c_str())) {
+		m_Interface.p_PipelineView.p_Visible = !m_Interface.p_PipelineView.p_Visible;
+	}
+#endif
+
+	ImGui::SameLine();
+	if (ImGui::Button((std::format("{} Resources", m_Interface.p_ResourceView.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_ResourceView.p_Visible = !m_Interface.p_ResourceView.p_Visible;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_Scrapbook2D.p_Visible ? "Hide 2D scrapbook" : "Show 2D scrapbook")) {
+	if (ImGui::Button((std::format("{} 2D Scrapbook", m_Interface.p_Scrapbook2D.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_Scrapbook2D.p_Visible = !m_Interface.p_Scrapbook2D.p_Visible;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button(m_Interface.p_Scrapbook3D.p_Visible ? "Hide 3D scrapbook" : "Show 3D scrapbook")) {
+	if (ImGui::Button((std::format("{} 3D Scrapbook", m_Interface.p_Scrapbook3D.p_Visible ? close_string : open_string)).c_str())) {
 		m_Interface.p_Scrapbook3D.p_Visible = !m_Interface.p_Scrapbook3D.p_Visible;
 	}
 	ImGui::SameLine();
 #endif
-	if (ImGui::Button(m_Interface.p_ShowImGuiDemo ? "Hide ImGUI demo" : "Show ImGUI demo")) {
+	if (ImGui::Button((std::format("{} ImGUI Demo", m_Interface.p_ShowImGuiDemo ? close_string : open_string)).c_str())) {
 		m_Interface.p_ShowImGuiDemo = !m_Interface.p_ShowImGuiDemo;
 	}
 	if (m_Interface.p_ShowImGuiDemo) {
@@ -861,6 +873,9 @@ void Core::IRenderEditor(void) {
 	LogViewer::Singleton().RenderImGui(m_Interface.p_LogView);
 	BufferViewer::Singleton().RenderImGui(m_Interface.p_BufferView);
 	ShaderViewer::RenderImGui(m_Interface.p_ShaderView);
+#ifdef NESHNY_WEBGPU
+	PipelineViewer::RenderImGui(m_Interface.p_PipelineView);
+#endif
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
 	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
 	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);

@@ -268,7 +268,8 @@ namespace Test {
 			glUniform1f(prog->GetUniform("uValue"), in_value);
 		});
 #elif defined(NESHNY_WEBGPU)
-		auto executable = Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
+		auto executable = Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
+			.AddCode("#define CREATE_OTHER")
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddCreatableEntity(other_entities)
@@ -340,7 +341,7 @@ namespace Test {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
-		auto other_executable = Neshny::PipelineStage::ModifyEntity(other_entities, "UnitTestEntity", true)
+		auto other_executable = Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddEntity(entities)
@@ -536,12 +537,13 @@ namespace Test {
 #if defined(NESHNY_GL)
 		// TODO: test here as well
 #elif defined(NESHNY_WEBGPU)
-		std::vector<std::string> shader_defines;
+		std::string shader_defines;
 		if (use_cursor) {
-			shader_defines.push_back("USE_CURSOR");
+			shader_defines = "#define USE_CURSOR";
 		}
-		auto executable = Neshny::PipelineStage::ModifyEntity(hunter_entities, "UnitTestCache", true, std::move(shader_defines))
+		auto executable = Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), hunter_entities, "UnitTestCache", true)
 			.AddEntity(prey_entities, &cache)
+			.AddCode(shader_defines)
 			.Prepare<Uniform>();
 		Uniform uniform{ 0, find_radius };
 		executable->Run(uniform);

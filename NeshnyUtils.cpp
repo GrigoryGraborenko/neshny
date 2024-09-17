@@ -122,4 +122,9 @@ bool StringContains(std::string_view str, std::string_view substr, bool case_ins
     return it != str.end();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+std::string SrcStr(const std::source_location location) {
+    return std::format("{}:{}", location.file_name(), location.line());
+}
+
 } // namespace Neshny

@@ -1038,6 +1038,21 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void PipelineViewer::RenderImGui(InterfacePipelineViewer& data) {
+	if (!data.p_Visible) {
+		return;
+	}
+
+	ImGui::Begin("Pipeline Viewer", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+
+#ifdef NESHNY_WEBGPU
+
+#endif
+
+	ImGui::End();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void ResourceViewer::RenderImGui(InterfaceResourceViewer& data) {
 
 	if (!data.p_Visible) {

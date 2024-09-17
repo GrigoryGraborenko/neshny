@@ -58,6 +58,7 @@ std::string ReplaceAll(std::string_view str, std::string_view before, std::strin
 std::string JoinStrings(const std::vector<std::string>& list, std::string_view insert_between);
 std::string JoinStrings(const std::list<std::string>& list, std::string_view insert_between);
 bool StringContains(std::string_view str, std::string_view search, bool case_insensitive = false);
+std::string SrcStr(const std::source_location location = std::source_location::current());
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

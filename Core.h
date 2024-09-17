@@ -211,6 +211,10 @@ struct InterfaceShaderViewer {
 	std::vector<InterfaceCollapsible> p_Items;
 };
 
+struct InterfacePipelineViewer {
+	bool			p_Visible = false;
+};
+
 struct InterfaceResourceViewer {
 	bool			p_Visible = false;
 };
@@ -232,6 +236,7 @@ struct InterfaceCore {
 	InterfaceLogViewer		p_LogView;
 	InterfaceBufferViewer	p_BufferView;
 	InterfaceShaderViewer	p_ShaderView;
+	InterfacePipelineViewer	p_PipelineView;
 	InterfaceResourceViewer	p_ResourceView;
 	InterfaceScrapbook2D	p_Scrapbook2D;
 	InterfaceScrapbook3D	p_Scrapbook3D;
@@ -281,7 +286,11 @@ namespace meta {
 			,member("Items", &Neshny::InterfaceShaderViewer::p_Items)
 		);
 	}
-
+	template<> inline auto registerMembers<Neshny::InterfacePipelineViewer>() {
+		return members(
+			member("Visible", &Neshny::InterfacePipelineViewer::p_Visible)
+		);
+	}
 	template<> inline auto registerMembers<Neshny::InterfaceResourceViewer>() {
 		return members(
 			member("Visible", &Neshny::InterfaceResourceViewer::p_Visible)
@@ -493,21 +502,27 @@ public:
 #ifdef SDL_OPENGL_LOOP
 	bool								SDLLoop						( SDL_Window* window, IEngine* engine );
 #endif
-#ifdef NESHNY_WEBGPU
-	enum class WebGPUNativeBackend {
-		D3D12, Metal, Vulkan, OpenGL, OpenGLES
-	};
-	void								SDLLoopInner				( void );
-	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height, void* layer = nullptr );
-	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
-	void								SyncResolution				( void );
-#endif
 
 #if defined(NESHNY_GL)
 	static GLShader*					GetShader					( std::string_view name, std::string_view insertion = std::string_view() ) { return Singleton().IGetShader(name, insertion); }
 	static GLShader*					GetComputeShader			( std::string_view name, std::string_view insertion = std::string_view() ) { return Singleton().IGetComputeShader(name, insertion); }
 	static GLBuffer*					GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
+	static void							DispatchMultiple			( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
 #elif defined(NESHNY_WEBGPU)
+
+	enum class WebGPUNativeBackend {
+		D3D12, Metal, Vulkan, OpenGL, OpenGLES
+	};
+
+	struct CachedPipeline {
+		void* p_Pipeline;
+	};
+
+	void								SDLLoopInner				( void );
+	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height, void* layer = nullptr );
+	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
+	void								SyncResolution				( void );
+
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
 	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
@@ -521,7 +536,6 @@ public:
 	static WebGPURenderBuffer*			GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							WaitForCommandsToFinish		( void );
-
 #endif
 
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -534,9 +548,6 @@ public:
 	void								UnloadAllShaders			( void );
 	void								UnloadAllResources			( void );
 
-#ifdef NESHNY_GL
-	static void							DispatchMultiple			( GLShader* prog, int count, int total_local_groups, bool mem_barrier = true );
-#endif
 	template <class T>
 	static bool							SaveBinary					( const T& item, std::string_view filename ) {
 
@@ -683,6 +694,7 @@ private:
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
 	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
+	inline const auto&					GetPreparedPipelines		( void ) { return m_PreparedPipelines; }
 #endif
 	void								EnsureEmbeddableLoaderInit	( void );
 
@@ -725,15 +737,6 @@ private:
 	bool								IIsBufferEnabled			( std::string_view name );
 	void								ILog						( std::string_view message, ImVec4 col );
 
-#if defined(NESHNY_GL)
-	std::vector<ShaderGroup>			m_ShaderGroups;
-	std::vector<ShaderGroup>			m_ComputeShaderGroups;
-	std::map<std::string, GLBuffer*>	m_Buffers;
-#elif defined(NESHNY_WEBGPU)
-	std::vector<ShaderGroup>					m_ShaderGroups;
-	std::map<std::string, WebGPURenderBuffer*>	m_Buffers;
-	std::vector<WebGPUSampler*>					m_Samplers;
-#endif
 	std::map<std::string, ResourceContainer>	m_Resources;
 	uint64_t									m_MemoryAllocated = 0;
 	uint64_t									m_GPUMemoryAllocated = 0;
@@ -757,23 +760,31 @@ private:
 
 #ifdef SDL_h_
 	SDL_Window*							m_Window;
-#ifdef NESHNY_GL
-	std::vector<SDL_GLContext>			m_Contexts;
-#endif
 #endif
 
-#ifdef NESHNY_WEBGPU
-	IEngine*							m_Engine = nullptr;
-	WGPUDevice							m_Device = nullptr;
-	WGPUQueue							m_Queue = nullptr;
-	WGPUSurface							m_Surface = nullptr;
-	WGPUSwapChain						m_SwapChain = nullptr;
-	WGPULimits							m_Limits;
-	int									m_CurrentWidth = -1;
-	int									m_CurrentHeight = -1;
-	int									m_RequestedWidth = -1;
-	int									m_RequestedHeight = -1;
-	WebGPUTexture*						m_DepthTex = nullptr;
+#if defined(NESHNY_GL)
+	#ifdef SDL_h_
+		std::vector<SDL_GLContext>			m_Contexts;
+	#endif
+	std::vector<ShaderGroup>					m_ShaderGroups;
+	std::vector<ShaderGroup>					m_ComputeShaderGroups;
+	std::map<std::string, GLBuffer*>			m_Buffers;
+#elif defined(NESHNY_WEBGPU)
+	std::vector<ShaderGroup>					m_ShaderGroups;
+	std::vector<CachedPipeline>					m_PreparedPipelines;
+	std::map<std::string, WebGPURenderBuffer*>	m_Buffers;
+	std::vector<WebGPUSampler*>					m_Samplers;
+	IEngine*									m_Engine = nullptr;
+	WGPUDevice									m_Device = nullptr;
+	WGPUQueue									m_Queue = nullptr;
+	WGPUSurface									m_Surface = nullptr;
+	WGPUSwapChain								m_SwapChain = nullptr;
+	WGPULimits									m_Limits;
+	int											m_CurrentWidth = -1;
+	int											m_CurrentHeight = -1;
+	int											m_RequestedWidth = -1;
+	int											m_RequestedHeight = -1;
+	WebGPUTexture*								m_DepthTex = nullptr;
 #endif
 
 };

@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string_view>
 #include <functional>
+#include <source_location>
 
 #ifdef NESHNY_GL
     #include "glad/glad.h"

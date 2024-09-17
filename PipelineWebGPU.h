@@ -100,20 +100,20 @@ public:
 		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 
-	static PipelineStage ModifyEntity(GPUEntity& entity, std::string_view shader_name, bool replace_main, std::vector<std::string>&& shader_defines = {}, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, std::move(shader_defines));
+	static PipelineStage ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
+		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, identifier);
 	}
-	static PipelineStage RenderEntity(GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, std::vector<std::string>&& shader_defines = {}) {
-		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, std::move(shader_defines), nullptr, 0, render_params);
+	static PipelineStage RenderEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params) {
+		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, identifier, nullptr, 0, render_params);
 	}
-	static PipelineStage IterateEntity(GPUEntity& entity, std::string_view shader_name, bool replace_main, std::vector<std::string>&& shader_defines = {}, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, std::move(shader_defines));
+	static PipelineStage IterateEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
+		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, identifier);
 	}
-	static PipelineStage RenderBuffer(std::string_view shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, std::vector<std::string>&& shader_defines = {}, SSBO* control_ssbo = nullptr) {
-		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, std::move(shader_defines), control_ssbo, 0, render_params);
+	static PipelineStage RenderBuffer(std::string_view identifier, std::string_view shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, SSBO* control_ssbo = nullptr) {
+		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, identifier, control_ssbo, 0, render_params);
 	}
-	static PipelineStage Compute(std::string_view shader_name, int iterations, SSBO* control_ssbo, std::vector<std::string>&& shader_defines = {}) {
-		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, std::move(shader_defines), control_ssbo, iterations);
+	static PipelineStage Compute(std::string_view identifier, std::string_view shader_name, int iterations, SSBO* control_ssbo) {
+		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, identifier, control_ssbo, iterations);
 	}
 
 								~PipelineStage		( void ) {}
@@ -121,7 +121,8 @@ public:
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddBuffer			( std::string_view name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, std::string(name), array_type, access }); return *this; }
-	PipelineStage&				AddCode				( std::string_view code ) { m_ExtraCode += code; return *this; }
+	PipelineStage&				AddCode				( std::string_view code ) { m_ExtraCode = std::format("{}{}\n", m_ExtraCode, code); return *this; }
+	PipelineStage&				AddCodeAtStart		( std::string_view code ) { m_ImmediateExtraCode = std::format("{}{}\n", m_ImmediateExtraCode, code); return *this; }
 
 	PipelineStage&				AddInputOutputVar	( std::string_view name ) { m_Vars.push_back({ std::string(name), true }); return *this; }
 	PipelineStage&				AddInputVar			( std::string_view name ) { m_Vars.push_back({ std::string(name), false }); return *this; }
@@ -165,7 +166,7 @@ protected:
 														RenderableBuffer* buffer,
 														class BaseCache* cache,
 														std::string_view shader_name, bool replace_main,
-														std::vector<std::string>&& shader_defines,
+														std::string_view identifer,
 														SSBO* control_ssbo = nullptr, int iterations = 0,
 														WebGPUPipeline::RenderParams render_params = {} );
 
@@ -207,16 +208,17 @@ protected:
 
 	static std::string			GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
 
+	std::string						m_Identifier;
 	RunType							m_RunType;
 	GPUEntity*						m_Entity = nullptr;
 	RenderableBuffer*				m_Buffer = nullptr;
 	BaseCache*						m_Cache = nullptr;
 	std::string						m_ShaderName;
-	std::vector<std::string>		m_ShaderDefines;
 	bool							m_ReplaceMain = false;
 	iVec3							m_LocalSize = iVec3(8, 8, 8);
 	int								m_Iterations = 0;
 	SSBO*							m_ControlSSBO = nullptr;
+	std::string						m_ImmediateExtraCode;
 	std::string						m_ExtraCode;
 	WebGPUPipeline::RenderParams	m_RenderParams;
 

@@ -5,14 +5,14 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, std::vector<std::string>&& shader_defines, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
-	m_RunType			( type )
+PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, std::string_view identifer, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
+	m_Identifier		( identifer )
+	,m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
 	,m_Cache			( cache )
 	,m_ShaderName		( shader_name )
 	,m_ReplaceMain		( replace_main )
-	,m_ShaderDefines	( std::move(shader_defines) )
 	,m_Iterations		( iterations )
 	,m_ControlSSBO		( control_ssbo )
 	,m_RenderParams		( render_params )
@@ -141,8 +141,9 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
-	for (auto str : m_ShaderDefines) {
-		immediate_insertion.push_back(std::format("#define {}", str));
+	if (!m_ImmediateExtraCode.empty()) {
+		immediate_insertion.push_back("////////////////");
+		immediate_insertion.push_back(m_ImmediateExtraCode);
 	}
 	immediate_insertion.push_back(std::format("#define ENTITY_OFFSET_INTS {0}", ENTITY_OFFSET_INTS));
 
@@ -704,20 +705,23 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	if (!m_CacheIndex) {
 		std::string main_func = std::format("fn {0}Main(item_index: i32, item: {0}) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
 
-		m_CacheIndex = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_INDEX" })
+		m_CacheIndex = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+			.AddCode("#define PHASE_INDEX")
 			.AddCode(main_func)
 			.Prepare<Grid2DCacheUniform>();
 
-		m_CacheAlloc = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_ALLOCATE" })
+		m_CacheAlloc = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+			.AddCode("#define PHASE_ALLOCATE")
 			.AddCode(main_func)
 			.AddInputVar("AllocationCount")
 			.Prepare<Grid2DCacheUniform>();
 
-		m_CacheFill = Neshny::PipelineStage::IterateEntity(m_Entity, "GridCache2D", true, { "PHASE_FILL" })
+		m_CacheFill = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+			.AddCode("#define PHASE_FILL")
 			.AddCode(main_func)
 			.Prepare<Grid2DCacheUniform>();
 	}
