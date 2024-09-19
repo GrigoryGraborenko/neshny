@@ -18,7 +18,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 	,m_RenderParams		( render_params )
 {
 	if (cache) {
-		cache->Bind(*this);
+		m_CachesToBind.push_back(cache);
 	}
 	const auto& limits = Core::Singleton().GetLimits();
 	m_LocalSize = iVec3(limits.maxComputeInvocationsPerWorkgroup, 1, 1);
@@ -28,7 +28,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, false });
 	if (cache) {
-		cache->Bind(*this);
+		m_CachesToBind.push_back(cache);
 	}
 	return *this;
 }
@@ -37,7 +37,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, true });
 	if (cache) {
-		cache->Bind(*this);
+		m_CachesToBind.push_back(cache);
 	}
 	return *this;
 }
@@ -123,39 +123,73 @@ std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_v
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
+PipelineStage::Prepared* PipelineStage::GetCachedPipeline(void) {
 
-	std::unique_ptr<PipelineStage::Prepared> result = std::make_unique<Prepared>();
-	result->m_RunType = m_RunType;
-	result->m_Entity = m_Entity;
-	result->m_Buffer = m_Buffer;
-	result->m_Cache = m_Cache;
-	result->m_Entities = m_Entities;
+	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
+	for (auto& existing : existing_pipelines) {
+		Prepared* ptr = (Prepared*)existing.p_Pipeline;
+		if (ptr->m_Identifier == m_Identifier) {
+			return ptr;
+		}
+	}
+	return nullptr;
 
-	result->m_Pipeline = new WebGPUPipeline();
+}
 
+////////////////////////////////////////////////////////////////////////////////
+PipelineStage::Prepared* PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
+
+	Prepared* result = GetCachedPipeline();
+	bool create_new = false;
+	if (!result) {
+		result = new Prepared();
+		result->m_RunType = m_RunType;
+		result->m_Identifier = m_Identifier;
+		result->m_Entity = m_Entity;
+		result->m_Buffer = m_Buffer;
+		result->m_Cache = m_Cache;
+		result->m_Entities = m_Entities;
+		result->m_Pipeline = new WebGPUPipeline();
+		create_new = true;
+	}
+
+	for (BaseCache* cache : m_CachesToBind) {
+		cache->Bind(*this, create_new);
+	}
+
+	struct BuffersToAdd {
+		WebGPUBuffer& p_Buffer;
+		WGPUShaderStageFlags p_VisibilityFlags;
+		bool p_ReadOnly;
+	};
+
+	std::vector<BuffersToAdd> pipeline_buffers;
 	std::vector<std::string> immediate_insertion;
 	std::list<std::string> insertion;
 	std::vector<std::string> end_insertion;
+	std::vector<std::string> insertion_buffers;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	WGPUShaderStageFlags vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
 
-	if (!m_ImmediateExtraCode.empty()) {
-		immediate_insertion.push_back("////////////////");
-		immediate_insertion.push_back(m_ImmediateExtraCode);
+	if (create_new) {
+		if (!m_ImmediateExtraCode.empty()) {
+			immediate_insertion.push_back("////////////////");
+			immediate_insertion.push_back(m_ImmediateExtraCode);
+		}
+		immediate_insertion.push_back(std::format("#define ENTITY_OFFSET_INTS {0}", ENTITY_OFFSET_INTS));
 	}
-	immediate_insertion.push_back(std::format("#define ENTITY_OFFSET_INTS {0}", ENTITY_OFFSET_INTS));
 
-	std::vector<std::string> insertion_buffers;
 	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
 	if (result->m_ControlSSBO) {
-		if (is_render) {
-			insertion_buffers.push_back("@group(0) @binding(0) var<storage, read> b_Control: array<i32>;");
-		} else {
-			insertion_buffers.push_back("@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;");
+		if (create_new) {
+			if (is_render) {
+				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read> b_Control: array<i32>;");
+			} else {
+				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;");
+			}
 		}
-		result->m_Pipeline->AddBuffer(*result->m_ControlSSBO, vis_flags, is_render);
+		pipeline_buffers.push_back({ *result->m_ControlSSBO, vis_flags, is_render });
 	}
 	result->m_ReadRequired = false;
 	for (const auto& var: m_Vars) {
@@ -166,146 +200,163 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 	}
 
 	if(!unform_members.empty()) { // uniform
-		std::vector<std::string> members;
-		int size = 0;
-		for (const auto& member : unform_members) {
-			size += member.p_Size;
-			members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+		if (create_new) {
+			std::vector<std::string> members;
+			int size = 0;
+			for (const auto& member : unform_members) {
+				size += member.p_Size;
+				members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			}
+			immediate_insertion.push_back("struct UniformStruct {");
+			immediate_insertion.push_back(JoinStrings(members, ",\n"));
+			immediate_insertion.push_back("};");
+
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> Uniform: UniformStruct;", insertion_buffers.size()));
+			result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, size);
 		}
-		immediate_insertion.push_back("struct UniformStruct {");
-		immediate_insertion.push_back(JoinStrings(members, ",\n"));
-		immediate_insertion.push_back("};");
-
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> Uniform: UniformStruct;", insertion_buffers.size()));
-		result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, size);
-		result->m_Pipeline->AddBuffer(*result->m_UniformBuffer, vis_flags, true);
+		pipeline_buffers.push_back({ *result->m_UniformBuffer, vis_flags, true });
 	}
 
-	if (m_Entity && is_render) {
-		insertion.push_back(std::format("#define Get_ioMaxIndex (b_{0}[3])", m_Entity->GetName()));
-	} else if (m_Entity) {
-		insertion.push_back(std::format("#define Get_ioMaxIndex (atomicLoad(&b_{0}[3]))", m_Entity->GetName()));
-	}
-	if (entity_processing) {
-		m_Vars.push_back({ "ioEntityDeaths" });
-		insertion.push_back(std::format("#define ioEntityCount b_{0}[0]", m_Entity->GetName()));
-		insertion.push_back(std::format("#define ioEntityFreeCount b_{0}[1]", m_Entity->GetName()));
-	}
-
-	if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
-		end_insertion.push_back("//////////////// Data vector helpers");
-		for (const auto& data_vect : m_DataVectors) {
-
-			auto count_var = std::format("io{0}Count", data_vect.p_Name);
-			auto offset_var = std::format("io{0}Offset", data_vect.p_Name);
-			auto num_var = std::format("io{0}Num", data_vect.p_Name);
-
-			end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
-			m_Vars.push_back({ count_var });
-			m_Vars.push_back({ offset_var });
-			m_Vars.push_back({ num_var });
-			result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, num_var, nullptr, 0 });
+	if (create_new) {
+		if (m_Entity && is_render) {
+			insertion.push_back(std::format("#define Get_ioMaxIndex (b_{0}[3])", m_Entity->GetName()));
 		}
-	}
+		else if (m_Entity) {
+			insertion.push_back(std::format("#define Get_ioMaxIndex (atomicLoad(&b_{0}[3]))", m_Entity->GetName()));
+		}
+		if (entity_processing) {
+			m_Vars.push_back({ "ioEntityDeaths" });
+			insertion.push_back(std::format("#define ioEntityCount b_{0}[0]", m_Entity->GetName()));
+			insertion.push_back(std::format("#define ioEntityFreeCount b_{0}[1]", m_Entity->GetName()));
+		}
 
-	result->m_UsingRandom = !is_render;
-	if (result->m_UsingRandom) {
-		m_Vars.push_back({ "ioRandSeed" });
-		insertion.push_back("#include \"Random.wgsl\"\n");
-		insertion.push_back("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
-		insertion.push_back("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
+		if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
+			end_insertion.push_back("//////////////// Data vector helpers");
+			for (const auto& data_vect : m_DataVectors) {
+
+				auto count_var = std::format("io{0}Count", data_vect.p_Name);
+				auto offset_var = std::format("io{0}Offset", data_vect.p_Name);
+				auto num_var = std::format("io{0}Num", data_vect.p_Name);
+
+				end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
+				m_Vars.push_back({ count_var });
+				m_Vars.push_back({ offset_var });
+				m_Vars.push_back({ num_var });
+				result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, num_var, nullptr, 0 });
+			}
+		}
+
+		result->m_UsingRandom = !is_render;
+		if (result->m_UsingRandom) {
+			m_Vars.push_back({ "ioRandSeed" });
+			insertion.push_back("#include \"Random.wgsl\"\n");
+			insertion.push_back("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");
+			insertion.push_back("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
+		}
 	}
 
 	if(m_Entity) {
 		bool input_read_only = is_render;
-		result->m_Pipeline->AddBuffer(*m_Entity->GetSSBO(), vis_flags, input_read_only);
-		result->m_EntityBufferIndex = insertion_buffers.size();
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> b_{2}: array<{3}>;", insertion_buffers.size(), input_read_only ? "read" : "read_write", m_Entity->GetName(), input_read_only ? "i32" : "atomic<i32>"));
+		pipeline_buffers.push_back({ *m_Entity->GetSSBO(), vis_flags, input_read_only });
+
+		if (create_new) {
+			result->m_EntityBufferIndex = insertion_buffers.size();
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> b_{2}: array<{3}>;", insertion_buffers.size(), input_read_only ? "read" : "read_write", m_Entity->GetName(), input_read_only ? "i32" : "atomic<i32>"));
+		}
 
 		if (entity_processing && m_Entity->IsDoubleBuffering()) {
-			result->m_Pipeline->AddBuffer(*m_Entity->GetOuputSSBO(), vis_flags, false);
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Output{1}: array<i32>;", insertion_buffers.size(), m_Entity->GetName()));
-			insertion.push_back(std::string(m_Entity->GetDoubleBufferGPUInsertion()));
-		} else {
+			pipeline_buffers.push_back({ *m_Entity->GetOuputSSBO(), vis_flags, false });
+			if (create_new) {
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Output{1}: array<i32>;", insertion_buffers.size(), m_Entity->GetName()));
+				insertion.push_back(std::string(m_Entity->GetDoubleBufferGPUInsertion()));
+			}
+		} else if (create_new) {
 			insertion.push_back(std::string(m_Entity->GetGPUInsertion()));
 		}
-		if (!input_read_only) {
-			insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", m_Entity->GetName()));
-		}
+		if (create_new) {
+			if (!input_read_only) {
+				insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", m_Entity->GetName()));
+			}
 
-		if (entity_processing) {
-			insertion.push_back(m_Entity->GetSpecs().p_GPUInsertion);
-		} else {
-			insertion.push_back(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
+			if (entity_processing) {
+				insertion.push_back(m_Entity->GetSpecs().p_GPUInsertion);
+			} else {
+				insertion.push_back(m_Entity->GetSpecs().p_GPUReadOnlyInsertion);
+			}
 		}
 	}
 
 	if(entity_processing) {
-		result->m_Pipeline->AddBuffer(*m_Entity->GetFreeListSSBO(), vis_flags, false);
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_FreeList: array<i32>;", insertion_buffers.size()));
+		pipeline_buffers.push_back({ *m_Entity->GetFreeListSSBO(), vis_flags, false });
+		if (create_new) {
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_FreeList: array<i32>;", insertion_buffers.size()));
 
-		insertion.push_back(std::format("fn Destroy{0}(index: i32) {{", m_Entity->GetName()));
-		insertion.push_back(std::format("\tlet base = index * FLOATS_PER_{0} + ENTITY_OFFSET_INTS;", m_Entity->GetName()));
-		insertion.push_back(std::format("\t{0}_SET(base, 0, -1);",m_Entity->GetName()));
-		insertion.push_back("\tatomicAdd(&ioEntityDeaths, 1);");
-		insertion.push_back("\tatomicAdd(&ioEntityCount, -1);");
-		insertion.push_back("\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);");
-		insertion.push_back("\tb_FreeList[free_index] = index;");
-		insertion.push_back("}");
+			insertion.push_back(std::format("fn Destroy{0}(index: i32) {{", m_Entity->GetName()));
+			insertion.push_back(std::format("\tlet base = index * FLOATS_PER_{0} + ENTITY_OFFSET_INTS;", m_Entity->GetName()));
+			insertion.push_back(std::format("\t{0}_SET(base, 0, -1);",m_Entity->GetName()));
+			insertion.push_back("\tatomicAdd(&ioEntityDeaths, 1);");
+			insertion.push_back("\tatomicAdd(&ioEntityCount, -1);");
+			insertion.push_back("\tlet free_index = atomicAdd(&ioEntityFreeCount, 1);");
+			insertion.push_back("\tb_FreeList[free_index] = index;");
+			insertion.push_back("}");
+		}
 	}
 
 	for (const auto& ssbo: m_SSBOs) {
-		int buffer_index = insertion_buffers.size();
 		bool read_only = ssbo.p_Access == BufferAccess::READ_ONLY;
-		auto type_str = MemberSpec::GetGPUType(ssbo.p_Type);
-		if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
-			type_str = std::format("atomic<{}>", type_str);
+		if (create_new) {
+			int buffer_index = insertion_buffers.size();
+			auto type_str = MemberSpec::GetGPUType(ssbo.p_Type);
+			if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
+				type_str = std::format("atomic<{}>", type_str);
+			}
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: array<{3}>;"
+				,insertion_buffers.size()
+				,read_only ? "read" : "read_write"
+				,ssbo.p_Name
+				,type_str
+			));
 		}
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: array<{3}>;"
-			,insertion_buffers.size()
-			,read_only ? "read" : "read_write"
-			,ssbo.p_Name
-			,type_str
-		));
-		result->m_Pipeline->AddBuffer(ssbo.p_Buffer, vis_flags, read_only);
+		pipeline_buffers.push_back({ ssbo.p_Buffer, vis_flags, read_only });
 	}
 
 	for (const auto& ssbo_spec : m_StructBuffers) {
-
-		std::vector<std::string> members;
-		for (const auto& member : ssbo_spec.p_Members) {
-			members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
-		}
-		immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
-		immediate_insertion.push_back(JoinStrings(members, ",\n"));
-		immediate_insertion.push_back("};");
-
-		int buffer_index = insertion_buffers.size();
 		bool read_only = ssbo_spec.p_Access == BufferAccess::READ_ONLY;
-		auto type_str = ssbo_spec.p_StructName;
-		if (ssbo_spec.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
-			type_str = std::format("atomic<{0}>", type_str);
-		}
-		if (ssbo_spec.p_IsArray) {
-			type_str = std::format("array<{0}>", type_str);
-		}
-		if (ssbo_spec.p_Buffer.GetUsageFlags() & WGPUBufferUsage_Uniform) {
-			read_only = true;
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> {1}: {2};"
-				,insertion_buffers.size()
-				,ssbo_spec.p_Name
-				,type_str
-			));
-		} else {
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: {3};"
-				,insertion_buffers.size()
-				,read_only ? "read" : "read_write"
-				,ssbo_spec.p_Name
-				,type_str
-			));
+		if (create_new) {
+			std::vector<std::string> members;
+			for (const auto& member : ssbo_spec.p_Members) {
+				members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			}
+			immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
+			immediate_insertion.push_back(JoinStrings(members, ",\n"));
+			immediate_insertion.push_back("};");
+
+			int buffer_index = insertion_buffers.size();
+			auto type_str = ssbo_spec.p_StructName;
+			if (ssbo_spec.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
+				type_str = std::format("atomic<{0}>", type_str);
+			}
+			if (ssbo_spec.p_IsArray) {
+				type_str = std::format("array<{0}>", type_str);
+			}
+			if (ssbo_spec.p_Buffer.GetUsageFlags() & WGPUBufferUsage_Uniform) {
+				read_only = true;
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> {1}: {2};"
+					,insertion_buffers.size()
+					,ssbo_spec.p_Name
+					,type_str
+				));
+			} else {
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: {3};"
+					,insertion_buffers.size()
+					,read_only ? "read" : "read_write"
+					,ssbo_spec.p_Name
+					,type_str
+				));
+			}
 		}
 
-		result->m_Pipeline->AddBuffer(ssbo_spec.p_Buffer, vis_flags, read_only);
+		pipeline_buffers.push_back({ ssbo_spec.p_Buffer, vis_flags, read_only });
 	}
 
 	for (auto& entity_spec : m_Entities) {
@@ -313,162 +364,180 @@ std::unique_ptr<PipelineStage::Prepared> PipelineStage::PrepareWithUniform(const
 			continue;
 		}
 		GPUEntity& entity = *entity_spec.p_Entity;
-		insertion.push_back(std::format("//////////////// Entity {0}", entity.GetName()));
-
-		insertion.push_back(std::format("#define io{0}Count b_{0}[0]", entity.GetName()));
+		if (create_new) {
+			insertion.push_back(std::format("//////////////// Entity {0}", entity.GetName()));
+			insertion.push_back(std::format("#define io{0}Count b_{0}[0]", entity.GetName()));
+		}
 
 		bool read_only_entity = is_render;
 		if (read_only_entity) {
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read> b_{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
-			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, true);
+			pipeline_buffers.push_back({ *entity.GetSSBO(), vis_flags, true });
+			if (create_new) {
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read> b_{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
 
-			insertion.push_back(std::string(entity.GetGPUInsertion()));
-			insertion.push_back(entity.GetSpecs().p_GPUReadOnlyInsertion);
-
+				insertion.push_back(std::string(entity.GetGPUInsertion()));
+				insertion.push_back(entity.GetSpecs().p_GPUReadOnlyInsertion);
+			}
 		} else {
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_{1}: array<atomic<i32>>;", insertion_buffers.size(), entity.GetName()));
-			result->m_Pipeline->AddBuffer(*entity.GetSSBO(), vis_flags, false);
+			pipeline_buffers.push_back({ *entity.GetSSBO(), vis_flags, false });
+			if (create_new) {
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_{1}: array<atomic<i32>>;", insertion_buffers.size(), entity.GetName()));
 
-			insertion.push_back(std::string(entity.GetGPUInsertion()));
-			// this will replace non-atomic getters and setters with atomic ones
-			insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", entity.GetName()));
-			insertion.push_back(std::format("#define {0}_SET(base, index, value) atomicStore(&b_{0}[(base) + (index)], (value))", entity.GetName()));
-			insertion.push_back(entity.GetSpecs().p_GPUInsertion);
+				insertion.push_back(std::string(entity.GetGPUInsertion()));
+				// this will replace non-atomic getters and setters with atomic ones
+				insertion.push_back(std::format("#define {0}_LOOKUP(base, index) (atomicLoad(&b_{0}[(base) + (index)]))", entity.GetName()));
+				insertion.push_back(std::format("#define {0}_SET(base, index, value) atomicStore(&b_{0}[(base) + (index)], (value))", entity.GetName()));
+				insertion.push_back(entity.GetSpecs().p_GPUInsertion);
+			}
 		}
 
 		if (entity_spec.p_Creatable) {
 
-			insertion.push_back(std::format("#define io{0}FreeCount b_{0}[1]", entity.GetName()));
-			insertion.push_back(std::format("#define io{0}NextId b_{0}[2]", entity.GetName()));
-			insertion.push_back(std::format("#define io{0}MaxIndex b_{0}[3]", entity.GetName()));
+			pipeline_buffers.push_back({ *entity.GetFreeListSSBO(), vis_flags, false });
+			if (create_new) {
+				insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Free{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
 
-			auto next_id = std::format("io{0}NextId", entity.GetName());
-			auto max_index = std::format("io{0}MaxIndex", entity.GetName());
-			auto free_count = std::format("io{0}FreeCount", entity.GetName());
+				insertion.push_back(std::format("#define io{0}FreeCount b_{0}[1]", entity.GetName()));
+				insertion.push_back(std::format("#define io{0}NextId b_{0}[2]", entity.GetName()));
+				insertion.push_back(std::format("#define io{0}MaxIndex b_{0}[3]", entity.GetName()));
 
-			insertion.push_back(std::format("fn Create{0}(input_item: {0}) {{", entity.GetName()));
-			insertion.push_back("\tvar item = input_item;");
-			insertion.push_back(std::format("\tlet item_id: i32 = atomicAdd(&{0}, 1);", next_id));
+				auto next_id = std::format("io{0}NextId", entity.GetName());
+				auto max_index = std::format("io{0}MaxIndex", entity.GetName());
+				auto free_count = std::format("io{0}FreeCount", entity.GetName());
 
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, read_write> b_Free{1}: array<i32>;", insertion_buffers.size(), entity.GetName()));
-			result->m_Pipeline->AddBuffer(*entity.GetFreeListSSBO(), vis_flags, false);
+				insertion.push_back(std::format("fn Create{0}(input_item: {0}) {{", entity.GetName()));
+				insertion.push_back("\tvar item = input_item;");
+				insertion.push_back(std::format("\tlet item_id: i32 = atomicAdd(&{0}, 1);", next_id));
 
-			insertion.push_back("\tvar item_pos: i32 = 0;");
-			insertion.push_back(std::format("\tatomicAdd(&io{0}Count, 1);", entity.GetName()));
-			insertion.push_back(std::format("\tlet free_count: i32 = atomicAdd(&{0}, -1);", free_count));
-			insertion.push_back(std::format("\tatomicMax(&{0}, 0);", free_count)); // ensure this is never negative after completion
-			insertion.push_back("\tif(free_count > 0) {");
-				insertion.push_back(std::format("\t\titem_pos = b_Free{0}[free_count - 1];", entity.GetName()));
-			insertion.push_back("\t} else {");
-				insertion.push_back(std::format("\t\titem_pos = atomicAdd(&{0}, 1);", max_index));
-			insertion.push_back("\t}");
+				insertion.push_back("\tvar item_pos: i32 = 0;");
+				insertion.push_back(std::format("\tatomicAdd(&io{0}Count, 1);", entity.GetName()));
+				insertion.push_back(std::format("\tlet free_count: i32 = atomicAdd(&{0}, -1);", free_count));
+				insertion.push_back(std::format("\tatomicMax(&{0}, 0);", free_count)); // ensure this is never negative after completion
+				insertion.push_back("\tif(free_count > 0) {");
+					insertion.push_back(std::format("\t\titem_pos = b_Free{0}[free_count - 1];", entity.GetName()));
+				insertion.push_back("\t} else {");
+					insertion.push_back(std::format("\t\titem_pos = atomicAdd(&{0}, 1);", max_index));
+				insertion.push_back("\t}");
 
-			insertion.push_back(std::format("\titem.{0} = item_id;", entity.GetIDName()));
-			insertion.push_back(std::format("\tSet{0}(item, item_pos);\n}}", entity.GetName()));
+				insertion.push_back(std::format("\titem.{0} = item_id;", entity.GetIDName()));
+				insertion.push_back(std::format("\tSet{0}(item, item_pos);\n}}", entity.GetName()));
+			}
 		}
 	}
 
-	for (const auto& tex : m_Textures) {
+	if (create_new) {
 
-#pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern")
-		auto dim = tex.p_Tex->GetViewDimension();
-		std::string tex_spec;
-		if (dim == WGPUTextureViewDimension_1D) {
-			tex_spec = "texture_1d<f32>";
-		} else if (dim == WGPUTextureViewDimension_2D) {
-			tex_spec = "texture_2d<f32>";
-		} else if (dim == WGPUTextureViewDimension_2DArray) {
-			tex_spec = "texture_2d_array<f32>";
-		} else if (dim == WGPUTextureViewDimension_Cube) {
-			tex_spec = "texture_cube<f32>";
-		} else if (dim == WGPUTextureViewDimension_CubeArray) {
-			tex_spec = "texture_cube_array<f32>";
-		} else if (dim == WGPUTextureViewDimension_3D) {
-			tex_spec = "texture_3d<f32>";
+		for (const auto& tex : m_Textures) {
+
+	#pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern")
+			auto dim = tex.p_Tex->GetViewDimension();
+			std::string tex_spec;
+			if (dim == WGPUTextureViewDimension_1D) {
+				tex_spec = "texture_1d<f32>";
+			} else if (dim == WGPUTextureViewDimension_2D) {
+				tex_spec = "texture_2d<f32>";
+			} else if (dim == WGPUTextureViewDimension_2DArray) {
+				tex_spec = "texture_2d_array<f32>";
+			} else if (dim == WGPUTextureViewDimension_Cube) {
+				tex_spec = "texture_cube<f32>";
+			} else if (dim == WGPUTextureViewDimension_CubeArray) {
+				tex_spec = "texture_cube_array<f32>";
+			} else if (dim == WGPUTextureViewDimension_3D) {
+				tex_spec = "texture_3d<f32>";
+			}
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: {2};", insertion_buffers.size(), tex.p_Name, tex_spec));
+			result->m_Pipeline->AddTexture(tex.p_Tex->GetViewDimension(), tex.p_Tex->GetTextureView());
 		}
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: {2};", insertion_buffers.size(), tex.p_Name, tex_spec));
-		result->m_Pipeline->AddTexture(tex.p_Tex->GetViewDimension(), tex.p_Tex->GetTextureView());
-	}
-	for (const auto& sampler : m_Samplers) {
-		insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));
-		result->m_Pipeline->AddSampler(*sampler.p_Sampler);
-	}
-
-	if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
-		result->m_ControlSSBO->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
-	}
-	for (int i = 0; i < m_Vars.size(); i++) {
-		const auto& var = m_Vars[i];
-		insertion.push_front(std::format("#define Get_{0} (atomicLoad(&b_Control[{1}]))", var.p_Name, i));
-		insertion.push_front(std::format("#define {0} (b_Control[{1}])", var.p_Name, i));
-		result->m_VarNames.push_back(var.p_Name);
-	}
-
-	insertion.push_back("////////////////");
-
-	if (entity_processing && m_ReplaceMain) {
-		end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
-		end_insertion.push_back(std::format(
-			"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
-			"\tlet item_index = i32(global_id.x);\n"
-			"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
-			"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
-		if (m_Entity->IsDoubleBuffering()) {
-			end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ Set{1}(item, item_index); return; }}", m_Entity->GetIDName(), m_Entity->GetName()));
-		} else {
-			end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
+		for (const auto& sampler : m_Samplers) {
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));
+			result->m_Pipeline->AddSampler(*sampler.p_Sampler);
 		}
-		end_insertion.push_back(std::format(
-			"\tvar new_item: {0} = item;\n"
-			"\tlet should_destroy: bool = {0}Main(item_index, item, &new_item);\n"
-			"\tif(should_destroy) {{ Destroy{0}(item_index); }} else {{ Set{0}(new_item, item_index); }}\n"
-			"}}", m_Entity->GetName()));
-	} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
 
-		/*
-		end_insertion +=
-			"@vertex\n"
-			"void {0}Main(int item_index, {0} item); // forward declaration\n"
-			"void main() {\n"
-			"\t{0} item = Get{0}(gl_InstanceID);";
-		end_insertion.push_back(std::format("\tif (item.{0} < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }", m_Entity->GetIDName());
-		end_insertion.push_back(
-			"\t{0}Main(gl_InstanceID, item);\n"
-			"}\n#endif\n////////////////");
-			*/
-	} else if (m_Entity && m_ReplaceMain) {
-		end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
-		end_insertion.push_back(std::format(
-			"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
-			"\tlet item_index = i32(global_id.x);\n"
-			"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
-			"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
-		end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
-		end_insertion.push_back(std::format(
-			"\t{0}Main(item_index, item);\n"
-			"}}\n////////////////", m_Entity->GetName()));
-	}
+		if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
+			result->m_ControlSSBO->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
+		}
+		for (int i = 0; i < m_Vars.size(); i++) {
+			const auto& var = m_Vars[i];
+			insertion.push_front(std::format("#define Get_{0} (atomicLoad(&b_Control[{1}]))", var.p_Name, i));
+			insertion.push_front(std::format("#define {0} (b_Control[{1}])", var.p_Name, i));
+			result->m_VarNames.push_back(var.p_Name);
+		}
 
-	if (!m_ExtraCode.empty()) {
 		insertion.push_back("////////////////");
-		insertion.push_back(m_ExtraCode);
+
+		if (entity_processing && m_ReplaceMain) {
+			end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
+			end_insertion.push_back(std::format(
+				"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
+				"\tlet item_index = i32(global_id.x);\n"
+				"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+				"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
+			if (m_Entity->IsDoubleBuffering()) {
+				end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ Set{1}(item, item_index); return; }}", m_Entity->GetIDName(), m_Entity->GetName()));
+			} else {
+				end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
+			}
+			end_insertion.push_back(std::format(
+				"\tvar new_item: {0} = item;\n"
+				"\tlet should_destroy: bool = {0}Main(item_index, item, &new_item);\n"
+				"\tif(should_destroy) {{ Destroy{0}(item_index); }} else {{ Set{0}(new_item, item_index); }}\n"
+				"}}", m_Entity->GetName()));
+		} else if (m_Entity && m_ReplaceMain && (m_RunType == RunType::ENTITY_RENDER)) {
+
+			/*
+			end_insertion +=
+				"@vertex\n"
+				"void {0}Main(int item_index, {0} item); // forward declaration\n"
+				"void main() {\n"
+				"\t{0} item = Get{0}(gl_InstanceID);";
+			end_insertion.push_back(std::format("\tif (item.{0} < 0) { gl_Position = vec4(0.0, 0.0, 100.0, 0.0); return; }", m_Entity->GetIDName());
+			end_insertion.push_back(
+				"\t{0}Main(gl_InstanceID, item);\n"
+				"}\n#endif\n////////////////");
+				*/
+		} else if (m_Entity && m_ReplaceMain) {
+			end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
+			end_insertion.push_back(std::format(
+				"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
+				"\tlet item_index = i32(global_id.x);\n"
+				"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+				"\tlet item: {0} = Get{0}(item_index);", m_Entity->GetName()));
+			end_insertion.push_back(std::format("\tif (item.{0} < 0) {{ return; }}", m_Entity->GetIDName()));
+			end_insertion.push_back(std::format(
+				"\t{0}Main(item_index, item);\n"
+				"}}\n////////////////", m_Entity->GetName()));
+		}
+
+		if (!m_ExtraCode.empty()) {
+			insertion.push_back("////////////////");
+			insertion.push_back(m_ExtraCode);
+		}
+
+		insertion.push_front(JoinStrings(insertion_buffers, "\n"));
+		insertion.push_front(JoinStrings(immediate_insertion, "\n"));
 	}
 
-	insertion.push_front(JoinStrings(insertion_buffers, "\n"));
-	insertion.push_front(JoinStrings(immediate_insertion, "\n"));
+	if (create_new) {
+		for (const auto& buffer_to_add : pipeline_buffers) {
+			result->m_Pipeline->AddBuffer(buffer_to_add.p_Buffer, buffer_to_add.p_VisibilityFlags, buffer_to_add.p_ReadOnly);
+		}
 
-	//DebugGPU::Checkpoint("PreRun", m_Entity);
+		std::string insertion_str = JoinStrings(insertion, "\n");
+		std::string end_insertion_str;
+		if (!end_insertion.empty()) {
+			end_insertion_str = "\n//////////\n" + JoinStrings(end_insertion, "\n");
+		}
 
-	std::string insertion_str = JoinStrings(insertion, "\n");
-	std::string end_insertion_str;
-	if (!end_insertion.empty()) {
-		end_insertion_str = "\n//////////\n" + JoinStrings(end_insertion, "\n");
-	}
-
-	if (is_render) {
-		result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
+		if (is_render) {
+			result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
+		} else {
+			result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
+		}
+		Core::Singleton().CachePreparedPipeline(result);
 	} else {
-		result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
+		for (int i = 0; i < pipeline_buffers.size(); i++) {
+			result->m_Pipeline->ReplaceBuffer(i, pipeline_buffers[i].p_Buffer);
+		}
 	}
 
 	return result;
@@ -552,7 +621,8 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 		fill_var_data(m_VarNames[i], var_vals[i]);
 	}
 
-	if (m_ControlSSBO && !var_vals.empty()) {
+	SSBO* control_ssbo = m_Entity ? m_Entity->GetControlSSBO() : m_ControlSSBO;
+	if (control_ssbo && !var_vals.empty()) {
 
 		std::vector<int> values = var_vals;
 		int control_size = (int)var_vals.size();
@@ -566,8 +636,8 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 			memcpy((unsigned char*)&(values[offset]), data_vect.m_Data, sizeof(int) * data_size);
 		}
 
-		m_ControlSSBO->EnsureSizeBytes(control_size * sizeof(int), false);
-		m_ControlSSBO->SetValues(values);
+		control_ssbo->EnsureSizeBytes(control_size * sizeof(int), false);
+		control_ssbo->SetValues(values);
 	}
 
 	if (m_UniformBuffer && uniform && uniform_bytes) {
@@ -611,13 +681,13 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 		BufferViewer::Checkpoint(std::format("{0} Death", m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT);
 	}
 	if (entity_processing) {
-		BufferViewer::Checkpoint(std::format("{0} Control", m_Entity->GetName()), "PostRun", *m_ControlSSBO, MemberSpec::Type::T_INT);
+		BufferViewer::Checkpoint(std::format("{0} Control", m_Entity->GetName()), "PostRun", *control_ssbo, MemberSpec::Type::T_INT);
 		BufferViewer::Checkpoint(std::format("{0} Free", m_Entity->GetName()), "PostRun", *m_Entity->GetFreeListSSBO(), MemberSpec::Type::T_INT, m_Entity->GetFreeCount());
 	}
 #endif
 
-	if (m_ControlSSBO && m_ReadRequired) {
-		m_ControlSSBO->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
+	if (control_ssbo && m_ReadRequired) {
+		control_ssbo->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
 			OutputResults* results = new OutputResults();
 			int* int_data = (int*)data;
 			for (int i = 0; i < var_names.size(); i++) {
@@ -702,29 +772,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int), true);
 	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
 
-	if (!m_CacheIndex) {
-		std::string main_func = std::format("fn {0}Main(item_index: i32, item: {0}) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
-
-		m_CacheIndex = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
-			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
-			.AddCode("#define PHASE_INDEX")
-			.AddCode(main_func)
-			.Prepare<Grid2DCacheUniform>();
-
-		m_CacheAlloc = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
-			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
-			.AddCode("#define PHASE_ALLOCATE")
-			.AddCode(main_func)
-			.AddInputVar("AllocationCount")
-			.Prepare<Grid2DCacheUniform>();
-
-		m_CacheFill = Neshny::PipelineStage::IterateEntity(SrcStr(), m_Entity, "GridCache2D", true)
-			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
-			.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
-			.AddCode("#define PHASE_FILL")
-			.AddCode(main_func)
-			.Prepare<Grid2DCacheUniform>();
-	}
+	std::string main_func = std::format("fn {0}Main(item_index: i32, item: {0}) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
+	std::string base_id = std::format("GridCache2D:{}:{}", m_Entity.GetName(), m_PosName);
 
 	Grid2DCacheUniform uniform{
 		grid_size
@@ -732,17 +781,38 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		,grid_max
 	};
 
-	m_CacheIndex->Run(uniform);
-	m_CacheAlloc->Run(uniform, { { "AllocationCount", 0 } }, std::nullopt);
-	m_CacheAlloc->Run(uniform);
-	m_CacheFill->Run(uniform);
+	Neshny::PipelineStage::IterateEntity(std::format("{}:INDEX", base_id), m_Entity, "GridCache2D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+		.AddCode("#define PHASE_INDEX")
+		.AddCode(main_func)
+		.Prepare<Grid2DCacheUniform>()->Run(uniform);
+
+	for (int i = 0; i < 2; i++) {
+		std::vector<std::pair<std::string, int>> variables;
+		if (i == 0) {
+			variables.push_back({ "AllocationCount", 0 });
+		}
+		Neshny::PipelineStage::IterateEntity(std::format("{}:ALLOC", base_id), m_Entity, "GridCache2D", true)
+			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+			.AddCode("#define PHASE_ALLOCATE")
+			.AddCode(main_func)
+			.AddInputVar("AllocationCount")
+			.Prepare<Grid2DCacheUniform>()->Run(uniform, std::move(variables), std::nullopt);
+	}
+
+	Neshny::PipelineStage::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+		.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+		.AddCode("#define PHASE_FILL")
+		.AddCode(main_func)
+		.Prepare<Grid2DCacheUniform>()->Run(uniform);
 
 	// gets used by the entity run that uses the buffer
 	m_Uniform.SetSingleValue(0, uniform);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Grid2DCache::Bind(PipelineStage& target_stage) {
+void Grid2DCache::Bind(PipelineStage& target_stage, bool initial_creation) {
 
 	auto name = m_Entity.GetName();
 
@@ -750,6 +820,10 @@ void Grid2DCache::Bind(PipelineStage& target_stage) {
 	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
 
 	target_stage.AddStructBuffer<Grid2DCacheUniform>(std::format("b_{0}GridUniform", name), std::format("{0}GridUniformStruct", name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
+
+	if (!initial_creation) {
+		return;
+	}
 
 	std::string err_msg;
 	std::string utils_file = Core::Singleton().LoadEmbedded("GridCache2D.wgsl.template", err_msg);

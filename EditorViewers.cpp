@@ -1047,6 +1047,24 @@ void PipelineViewer::RenderImGui(InterfacePipelineViewer& data) {
 
 #ifdef NESHNY_WEBGPU
 
+	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
+
+	ImGuiTableFlags table_flags = ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+	if (ImGui::BeginTable("##Table", 1, table_flags)) {
+
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		for (const auto& pipeline_info : existing_pipelines) {
+			PipelineStage::Prepared* prepared = (PipelineStage::Prepared*)pipeline_info.p_Pipeline;
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("%s", prepared->GetIdentifier().data());
+		}
+
+		ImGui::EndTable();
+	}
+
 #endif
 
 	ImGui::End();

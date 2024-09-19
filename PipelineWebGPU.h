@@ -39,6 +39,7 @@ public:
 
 	class Prepared {
 		RunType						m_RunType;
+		std::string					m_Identifier;
 		WebGPUPipeline*				m_Pipeline = nullptr;
 		WebGPUBuffer*				m_UniformBuffer = nullptr;
 		int							m_EntityBufferIndex = -1;
@@ -83,21 +84,23 @@ public:
 		}
 		// todo: create WithTexture and WithBuffer functions for swapping out textures and buffers after prep
 
-		template <class UniformSpec>
-		void						Render		( RTT& rtt, const UniformSpec& uniform ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt, std::nullopt); }
-		template <class UniformSpec>
-		void						Render		( RTT& rtt, const UniformSpec& uniform, int iterations ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt, std::nullopt); }
-		template <class UniformSpec>
-		void						Render		( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
+		std::string_view			GetIdentifier ( void) const { return m_Identifier; }
 
 		template <class UniformSpec>
-		AsyncOutputResults			Run			( const UniformSpec& uniform ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr, std::nullopt); }
+		void						Render			( RTT& rtt, const UniformSpec& uniform ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt, std::nullopt); }
 		template <class UniformSpec>
-		AsyncOutputResults			Run			( const UniformSpec& uniform, int iterations ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr, std::nullopt); }
+		void						Render			( RTT& rtt, const UniformSpec& uniform, int iterations ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt, std::nullopt); }
 		template <class UniformSpec>
-		AsyncOutputResults			Run			( const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
+		void						Render			( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
+
+		template <class UniformSpec>
+		AsyncOutputResults			Run				( const UniformSpec& uniform ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr, std::nullopt); }
+		template <class UniformSpec>
+		AsyncOutputResults			Run				( const UniformSpec& uniform, int iterations ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr, std::nullopt); }
+		template <class UniformSpec>
+		AsyncOutputResults			Run				( const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
 	private:
-		AsyncOutputResults			RunInternal	( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
+		AsyncOutputResults			RunInternal		( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 
 	static PipelineStage ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
@@ -139,7 +142,7 @@ public:
 	}
 
 	template <class UniformSpec>
-	std::unique_ptr<Prepared>	Prepare				( void ) {
+	Prepared* Prepare				( void ) {
 		std::vector<MemberSpec> uniform_members;
 		Serialiser<UniformSpec> serializeFunc(uniform_members);
 		meta::doForAllMembers<UniformSpec>(serializeFunc);
@@ -190,7 +193,9 @@ protected:
 		bool					p_IsArray;
 	};
 
-	std::unique_ptr<Prepared>	PrepareWithUniform	( const std::vector<MemberSpec>& unform_members );
+	static std::string			GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
+	Prepared*					GetCachedPipeline		( void );
+	Prepared*					PrepareWithUniform		( const std::vector<MemberSpec>& unform_members );
 
 	struct AddedInOut {
 		std::string	p_Name;
@@ -206,8 +211,6 @@ protected:
 		const WebGPUSampler*	p_Sampler;
 	};
 
-	static std::string			GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
-
 	std::string						m_Identifier;
 	RunType							m_RunType;
 	GPUEntity*						m_Entity = nullptr;
@@ -222,6 +225,7 @@ protected:
 	std::string						m_ExtraCode;
 	WebGPUPipeline::RenderParams	m_RenderParams;
 
+	std::vector<BaseCache*>			m_CachesToBind;
 	std::vector<AddedEntity>		m_Entities;
 	std::vector<AddedSSBO>			m_SSBOs;
 	std::vector<AddedInOut>			m_Vars;
@@ -236,7 +240,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class BaseCache {
 public:
-	virtual void Bind(PipelineStage& target_stage) = 0;
+	virtual void Bind(PipelineStage& target_stage, bool initial_creation) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +302,7 @@ public:
 								Grid2DCache		( GPUEntity& entity, std::string_view pos_name );
 	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
-	virtual void				Bind			( PipelineStage& target_stage ) override;
+	virtual void				Bind			( PipelineStage& target_stage, bool initial_creation ) override;
 
 private:
 
@@ -312,10 +316,6 @@ private:
 	iVec2						m_GridSize;
 	Vec2						m_GridMin;
 	Vec2						m_GridMax;
-
-	std::unique_ptr<PipelineStage::Prepared> m_CacheIndex;
-	std::unique_ptr<PipelineStage::Prepared> m_CacheAlloc;
-	std::unique_ptr<PipelineStage::Prepared> m_CacheFill;
 };
 
 struct Grid2DCacheUniform {

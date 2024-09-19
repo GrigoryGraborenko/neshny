@@ -536,6 +536,8 @@ public:
 	static WebGPURenderBuffer*			GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							WaitForCommandsToFinish		( void );
+	inline const auto&					GetPreparedPipelines		( void ) { return m_PreparedPipelines; }
+	inline void							CachePreparedPipeline		( void* pipeline ) { m_PreparedPipelines.push_back({ pipeline }); }
 #endif
 
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -694,7 +696,6 @@ private:
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
 	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
 	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
-	inline const auto&					GetPreparedPipelines		( void ) { return m_PreparedPipelines; }
 #endif
 	void								EnsureEmbeddableLoaderInit	( void );
 
