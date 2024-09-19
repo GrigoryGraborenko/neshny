@@ -86,21 +86,15 @@ public:
 
 		std::string_view			GetIdentifier ( void) const { return m_Identifier; }
 
-		template <class UniformSpec>
-		void						Render			( RTT& rtt, const UniformSpec& uniform ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, &rtt, std::nullopt); }
-		template <class UniformSpec>
-		void						Render			( RTT& rtt, const UniformSpec& uniform, int iterations ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, &rtt, std::nullopt); }
-		template <class UniformSpec>
-		void						Render			( RTT& rtt, const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
+		void						Render			( RTT& rtt ) { RunInternal({}, 1, &rtt, std::nullopt); }
+		void						Render			( RTT& rtt, int iterations ) { RunInternal({}, iterations, &rtt, std::nullopt); }
+		void						Render			( RTT& rtt, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal(std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
 
-		template <class UniformSpec>
-		AsyncOutputResults			Run				( const UniformSpec& uniform ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, 1, nullptr, std::nullopt); }
-		template <class UniformSpec>
-		AsyncOutputResults			Run				( const UniformSpec& uniform, int iterations ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), {}, iterations, nullptr, std::nullopt); }
-		template <class UniformSpec>
-		AsyncOutputResults			Run				( const UniformSpec& uniform, std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal((unsigned char*)&uniform, sizeof(UniformSpec), std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
+		AsyncOutputResults			Run				( void ) { return RunInternal({}, 1, nullptr, std::nullopt); }
+		AsyncOutputResults			Run				( int iterations ) { return RunInternal({}, iterations, nullptr, std::nullopt); }
+		AsyncOutputResults			Run				( std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal(std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
 	private:
-		AsyncOutputResults			RunInternal		( unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
+		AsyncOutputResults			RunInternal		( std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 	};
 
 	static PipelineStage ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
@@ -141,13 +135,16 @@ public:
 		return *this;
 	}
 
-	template <class UniformSpec>
-	Prepared* Prepare				( void ) {
-		std::vector<MemberSpec> uniform_members;
-		Serialiser<UniformSpec> serializeFunc(uniform_members);
-		meta::doForAllMembers<UniformSpec>(serializeFunc);
-		return PrepareWithUniform(uniform_members);
+	template <class T>
+	PipelineStage&				SetUniform			( const T& uniform ) {
+		m_Uniform.p_Spec.clear();
+		Serialiser<T> serializeFunc(m_Uniform.p_Spec);
+		meta::doForAllMembers<T>(serializeFunc);
+		m_Uniform.p_Data = { (unsigned char*)&uniform, sizeof(uniform) };
+		return *this;
 	}
+
+	Prepared*					Prepare				( void );
 
 	template <class T>
 	PipelineStage& AddDataVector(std::string_view name) {
@@ -164,52 +161,52 @@ public:
 
 protected:
 
-								PipelineStage		(	RunType type,
-														GPUEntity* entity,
-														RenderableBuffer* buffer,
-														class BaseCache* cache,
-														std::string_view shader_name, bool replace_main,
-														std::string_view identifer,
-														SSBO* control_ssbo = nullptr, int iterations = 0,
-														WebGPUPipeline::RenderParams render_params = {} );
-
 	struct AddedSSBO {
-		SSBO& p_Buffer;
-		std::string				p_Name;
-		MemberSpec::Type		p_Type;
-		BufferAccess			p_Access;
+		SSBO&						p_Buffer;
+		std::string					p_Name;
+		MemberSpec::Type			p_Type;
+		BufferAccess				p_Access;
 	};
 	struct AddedDataVector {
-		std::string				p_Name;
-		int						p_NumIntsPerItem;
-		std::vector<MemberSpec> p_Members;
+		std::string					p_Name;
+		int							p_NumIntsPerItem;
+		std::vector<MemberSpec>		p_Members;
 	};
 	struct AddedStructBuffer {
-		SSBO&					p_Buffer;
-		std::string				p_Name;
-		std::string				p_StructName;
-		std::vector<MemberSpec> p_Members;
-		BufferAccess			p_Access;
-		bool					p_IsArray;
+		SSBO&						p_Buffer;
+		std::string					p_Name;
+		std::string					p_StructName;
+		std::vector<MemberSpec>		p_Members;
+		BufferAccess				p_Access;
+		bool						p_IsArray;
 	};
-
-	static std::string			GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
-	Prepared*					GetCachedPipeline		( void );
-	Prepared*					PrepareWithUniform		( const std::vector<MemberSpec>& unform_members );
-
 	struct AddedInOut {
-		std::string	p_Name;
-		bool		p_ReadBack = true;
+		std::string					p_Name;
+		bool						p_ReadBack = true;
 	};
-
 	struct AddedTexture {
-		std::string				p_Name;
-		const WebGPUTexture*	p_Tex;
+		std::string					p_Name;
+		const WebGPUTexture*		p_Tex;
 	};
 	struct AddedSampler {
-		std::string				p_Name;
-		const WebGPUSampler*	p_Sampler;
+		std::string					p_Name;
+		const WebGPUSampler*		p_Sampler;
 	};
+	struct AddedUniform {
+		std::vector<MemberSpec>		p_Spec;
+		std::span<unsigned char>	p_Data;
+	};
+
+									PipelineStage			(	RunType type,
+																GPUEntity* entity,
+																RenderableBuffer* buffer, class BaseCache* cache,
+																std::string_view shader_name, bool replace_main,
+																std::string_view identifer,
+																SSBO* control_ssbo = nullptr, int iterations = 0,
+																WebGPUPipeline::RenderParams render_params = {} );
+
+	static std::string				GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
+	Prepared*						GetCachedPipeline		( void );
 
 	std::string						m_Identifier;
 	RunType							m_RunType;
@@ -225,6 +222,7 @@ protected:
 	std::string						m_ExtraCode;
 	WebGPUPipeline::RenderParams	m_RenderParams;
 
+	AddedUniform					m_Uniform;
 	std::vector<BaseCache*>			m_CachesToBind;
 	std::vector<AddedEntity>		m_Entities;
 	std::vector<AddedSSBO>			m_SSBOs;

@@ -270,16 +270,20 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
-		auto executable = Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
-			.AddCode("#define CREATE_OTHER")
-			.AddInputOutputVar("uCheckVal")
-			.AddDataVector<DataItem>("DataItem")
-			.AddCreatableEntity(other_entities)
-			.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
-			.Prepare<Uniform>();
-		executable
+		auto mod_entity = [&] () -> Neshny::PipelineStage::Prepared* {
+			return Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
+				.AddCode("#define CREATE_OTHER")
+				.AddInputOutputVar("uCheckVal")
+				.AddDataVector<DataItem>("DataItem")
+				.AddCreatableEntity(other_entities)
+				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
+				.SetUniform(uniform)
+				.Prepare();
+
+		};
+		mod_entity()
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 #endif
@@ -335,9 +339,9 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 1;
 		uniform.p_Value = float(data_items.size());
-		executable
+		mod_entity()
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
@@ -345,9 +349,10 @@ namespace Test {
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector<DataItem>("DataItem")
 			.AddEntity(entities)
-			.Prepare<Uniform>()
+			.SetUniform(uniform)
+			.Prepare()
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
@@ -394,9 +399,9 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 2;
 		uniform.p_Value = div_val;
-		executable
+		mod_entity()
 			->WithDataVector("DataItem", data_items)
-			.Run(uniform, { { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 #endif
@@ -543,7 +548,8 @@ namespace Test {
 		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), hunter_entities, "UnitTestCache", true)
 			.AddEntity(prey_entities, &cache)
 			.AddCode(shader_defines)
-			.Prepare<Uniform>()->Run(uniform);
+			.SetUniform(uniform)
+			.Prepare()->Run();
 #endif
 
 		std::vector<GPUOther> gpu_values;

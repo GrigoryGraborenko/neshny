@@ -124,7 +124,6 @@ std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_v
 
 ////////////////////////////////////////////////////////////////////////////////
 PipelineStage::Prepared* PipelineStage::GetCachedPipeline(void) {
-
 	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
 	for (auto& existing : existing_pipelines) {
 		Prepared* ptr = (Prepared*)existing.p_Pipeline;
@@ -133,11 +132,10 @@ PipelineStage::Prepared* PipelineStage::GetCachedPipeline(void) {
 		}
 	}
 	return nullptr;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::Prepared* PipelineStage::PrepareWithUniform(const std::vector<MemberSpec>& unform_members) {
+PipelineStage::Prepared* PipelineStage::Prepare(void) {
 
 	Prepared* result = GetCachedPipeline();
 	bool create_new = false;
@@ -199,11 +197,11 @@ PipelineStage::Prepared* PipelineStage::PrepareWithUniform(const std::vector<Mem
 		}
 	}
 
-	if(!unform_members.empty()) { // uniform
+	if(!m_Uniform.p_Spec.empty()) { // uniform
 		if (create_new) {
 			std::vector<std::string> members;
 			int size = 0;
-			for (const auto& member : unform_members) {
+			for (const auto& member : m_Uniform.p_Spec) {
 				size += member.p_Size;
 				members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
 			}
@@ -214,6 +212,10 @@ PipelineStage::Prepared* PipelineStage::PrepareWithUniform(const std::vector<Mem
 			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<uniform> Uniform: UniformStruct;", insertion_buffers.size()));
 			result->m_UniformBuffer = new WebGPUBuffer(WGPUBufferUsage_Uniform, size);
 		}
+
+		result->m_UniformBuffer->EnsureSizeBytes(m_Uniform.p_Data.size(), false);
+		result->m_UniformBuffer->Write(m_Uniform.p_Data.data(), 0, m_Uniform.p_Data.size());
+
 		pipeline_buffers.push_back({ *result->m_UniformBuffer, vis_flags, true });
 	}
 
@@ -550,7 +552,7 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned char* uniform, int uniform_bytes, std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
+PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
@@ -638,11 +640,6 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(unsigned 
 
 		control_ssbo->EnsureSizeBytes(control_size * sizeof(int), false);
 		control_ssbo->SetValues(values);
-	}
-
-	if (m_UniformBuffer && uniform && uniform_bytes) {
-		m_UniformBuffer->EnsureSizeBytes(uniform_bytes, false);
-		m_UniformBuffer->Write(uniform, 0, uniform_bytes);
 	}
 
 	if (compute) {
@@ -785,7 +782,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 		.AddCode("#define PHASE_INDEX")
 		.AddCode(main_func)
-		.Prepare<Grid2DCacheUniform>()->Run(uniform);
+		.SetUniform(uniform)
+		.Prepare()->Run();
 
 	for (int i = 0; i < 2; i++) {
 		std::vector<std::pair<std::string, int>> variables;
@@ -797,7 +795,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 			.AddCode("#define PHASE_ALLOCATE")
 			.AddCode(main_func)
 			.AddInputVar("AllocationCount")
-			.Prepare<Grid2DCacheUniform>()->Run(uniform, std::move(variables), std::nullopt);
+			.SetUniform(uniform)
+			.Prepare()->Run(std::move(variables), std::nullopt);
 	}
 
 	Neshny::PipelineStage::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)
@@ -805,7 +804,8 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
 		.AddCode("#define PHASE_FILL")
 		.AddCode(main_func)
-		.Prepare<Grid2DCacheUniform>()->Run(uniform);
+		.SetUniform(uniform)
+		.Prepare()->Run();
 
 	// gets used by the entity run that uses the buffer
 	m_Uniform.SetSingleValue(0, uniform);
