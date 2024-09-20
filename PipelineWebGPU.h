@@ -49,23 +49,15 @@ public:
 	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
 
 	class Prepared {
-		RunType							m_RunType;
 		std::string						m_Identifier;
 		WebGPUPipeline*					m_Pipeline = nullptr;
 		WebGPUBuffer*					m_UniformBuffer = nullptr;
 		int								m_EntityBufferIndex = -1;
 
-		SSBO*							m_ControlSSBO = nullptr; // not owned, do not delete
-		GPUEntity*						m_Entity = nullptr; // not owned, do not delete
-		RenderableBuffer*				m_Buffer = nullptr; // not owned, do not delete
-		class BaseCache*				m_Cache = nullptr; // not owned, do not delete
 		std::vector<std::string>		m_VarNames;
-		std::vector<AddedEntity>		m_Entities;
 		bool							m_UsingRandom;
 		bool							m_ReadRequired = false;
 		std::shared_ptr<SSBO>			m_TemporaryFrame; // used for time travel feature
-
-		std::vector<AddedDataVector>	m_DataVectors;
 
 		friend class PipelineStage;
 	public:

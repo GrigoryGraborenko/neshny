@@ -141,12 +141,7 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 	bool create_new = false;
 	if (!result) {
 		result = new Prepared();
-		result->m_RunType = m_RunType;
 		result->m_Identifier = m_Identifier;
-		result->m_Entity = m_Entity;
-		result->m_Buffer = m_Buffer;
-		result->m_Cache = m_Cache;
-		result->m_Entities = m_Entities;
 		result->m_Pipeline = new WebGPUPipeline();
 		create_new = true;
 	}
@@ -178,8 +173,9 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 		immediate_insertion.push_back(std::format("#define ENTITY_OFFSET_INTS {0}", ENTITY_OFFSET_INTS));
 	}
 
-	result->m_ControlSSBO = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
-	if (result->m_ControlSSBO) {
+	SSBO* control_ssbo = m_ControlSSBO ? m_ControlSSBO : (m_Entity ? m_Entity->GetControlSSBO() : nullptr);
+	result->m_ReadRequired = false;
+	if (control_ssbo) {
 		if (create_new) {
 			if (is_render) {
 				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read> b_Control: array<i32>;");
@@ -187,13 +183,12 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;");
 			}
 		}
-		pipeline_buffers.push_back({ *result->m_ControlSSBO, vis_flags, is_render });
-	}
-	result->m_ReadRequired = false;
-	for (const auto& var: m_Vars) {
-		if (var.p_ReadBack) {
-			result->m_ReadRequired = result->m_ControlSSBO;
-			break;
+		pipeline_buffers.push_back({ *control_ssbo, vis_flags, is_render });
+		for (const auto& var : m_Vars) {
+			if (var.p_ReadBack) {
+				result->m_ReadRequired = true;
+				break;
+			}
 		}
 	}
 
@@ -232,7 +227,7 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 			insertion.push_back(std::format("#define ioEntityFreeCount b_{0}[1]", m_Entity->GetName()));
 		}
 
-		if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
+		if (control_ssbo && (!m_DataVectors.empty())) {
 			end_insertion.push_back("//////////////// Data vector helpers");
 			for (const auto& data_vect : m_DataVectors) {
 				end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
@@ -250,7 +245,6 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 			insertion.push_back("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
 		}
 	}
-	result->m_DataVectors = m_DataVectors;
 
 	if(m_Entity) {
 		bool input_read_only = is_render;
@@ -450,8 +444,8 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 			result->m_Pipeline->AddSampler(*sampler.p_Sampler);
 		}
 
-		if (result->m_ControlSSBO) { // avoid initial validation error for zero-sized buffers
-			result->m_ControlSSBO->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
+		if (control_ssbo) { // avoid initial validation error for zero-sized buffers
+			control_ssbo->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
 		}
 		for (int i = 0; i < m_Vars.size(); i++) {
 			const auto& var = m_Vars[i];
