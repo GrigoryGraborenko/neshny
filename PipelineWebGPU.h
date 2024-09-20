@@ -35,54 +35,42 @@ public:
 		std::vector<std::pair<std::string, int>> p_Results;
 	};
 
+	struct AddedDataVector {
+		std::string				p_Name;
+		int						p_NumIntsPerItem = 0;
+		unsigned char*			p_Data = nullptr;
+		int						p_NumItems = 0;
+		std::string				p_CountVar;
+		std::string				p_OffsetVar;
+		std::string				p_NumVar;
+		std::vector<MemberSpec>	p_Members;
+	};
+
 	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
 
 	class Prepared {
-		RunType						m_RunType;
-		std::string					m_Identifier;
-		WebGPUPipeline*				m_Pipeline = nullptr;
-		WebGPUBuffer*				m_UniformBuffer = nullptr;
-		int							m_EntityBufferIndex = -1;
+		RunType							m_RunType;
+		std::string						m_Identifier;
+		WebGPUPipeline*					m_Pipeline = nullptr;
+		WebGPUBuffer*					m_UniformBuffer = nullptr;
+		int								m_EntityBufferIndex = -1;
 
-		SSBO*						m_ControlSSBO = nullptr; // not owned, do not delete
-		GPUEntity*					m_Entity = nullptr; // not owned, do not delete
-		RenderableBuffer*			m_Buffer = nullptr; // not owned, do not delete
-		class BaseCache*			m_Cache = nullptr; // not owned, do not delete
-		std::vector<std::string>	m_VarNames;
-		std::vector<AddedEntity>	m_Entities;
-		bool						m_UsingRandom;
-		bool						m_ReadRequired = false;
-		std::shared_ptr<SSBO>		m_TemporaryFrame; // used for time travel feature
+		SSBO*							m_ControlSSBO = nullptr; // not owned, do not delete
+		GPUEntity*						m_Entity = nullptr; // not owned, do not delete
+		RenderableBuffer*				m_Buffer = nullptr; // not owned, do not delete
+		class BaseCache*				m_Cache = nullptr; // not owned, do not delete
+		std::vector<std::string>		m_VarNames;
+		std::vector<AddedEntity>		m_Entities;
+		bool							m_UsingRandom;
+		bool							m_ReadRequired = false;
+		std::shared_ptr<SSBO>			m_TemporaryFrame; // used for time travel feature
 
-		struct DataVectorInfo {
-			std::string		m_Name;
-			std::string		m_CountVar;
-			std::string		m_OffsetVar;
-			std::string		m_NumVar;
-			unsigned char*	m_Data = nullptr;
-			int				m_SizeInts = 0;
-			int				m_NumItems = 0;
-		};
-		std::vector<DataVectorInfo>	m_DataVectors;
+		std::vector<AddedDataVector>	m_DataVectors;
 
 		friend class PipelineStage;
 	public:
 
-							~Prepared	( void );
-
-		template <class T>
-		Prepared&			WithDataVector	( std::string_view name, const std::vector<T>& items ) {
-			for (auto& vect : m_DataVectors) {
-				if (vect.m_Name == name) {
-					vect.m_Data = (unsigned char*)items.data();
-					vect.m_SizeInts = ((int)items.size() * sizeof(T)) / sizeof(int);
-					vect.m_NumItems = (int)items.size();
-					break;
-				}
-			}
-			return *this;
-		}
-		// todo: create WithTexture and WithBuffer functions for swapping out textures and buffers after prep
+									~Prepared	( void );
 
 		std::string_view			GetIdentifier ( void) const { return m_Identifier; }
 
@@ -149,7 +137,10 @@ public:
 	template <class T>
 	PipelineStage& AddDataVector(std::string_view name, const std::vector<T>& items) {
 		int ints_per = sizeof(T) / sizeof(int);
-		m_DataVectors.push_back({ std::string(name), ints_per });
+		m_DataVectors.push_back({
+			std::string(name), ints_per, (unsigned char*)items.data(), (int)items.size(),
+			std::format("io{0}Count", name), std::format("io{0}Offset", name), std::format("io{0}Num", name)
+		});
 		AddedDataVector& ref = m_DataVectors.back();
 		Serialiser<T> serializeFunc(ref.p_Members);
 		meta::doForAllMembers<T>(serializeFunc);
@@ -166,11 +157,6 @@ protected:
 		std::string					p_Name;
 		MemberSpec::Type			p_Type;
 		BufferAccess				p_Access;
-	};
-	struct AddedDataVector {
-		std::string					p_Name;
-		int							p_NumIntsPerItem;
-		std::vector<MemberSpec>		p_Members;
 	};
 	struct AddedStructBuffer {
 		SSBO&						p_Buffer;

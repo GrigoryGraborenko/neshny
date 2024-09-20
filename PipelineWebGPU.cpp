@@ -235,16 +235,10 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 		if (result->m_ControlSSBO && (!m_DataVectors.empty())) {
 			end_insertion.push_back("//////////////// Data vector helpers");
 			for (const auto& data_vect : m_DataVectors) {
-
-				auto count_var = std::format("io{0}Count", data_vect.p_Name);
-				auto offset_var = std::format("io{0}Offset", data_vect.p_Name);
-				auto num_var = std::format("io{0}Num", data_vect.p_Name);
-
 				end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
-				m_Vars.push_back({ count_var });
-				m_Vars.push_back({ offset_var });
-				m_Vars.push_back({ num_var });
-				result->m_DataVectors.push_back({ data_vect.p_Name, count_var, offset_var, num_var, nullptr, 0 });
+				m_Vars.push_back({ data_vect.p_CountVar });
+				m_Vars.push_back({ data_vect.p_OffsetVar });
+				m_Vars.push_back({ data_vect.p_NumVar });
 			}
 		}
 
@@ -256,6 +250,7 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 			insertion.push_back("fn Random() -> f32 { return GetRandomFromSeed(0.0, 1.0, u32(atomicAdd(&ioRandSeed, 1))); }");
 		}
 	}
+	result->m_DataVectors = m_DataVectors;
 
 	if(m_Entity) {
 		bool input_read_only = is_render;
@@ -598,19 +593,19 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 		}
 		int offset = m_VarNames.size();
 		for (const auto& vect : m_DataVectors) {
-			if (vect.m_CountVar == name) {
-				value = vect.m_SizeInts;
+			if (vect.p_CountVar == name) {
+				value = vect.p_NumIntsPerItem * vect.p_NumItems;
 				return;
 			}
-			if (vect.m_NumVar == name) {
-				value = vect.m_NumItems;
+			if (vect.p_NumVar == name) {
+				value = vect.p_NumItems;
 				return;
 			}
-			if (vect.m_OffsetVar == name) {
+			if (vect.p_OffsetVar == name) {
 				value = offset;
 				return;
 			}
-			offset += vect.m_SizeInts;
+			offset += vect.p_NumIntsPerItem * vect.p_NumItems;
 		}
 	};
 
@@ -631,11 +626,11 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 
 		// allocate some space for vectors on the control buffer and copy data over
 		for (const auto& data_vect : m_DataVectors) {
-			int data_size = data_vect.m_SizeInts;
+			int data_size = data_vect.p_NumIntsPerItem * data_vect.p_NumItems;
 			int offset = control_size;
 			control_size += data_size;
 			values.resize(control_size);
-			memcpy((unsigned char*)&(values[offset]), data_vect.m_Data, sizeof(int) * data_size);
+			memcpy((unsigned char*)&(values[offset]), data_vect.p_Data, sizeof(int) * data_size);
 		}
 
 		control_ssbo->EnsureSizeBytes(control_size * sizeof(int), false);

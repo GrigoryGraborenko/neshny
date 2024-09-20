@@ -281,11 +281,9 @@ namespace Test {
 				.Prepare();
 
 		};
-		mod_entity()
-			->WithDataVector("DataItem", data_items)
-			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-				results.GetValue("uCheckVal", uCheckVal);
-			}).Wait();
+		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			results.GetValue("uCheckVal", uCheckVal);
+		}).Wait();
 #endif
 
 		int parent_index = 0;
@@ -339,11 +337,9 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 1;
 		uniform.p_Value = float(data_items.size());
-		mod_entity()
-			->WithDataVector("DataItem", data_items)
-			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-				results.GetValue("uCheckVal", uCheckVal);
-			}).Wait();
+		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			results.GetValue("uCheckVal", uCheckVal);
+		}).Wait();
 
 		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
@@ -351,8 +347,7 @@ namespace Test {
 			.AddEntity(entities)
 			.SetUniform(uniform)
 			.Prepare()
-			->WithDataVector("DataItem", data_items)
-			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
@@ -399,11 +394,9 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 2;
 		uniform.p_Value = div_val;
-		mod_entity()
-			->WithDataVector("DataItem", data_items)
-			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-				results.GetValue("uCheckVal", uCheckVal);
-			}).Wait();
+		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			results.GetValue("uCheckVal", uCheckVal);
+		}).Wait();
 #endif
 
 		if(!moving_compact_mode) {
@@ -454,7 +447,7 @@ namespace Test {
 #ifdef NESHNY_GL
 		entities.ExtractMultiple(gpu_values, entities.GetCount());
 #else
-		entities.ExtractMultiple(gpu_values, initial_count);
+		entities.ExtractMultiple(gpu_values, expected.size());
 #endif
 
 		CompareEntities("After adding in new values", expected, gpu_values);
