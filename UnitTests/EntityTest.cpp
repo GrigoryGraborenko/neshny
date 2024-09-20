@@ -24,7 +24,7 @@ namespace Test {
 	struct GPUThing {
 		static GPUThing Init(int i) {
 			return GPUThing{
-				-1
+				i
 				,i
 				,i * 0.001f
 				,Neshny::fVec2(i * 1.5, i * 2.5)
@@ -274,7 +274,7 @@ namespace Test {
 			return Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
 				.AddCode("#define CREATE_OTHER")
 				.AddInputOutputVar("uCheckVal")
-				.AddDataVector<DataItem>("DataItem")
+				.AddDataVector("DataItem", data_items)
 				.AddCreatableEntity(other_entities)
 				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 				.SetUniform(uniform)
@@ -347,7 +347,7 @@ namespace Test {
 
 		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
-			.AddDataVector<DataItem>("DataItem")
+			.AddDataVector("DataItem", data_items)
 			.AddEntity(entities)
 			.SetUniform(uniform)
 			.Prepare()

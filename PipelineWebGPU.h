@@ -147,7 +147,7 @@ public:
 	Prepared*					Prepare				( void );
 
 	template <class T>
-	PipelineStage& AddDataVector(std::string_view name) {
+	PipelineStage& AddDataVector(std::string_view name, const std::vector<T>& items) {
 		int ints_per = sizeof(T) / sizeof(int);
 		m_DataVectors.push_back({ std::string(name), ints_per });
 		AddedDataVector& ref = m_DataVectors.back();
