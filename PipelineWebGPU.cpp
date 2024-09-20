@@ -547,9 +547,11 @@ PipelineStage::Prepared::~Prepared(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
+PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
-	bool compute = m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
+	PipelineStage::Prepared* prepared = Prepare();
+
+	bool compute = prepared->m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 
 	if (!compute && !rtt) {
@@ -564,34 +566,34 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 	}
 
 	int rand_seed_val = 0;
-	if (m_UsingRandom) {
+	if (prepared->m_UsingRandom) {
 		rand_seed_val = rand();
 		variables.push_back({ "ioRandSeed", rand_seed_val });
 	}
 
-	bool previously_using_temp_frame = m_TemporaryFrame.get();
-	m_TemporaryFrame = nullptr;
+	bool previously_using_temp_frame = prepared->m_TemporaryFrame.get();
+	prepared->m_TemporaryFrame = nullptr;
 	if (!compute && m_Entity) {
 		int time_slider = Core::GetInterfaceData().p_BufferView.p_TimeSlider;
 		if (time_slider > 0) {
-			m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, iterations);
+			prepared->m_TemporaryFrame = BufferViewer::GetStoredFrameAt(m_Entity->GetName(), Core::GetTicks() - time_slider, iterations);
 		}
 	}
 
 	for(auto& pair: m_Entities) {
 		if (pair.p_Entity && pair.p_Entity->IsDoubleBuffering()) {
-			m_Pipeline->ReplaceBuffer(*pair.p_Entity->GetOuputSSBO(), *pair.p_Entity->GetSSBO());
+			prepared->m_Pipeline->ReplaceBuffer(*pair.p_Entity->GetOuputSSBO(), *pair.p_Entity->GetSSBO());
 		}
 	}
 
-	auto fill_var_data = [this, &variables] (std::string_view name, int& value) {
+	auto fill_var_data = [this, prepared, &variables] (std::string_view name, int& value) {
 		for (const auto& var: variables) {
 			if (var.first == name) {
 				value = var.second;
 				return;
 			}
 		}
-		int offset = m_VarNames.size();
+		int offset = prepared->m_VarNames.size();
 		for (const auto& vect : m_DataVectors) {
 			if (vect.p_CountVar == name) {
 				value = vect.p_NumIntsPerItem * vect.p_NumItems;
@@ -610,12 +612,12 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 	};
 
 	int death_count_index = -1;
-	std::vector<int> var_vals(m_VarNames.size(), 0);
-	for (int i = 0; i < m_VarNames.size(); i++) {
-		if (m_VarNames[i] == "ioEntityDeaths") {
+	std::vector<int> var_vals(prepared->m_VarNames.size(), 0);
+	for (int i = 0; i < prepared->m_VarNames.size(); i++) {
+		if (prepared->m_VarNames[i] == "ioEntityDeaths") {
 			death_count_index = i;
 		}
-		fill_var_data(m_VarNames[i], var_vals[i]);
+		fill_var_data(prepared->m_VarNames[i], var_vals[i]);
 	}
 
 	SSBO* control_ssbo = m_Entity ? m_Entity->GetControlSSBO() : m_ControlSSBO;
@@ -638,17 +640,17 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 	}
 
 	if (compute) {
-		m_Pipeline->Compute(iterations);
+		prepared->m_Pipeline->Compute(iterations);
 	} else {
 		if (!m_Buffer) {
 			throw std::invalid_argument("Render buffer not found");
 		}
-		if (m_TemporaryFrame.get()) {
-			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_TemporaryFrame.get());
+		if (prepared->m_TemporaryFrame.get()) {
+			prepared->m_Pipeline->ReplaceBuffer(prepared->m_EntityBufferIndex, *prepared->m_TemporaryFrame.get());
 		} else if (m_Entity && (m_Entity->IsDoubleBuffering() || previously_using_temp_frame)) {
-			m_Pipeline->ReplaceBuffer(m_EntityBufferIndex, *m_Entity->GetSSBO());
+			prepared->m_Pipeline->ReplaceBuffer(prepared->m_EntityBufferIndex, *m_Entity->GetSSBO());
 		}
-		rtt->Render(m_Pipeline, iterations);
+		rtt->Render(prepared->m_Pipeline, iterations);
 	}
 	if (entity_processing) {
 		m_Entity->QueueInfoRead();
@@ -663,8 +665,8 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 
 	if (entity_processing && m_Entity->IsDoubleBuffering()) {
 		WebGPUBuffer::CopyBufferToBuffer(m_Entity->GetSSBO()->Get(), m_Entity->GetOuputSSBO()->Get(), 0, 0, sizeof(EntityInfo));
-		m_Pipeline->ReplaceBuffer(*m_Entity->GetOuputSSBO(), *m_Entity->GetSSBO());
-		m_Pipeline->ReplaceBuffer(*m_Entity->GetSSBO(), *m_Entity->GetOuputSSBO());
+		prepared->m_Pipeline->ReplaceBuffer(*m_Entity->GetOuputSSBO(), *m_Entity->GetSSBO());
+		prepared->m_Pipeline->ReplaceBuffer(*m_Entity->GetSSBO(), *m_Entity->GetOuputSSBO());
 		m_Entity->SwapInputOutputSSBOs();
 	}
 
@@ -678,8 +680,8 @@ PipelineStage::AsyncOutputResults PipelineStage::Prepared::RunInternal(std::vect
 	}
 #endif
 
-	if (control_ssbo && m_ReadRequired) {
-		control_ssbo->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
+	if (control_ssbo && prepared->m_ReadRequired) {
+		control_ssbo->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = prepared->m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
 			OutputResults* results = new OutputResults();
 			int* int_data = (int*)data;
 			for (int i = 0; i < var_names.size(); i++) {
@@ -778,7 +780,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		.AddCode("#define PHASE_INDEX")
 		.AddCode(main_func)
 		.SetUniform(uniform)
-		.Prepare()->Run();
+		.Run();
 
 	for (int i = 0; i < 2; i++) {
 		std::vector<std::pair<std::string, int>> variables;
@@ -791,7 +793,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 			.AddCode(main_func)
 			.AddInputVar("AllocationCount")
 			.SetUniform(uniform)
-			.Prepare()->Run(std::move(variables), std::nullopt);
+			.Run(std::move(variables), std::nullopt);
 	}
 
 	Neshny::PipelineStage::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)
@@ -800,7 +802,7 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		.AddCode("#define PHASE_FILL")
 		.AddCode(main_func)
 		.SetUniform(uniform)
-		.Prepare()->Run();
+		.Run();
 
 	// gets used by the entity run that uses the buffer
 	m_Uniform.SetSingleValue(0, uniform);

@@ -270,20 +270,19 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
-		auto mod_entity = [&] () -> Neshny::PipelineStage::Prepared* {
-			return Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
+		auto mod_entity_run = [&] () {
+			Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
 				.AddCode("#define CREATE_OTHER")
 				.AddInputOutputVar("uCheckVal")
 				.AddDataVector("DataItem", data_items)
 				.AddCreatableEntity(other_entities)
 				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 				.SetUniform(uniform)
-				.Prepare();
-
+				.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+					results.GetValue("uCheckVal", uCheckVal);
+				}).Wait();
 		};
-		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-			results.GetValue("uCheckVal", uCheckVal);
-		}).Wait();
+		mod_entity_run();
 #endif
 
 		int parent_index = 0;
@@ -337,17 +336,14 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 1;
 		uniform.p_Value = float(data_items.size());
-		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-			results.GetValue("uCheckVal", uCheckVal);
-		}).Wait();
+		mod_entity_run();
 
 		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal")
 			.AddDataVector("DataItem", data_items)
 			.AddEntity(entities)
 			.SetUniform(uniform)
-			.Prepare()
-			->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
@@ -394,9 +390,7 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		uniform.p_Mode = 2;
 		uniform.p_Value = div_val;
-		mod_entity()->Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
-			results.GetValue("uCheckVal", uCheckVal);
-		}).Wait();
+		mod_entity_run();
 #endif
 
 		if(!moving_compact_mode) {
@@ -542,7 +536,7 @@ namespace Test {
 			.AddEntity(prey_entities, &cache)
 			.AddCode(shader_defines)
 			.SetUniform(uniform)
-			.Prepare()->Run();
+			.Run();
 #endif
 
 		std::vector<GPUOther> gpu_values;
