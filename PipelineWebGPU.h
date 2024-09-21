@@ -93,7 +93,7 @@ public:
 		return *this;
 	}
 
-	void						Render			( RTT& rtt, int iterations = 1 ) { RunInternal(iterations, &rtt, std::nullopt); }
+	void						Render			( RTT* rtt, int iterations = 1 ) { RunInternal(iterations, rtt, std::nullopt); }
 	AsyncOutputResults			Run				( std::optional<std::function<void(const OutputResults& results)>>&& callback = std::nullopt, int iterations = 1 ) { return RunInternal(iterations, nullptr, std::move(callback)); }
 
 	inline iVec3				GetLocalSize	( void ) const { return m_LocalSize; }

@@ -1375,6 +1375,16 @@ void Core::WaitForCommandsToFinish(void) {
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void Core::UnloadPipeline(std::string_view identifier) {
+	for (auto iter = m_PreparedPipelines.begin(); iter != m_PreparedPipelines.end(); iter++) {
+		if (iter->get()->GetIdentifier() == identifier) {
+			m_PreparedPipelines.erase(iter); // not a big deal that it's linear time
+			return;
+		}
+	}
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

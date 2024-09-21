@@ -552,6 +552,11 @@ public:
 	static void							WaitForCommandsToFinish		( void );
 	inline const auto&					GetPreparedPipelines		( void ) { return m_PreparedPipelines; }
 	inline void							CachePreparedPipeline		( std::shared_ptr<CachedPipeline> pipeline ) { m_PreparedPipelines.push_back({ pipeline }); }
+	void								UnloadPipeline				( std::string_view identifier );
+	inline void							UnloadAllPipelines			( void ) { m_PreparedPipelines.clear(); }
+	inline void							UnloadAllPipelinesShaders	( void ) { UnloadAllShaders(); UnloadAllPipelines(); }
+	inline bool							GetPipelinePrepareOnlyMode	( void ) { return m_PrepareOnlyMode; }
+	inline void							SetPipelinePrepareOnlyMode	( bool prep_only ) { m_PrepareOnlyMode = prep_only; }
 #endif
 
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -789,6 +794,7 @@ private:
 	std::vector<std::shared_ptr<CachedPipeline>>	m_PreparedPipelines;
 	std::map<std::string, WebGPURenderBuffer*>		m_Buffers;
 	std::vector<WebGPUSampler*>						m_Samplers;
+	bool											m_PrepareOnlyMode = false;
 	IEngine*										m_Engine = nullptr;
 	WGPUDevice										m_Device = nullptr;
 	WGPUQueue										m_Queue = nullptr;

@@ -537,6 +537,9 @@ std::shared_ptr<Core::CachedPipeline> PipelineStage::Prepare(void) {
 PipelineStage::AsyncOutputResults PipelineStage::RunInternal(int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	auto prepared = Prepare();
+	if (Core::Singleton().GetPipelinePrepareOnlyMode()) {
+		return AsyncOutputResults::Empty();
+	}
 
 	bool compute = prepared->m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
