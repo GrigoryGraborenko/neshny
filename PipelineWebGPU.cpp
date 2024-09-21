@@ -123,24 +123,23 @@ std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_v
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::Prepared* PipelineStage::GetCachedPipeline(void) {
+std::shared_ptr<Core::CachedPipeline> PipelineStage::GetCachedPipeline(void) {
 	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
 	for (auto& existing : existing_pipelines) {
-		Prepared* ptr = (Prepared*)existing.p_Pipeline;
-		if (ptr->m_Identifier == m_Identifier) {
-			return ptr;
+		if (existing->m_Identifier == m_Identifier) {
+			return existing;
 		}
 	}
 	return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::Prepared* PipelineStage::Prepare(void) {
+std::shared_ptr<Core::CachedPipeline> PipelineStage::Prepare(void) {
 
-	Prepared* result = GetCachedPipeline();
+	auto result = GetCachedPipeline();
 	bool create_new = false;
 	if (!result) {
-		result = new Prepared();
+		result = std::make_shared<Core::CachedPipeline>();
 		result->m_Identifier = m_Identifier;
 		result->m_Pipeline = new WebGPUPipeline();
 		create_new = true;
@@ -535,15 +534,9 @@ PipelineStage::Prepared* PipelineStage::Prepare(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::Prepared::~Prepared(void) {
-	delete m_Pipeline;
-	delete m_UniformBuffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
-	PipelineStage::Prepared* prepared = Prepare();
+	auto prepared = Prepare();
 
 	bool compute = prepared->m_Pipeline->GetType() == WebGPUPipeline::Type::COMPUTE;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);

@@ -514,8 +514,22 @@ public:
 		D3D12, Metal, Vulkan, OpenGL, OpenGLES
 	};
 
-	struct CachedPipeline {
-		void* p_Pipeline;
+	class CachedPipeline {
+		std::string						m_Identifier;
+		WebGPUPipeline*					m_Pipeline = nullptr;
+		WebGPUBuffer*					m_UniformBuffer = nullptr;
+		int								m_EntityBufferIndex = -1;
+
+		std::vector<std::string>		m_VarNames;
+		bool							m_UsingRandom;
+		bool							m_ReadRequired = false;
+		std::shared_ptr<SSBO>			m_TemporaryFrame; // used for time travel feature
+
+		friend class PipelineStage;
+	public:
+										~CachedPipeline	( void ) { delete m_Pipeline; delete m_UniformBuffer; }
+
+		std::string_view				GetIdentifier	( void) const { return m_Identifier; }
 	};
 
 	void								SDLLoopInner				( void );
@@ -537,7 +551,7 @@ public:
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
 	static void							WaitForCommandsToFinish		( void );
 	inline const auto&					GetPreparedPipelines		( void ) { return m_PreparedPipelines; }
-	inline void							CachePreparedPipeline		( void* pipeline ) { m_PreparedPipelines.push_back({ pipeline }); }
+	inline void							CachePreparedPipeline		( std::shared_ptr<CachedPipeline> pipeline ) { m_PreparedPipelines.push_back({ pipeline }); }
 #endif
 
 	template<class T, typename P = typename T::Params, typename = typename std::enable_if<std::is_base_of<Resource, T>::value>::type>
@@ -767,25 +781,25 @@ private:
 	#ifdef SDL_h_
 		std::vector<SDL_GLContext>			m_Contexts;
 	#endif
-	std::vector<ShaderGroup>					m_ShaderGroups;
-	std::vector<ShaderGroup>					m_ComputeShaderGroups;
-	std::map<std::string, GLBuffer*>			m_Buffers;
+	std::vector<ShaderGroup>						m_ShaderGroups;
+	std::vector<ShaderGroup>						m_ComputeShaderGroups;
+	std::map<std::string, GLBuffer*>				m_Buffers;
 #elif defined(NESHNY_WEBGPU)
-	std::vector<ShaderGroup>					m_ShaderGroups;
-	std::vector<CachedPipeline>					m_PreparedPipelines;
-	std::map<std::string, WebGPURenderBuffer*>	m_Buffers;
-	std::vector<WebGPUSampler*>					m_Samplers;
-	IEngine*									m_Engine = nullptr;
-	WGPUDevice									m_Device = nullptr;
-	WGPUQueue									m_Queue = nullptr;
-	WGPUSurface									m_Surface = nullptr;
-	WGPUSwapChain								m_SwapChain = nullptr;
-	WGPULimits									m_Limits;
-	int											m_CurrentWidth = -1;
-	int											m_CurrentHeight = -1;
-	int											m_RequestedWidth = -1;
-	int											m_RequestedHeight = -1;
-	WebGPUTexture*								m_DepthTex = nullptr;
+	std::vector<ShaderGroup>						m_ShaderGroups;
+	std::vector<std::shared_ptr<CachedPipeline>>	m_PreparedPipelines;
+	std::map<std::string, WebGPURenderBuffer*>		m_Buffers;
+	std::vector<WebGPUSampler*>						m_Samplers;
+	IEngine*										m_Engine = nullptr;
+	WGPUDevice										m_Device = nullptr;
+	WGPUQueue										m_Queue = nullptr;
+	WGPUSurface										m_Surface = nullptr;
+	WGPUSwapChain									m_SwapChain = nullptr;
+	WGPULimits										m_Limits;
+	int												m_CurrentWidth = -1;
+	int												m_CurrentHeight = -1;
+	int												m_RequestedWidth = -1;
+	int												m_RequestedHeight = -1;
+	WebGPUTexture*									m_DepthTex = nullptr;
 #endif
 
 };

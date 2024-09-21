@@ -952,6 +952,10 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 			lines.push_back(std::string(line.data(), line.size()));
 		}
 
+		//if (ImGui::Button("Copy To Clipboard")) {
+		//	ImGui::SetClipboardText(shader_source.data());
+		//}
+
 		const auto& errors = shader->GetErrors();
 		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
 		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);
@@ -1056,10 +1060,9 @@ void PipelineViewer::RenderImGui(InterfacePipelineViewer& data) {
 		ImGui::TableHeadersRow();
 
 		for (const auto& pipeline_info : existing_pipelines) {
-			PipelineStage::Prepared* prepared = (PipelineStage::Prepared*)pipeline_info.p_Pipeline;
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text("%s", prepared->GetIdentifier().data());
+			ImGui::Text("%s", pipeline_info->GetIdentifier().data());
 		}
 
 		ImGui::EndTable();

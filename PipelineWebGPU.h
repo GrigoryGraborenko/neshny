@@ -25,48 +25,12 @@ public:
 		,READ_WRITE_ATOMIC
 	};
 
-	struct AddedEntity {
-		GPUEntity*	p_Entity;
-		bool		p_Creatable = false;
-	};
-
 	struct OutputResults {
 		bool GetValue(std::string_view name, int& value) const;
 		std::vector<std::pair<std::string, int>> p_Results;
 	};
 
-	struct AddedDataVector {
-		std::string				p_Name;
-		int						p_NumIntsPerItem = 0;
-		unsigned char*			p_Data = nullptr;
-		int						p_NumItems = 0;
-		std::string				p_CountVar;
-		std::string				p_OffsetVar;
-		std::string				p_NumVar;
-		std::vector<MemberSpec>	p_Members;
-	};
-
 	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
-
-	class Prepared {
-		std::string						m_Identifier;
-		WebGPUPipeline*					m_Pipeline = nullptr;
-		WebGPUBuffer*					m_UniformBuffer = nullptr;
-		int								m_EntityBufferIndex = -1;
-
-		std::vector<std::string>		m_VarNames;
-		bool							m_UsingRandom;
-		bool							m_ReadRequired = false;
-		std::shared_ptr<SSBO>			m_TemporaryFrame; // used for time travel feature
-
-		friend class PipelineStage;
-	public:
-
-									~Prepared	( void );
-
-		std::string_view			GetIdentifier ( void) const { return m_Identifier; }
-
-	};
 
 	static PipelineStage ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
 		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, identifier);
@@ -84,8 +48,6 @@ public:
 		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, identifier, control_ssbo, iterations);
 	}
 
-								~PipelineStage		( void ) {}
-
 	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
 	PipelineStage&				AddBuffer			( std::string_view name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, std::string(name), array_type, access }); return *this; }
@@ -99,6 +61,7 @@ public:
 
 	template <class T>
 	PipelineStage&				AddStructBuffer		( std::string_view name, std::string_view struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
+
 		std::vector<MemberSpec> members;
 		Serialiser<T> serializeFunc(members);
 		meta::doForAllMembers<T>(serializeFunc);
@@ -108,6 +71,7 @@ public:
 
 	template <class T>
 	PipelineStage&				SetUniform			( const T& uniform ) {
+
 		m_Uniform.p_Spec.clear();
 		Serialiser<T> serializeFunc(m_Uniform.p_Spec);
 		meta::doForAllMembers<T>(serializeFunc);
@@ -116,7 +80,8 @@ public:
 	}
 
 	template <class T>
-	PipelineStage& AddDataVector(std::string_view name, const std::vector<T>& items) {
+	PipelineStage&				AddDataVector		( std::string_view name, const std::vector<T>& items ) {
+
 		int ints_per = sizeof(T) / sizeof(int);
 		m_DataVectors.push_back({
 			std::string(name), ints_per, (unsigned char*)items.data(), (int)items.size(),
@@ -136,11 +101,15 @@ public:
 	AsyncOutputResults			Run				( int iterations ) { return RunInternal({}, iterations, nullptr, std::nullopt); }
 	AsyncOutputResults			Run				( std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal(std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
 
-	inline iVec3				GetLocalSize		( void ) const { return m_LocalSize; }
-	inline void					SetLocalSize		( int x, int y, int z ) { m_LocalSize = iVec3(x, y, z); }
+	inline iVec3				GetLocalSize	( void ) const { return m_LocalSize; }
+	inline void					SetLocalSize	( int x, int y, int z ) { m_LocalSize = iVec3(x, y, z); }
 
 protected:
 
+	struct AddedEntity {
+		GPUEntity*					p_Entity;
+		bool						p_Creatable = false;
+	};
 	struct AddedSSBO {
 		SSBO&						p_Buffer;
 		std::string					p_Name;
@@ -171,44 +140,54 @@ protected:
 		std::vector<MemberSpec>		p_Spec;
 		std::span<unsigned char>	p_Data;
 	};
+	struct AddedDataVector {
+		std::string				p_Name;
+		int						p_NumIntsPerItem = 0;
+		unsigned char*			p_Data = nullptr;
+		int						p_NumItems = 0;
+		std::string				p_CountVar;
+		std::string				p_OffsetVar;
+		std::string				p_NumVar;
+		std::vector<MemberSpec>	p_Members;
+	};
 
-									PipelineStage			(	RunType type,
-																GPUEntity* entity,
-																RenderableBuffer* buffer, class BaseCache* cache,
-																std::string_view shader_name, bool replace_main,
-																std::string_view identifer,
-																SSBO* control_ssbo = nullptr, int iterations = 0,
-																WebGPUPipeline::RenderParams render_params = {} );
+											PipelineStage			(	RunType type,
+																		GPUEntity* entity,
+																		RenderableBuffer* buffer, class BaseCache* cache,
+																		std::string_view shader_name, bool replace_main,
+																		std::string_view identifer,
+																		SSBO* control_ssbo = nullptr, int iterations = 0,
+																		WebGPUPipeline::RenderParams render_params = {} );
 
-	static std::string				GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
-	Prepared*						GetCachedPipeline		( void );
-	Prepared*						Prepare					( void );
-	AsyncOutputResults				RunInternal				( std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
+	static std::string						GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
+	std::shared_ptr<Core::CachedPipeline>	GetCachedPipeline		( void );
+	std::shared_ptr<Core::CachedPipeline>	Prepare					( void );
+	AsyncOutputResults						RunInternal				( std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 
 
-	std::string						m_Identifier;
-	RunType							m_RunType;
-	GPUEntity*						m_Entity = nullptr;
-	RenderableBuffer*				m_Buffer = nullptr;
-	BaseCache*						m_Cache = nullptr;
-	std::string						m_ShaderName;
-	bool							m_ReplaceMain = false;
-	iVec3							m_LocalSize = iVec3(8, 8, 8);
-	int								m_Iterations = 0;
-	SSBO*							m_ControlSSBO = nullptr;
-	std::string						m_ImmediateExtraCode;
-	std::string						m_ExtraCode;
-	WebGPUPipeline::RenderParams	m_RenderParams;
+	std::string								m_Identifier;
+	RunType									m_RunType;
+	GPUEntity*								m_Entity = nullptr;
+	RenderableBuffer*						m_Buffer = nullptr;
+	BaseCache*								m_Cache = nullptr;
+	std::string								m_ShaderName;
+	bool									m_ReplaceMain = false;
+	iVec3									m_LocalSize = iVec3(8, 8, 8);
+	int										m_Iterations = 0;
+	SSBO*									m_ControlSSBO = nullptr;
+	std::string								m_ImmediateExtraCode;
+	std::string								m_ExtraCode;
+	WebGPUPipeline::RenderParams			m_RenderParams;
 
-	AddedUniform					m_Uniform;
-	std::vector<BaseCache*>			m_CachesToBind;
-	std::vector<AddedEntity>		m_Entities;
-	std::vector<AddedSSBO>			m_SSBOs;
-	std::vector<AddedInOut>			m_Vars;
-	std::vector<AddedTexture>		m_Textures;
-	std::vector<AddedSampler>		m_Samplers;
-	std::vector<AddedStructBuffer>	m_StructBuffers;
-	std::vector<AddedDataVector>	m_DataVectors;
+	AddedUniform							m_Uniform;
+	std::vector<BaseCache*>					m_CachesToBind;
+	std::vector<AddedEntity>				m_Entities;
+	std::vector<AddedSSBO>					m_SSBOs;
+	std::vector<AddedInOut>					m_Vars;
+	std::vector<AddedTexture>				m_Textures;
+	std::vector<AddedSampler>				m_Samplers;
+	std::vector<AddedStructBuffer>			m_StructBuffers;
+	std::vector<AddedDataVector>			m_DataVectors;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
