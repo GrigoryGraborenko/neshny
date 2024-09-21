@@ -534,7 +534,7 @@ std::shared_ptr<Core::CachedPipeline> PipelineStage::Prepare(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
+PipelineStage::AsyncOutputResults PipelineStage::RunInternal(int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	auto prepared = Prepare();
 
@@ -547,15 +547,6 @@ PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pa
 
 	if (m_Entity) {
 		iterations = m_Entity->GetMaxCount();
-	}
-	if (entity_processing) {
-		variables.push_back({ "ioEntityDeaths", 0 });
-	}
-
-	int rand_seed_val = 0;
-	if (prepared->m_UsingRandom) {
-		rand_seed_val = rand();
-		variables.push_back({ "ioRandSeed", rand_seed_val });
 	}
 
 	bool previously_using_temp_frame = prepared->m_TemporaryFrame.get();
@@ -573,10 +564,10 @@ PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pa
 		}
 	}
 
-	auto fill_var_data = [this, prepared, &variables] (std::string_view name, int& value) {
-		for (const auto& var: variables) {
-			if (var.first == name) {
-				value = var.second;
+	auto fill_var_data = [this, prepared](std::string_view name, int& value) {
+		for (const auto& var: m_Vars) {
+			if (var.p_Name== name) {
+				value = var.p_Input;
 				return;
 			}
 		}
@@ -601,10 +592,18 @@ PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pa
 	int death_count_index = -1;
 	std::vector<int> var_vals(prepared->m_VarNames.size(), 0);
 	for (int i = 0; i < prepared->m_VarNames.size(); i++) {
-		if (prepared->m_VarNames[i] == "ioEntityDeaths") {
+		std::string_view varname = prepared->m_VarNames[i];
+		if (entity_processing && (varname == "ioEntityDeaths")) {
 			death_count_index = i;
+			var_vals[i] = 0;
+			continue;
 		}
-		fill_var_data(prepared->m_VarNames[i], var_vals[i]);
+		if (prepared->m_UsingRandom && (varname == "ioRandSeed")) {
+			var_vals[i] = RandomInt(0, std::numeric_limits<int>::max());
+			continue;
+		}
+
+		fill_var_data(varname, var_vals[i]);
 	}
 
 	SSBO* control_ssbo = m_Entity ? m_Entity->GetControlSSBO() : m_ControlSSBO;
@@ -668,7 +667,7 @@ PipelineStage::AsyncOutputResults PipelineStage::RunInternal(std::vector<std::pa
 #endif
 
 	if (control_ssbo && prepared->m_ReadRequired) {
-		control_ssbo->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = prepared->m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
+		return control_ssbo->Read<OutputResults>(0, (int)(var_vals.size() * sizeof(int)), [var_names = prepared->m_VarNames, result_callback = std::move(callback)](unsigned char* data, int size, AsyncOutputResults token) -> std::shared_ptr<OutputResults> {
 			OutputResults* results = new OutputResults();
 			int* int_data = (int*)data;
 			for (int i = 0; i < var_names.size(); i++) {
@@ -770,17 +769,13 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		.Run();
 
 	for (int i = 0; i < 2; i++) {
-		std::vector<std::pair<std::string, int>> variables;
-		if (i == 0) {
-			variables.push_back({ "AllocationCount", 0 });
-		}
 		Neshny::PipelineStage::IterateEntity(std::format("{}:ALLOC", base_id), m_Entity, "GridCache2D", true)
 			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
 			.AddCode("#define PHASE_ALLOCATE")
 			.AddCode(main_func)
-			.AddInputVar("AllocationCount")
+			.AddInputVar("AllocationCount", 0)
 			.SetUniform(uniform)
-			.Run(std::move(variables), std::nullopt);
+			.Run();
 	}
 
 	Neshny::PipelineStage::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)

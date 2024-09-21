@@ -198,7 +198,6 @@ namespace Test {
 			if (expected[i].p_Id < 0) {
 				break;
 			}
-			//Expect(msg_prefix + " -> Item ID mismatch", expected[i].p_Id == actual[i].p_Id);
 			Expect(msg_prefix + " -> Item mismatch", expected[i].CloseEnough(actual[i]));
 		}
 	}
@@ -273,16 +272,19 @@ namespace Test {
 		auto mod_entity_run = [&] () {
 			Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
 				.AddCode("#define CREATE_OTHER")
-				.AddInputOutputVar("uCheckVal")
+				.AddInputOutputVar("uCheckVal", uCheckVal)
 				.AddDataVector("DataItem", data_items)
 				.AddCreatableEntity(other_entities)
 				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
 				.SetUniform(uniform)
-				.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				.Run([&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 					results.GetValue("uCheckVal", uCheckVal);
 				}).Wait();
 		};
 		mod_entity_run();
+
+		ExpectEqual("Checkval should match after first run", uCheckVal, initial_count);
+
 #endif
 
 		int parent_index = 0;
@@ -338,14 +340,18 @@ namespace Test {
 		uniform.p_Value = float(data_items.size());
 		mod_entity_run();
 
+		ExpectEqual("Checkval should match after second run", uCheckVal, initial_count * 2);
+
 		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
-			.AddInputOutputVar("uCheckVal")
+			.AddInputOutputVar("uCheckVal", uCheckVal)
 			.AddDataVector("DataItem", data_items)
 			.AddEntity(entities)
 			.SetUniform(uniform)
-			.Run({ { "uCheckVal", uCheckVal } }, [&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run([&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
+
+		ExpectEqual("Checkval should stay unchanged because OtherMain gets called not ThingMain", uCheckVal, initial_count * 2);
 
 #endif
 
@@ -391,6 +397,8 @@ namespace Test {
 		uniform.p_Mode = 2;
 		uniform.p_Value = div_val;
 		mod_entity_run();
+
+		ExpectEqual("Checkval should match after third run", uCheckVal, initial_count * 3);
 #endif
 
 		if(!moving_compact_mode) {

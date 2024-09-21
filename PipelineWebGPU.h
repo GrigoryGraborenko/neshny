@@ -54,8 +54,8 @@ public:
 	PipelineStage&				AddCode				( std::string_view code ) { m_ExtraCode = std::format("{}{}\n", m_ExtraCode, code); return *this; }
 	PipelineStage&				AddCodeAtStart		( std::string_view code ) { m_ImmediateExtraCode = std::format("{}{}\n", m_ImmediateExtraCode, code); return *this; }
 
-	PipelineStage&				AddInputOutputVar	( std::string_view name ) { m_Vars.push_back({ std::string(name), true }); return *this; }
-	PipelineStage&				AddInputVar			( std::string_view name ) { m_Vars.push_back({ std::string(name), false }); return *this; }
+	PipelineStage&				AddInputOutputVar	( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), true, value }); return *this; }
+	PipelineStage&				AddInputVar			( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), false, value }); return *this; }
 	PipelineStage&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
 	PipelineStage&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
 
@@ -93,13 +93,8 @@ public:
 		return *this;
 	}
 
-	void						Render			( RTT& rtt ) { RunInternal({}, 1, &rtt, std::nullopt); }
-	void						Render			( RTT& rtt, int iterations ) { RunInternal({}, iterations, &rtt, std::nullopt); }
-	void						Render			( RTT& rtt, std::vector<std::pair<std::string, int>>&& variables ) { RunInternal(std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, &rtt, std::nullopt); }
-
-	AsyncOutputResults			Run				( void ) { return RunInternal({}, 1, nullptr, std::nullopt); }
-	AsyncOutputResults			Run				( int iterations ) { return RunInternal({}, iterations, nullptr, std::nullopt); }
-	AsyncOutputResults			Run				( std::vector<std::pair<std::string, int>>&& variables, std::optional<std::function<void(const OutputResults& results)>>&& callback ) { return RunInternal(std::forward<std::vector<std::pair<std::string, int>>>(variables), 1, nullptr, std::move(callback)); }
+	void						Render			( RTT& rtt, int iterations = 1 ) { RunInternal(iterations, &rtt, std::nullopt); }
+	AsyncOutputResults			Run				( std::optional<std::function<void(const OutputResults& results)>>&& callback = std::nullopt, int iterations = 1 ) { return RunInternal(iterations, nullptr, std::move(callback)); }
 
 	inline iVec3				GetLocalSize	( void ) const { return m_LocalSize; }
 	inline void					SetLocalSize	( int x, int y, int z ) { m_LocalSize = iVec3(x, y, z); }
@@ -127,6 +122,7 @@ protected:
 	struct AddedInOut {
 		std::string					p_Name;
 		bool						p_ReadBack = true;
+		int							p_Input;
 	};
 	struct AddedTexture {
 		std::string					p_Name;
@@ -162,7 +158,7 @@ protected:
 	static std::string						GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
 	std::shared_ptr<Core::CachedPipeline>	GetCachedPipeline		( void );
 	std::shared_ptr<Core::CachedPipeline>	Prepare					( void );
-	AsyncOutputResults						RunInternal				( std::vector<std::pair<std::string, int>>&& variables, int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
+	AsyncOutputResults						RunInternal				( int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 
 
 	std::string								m_Identifier;
