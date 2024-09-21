@@ -258,10 +258,10 @@ namespace Test {
 
 		// add in_value to most values
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
+		Neshny::EntityPipeline::ModifyEntity(entities, "UnitTestEntity", true, { "CREATE_OTHER" })
 		.AddDataVector("DataItem", data_items)
 		.AddCreatableEntity(other_entities)
-		.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
+		.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::EntityPipeline::BufferAccess::READ_ONLY)
 		.Run([in_value](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 0);
 			glUniform1f(prog->GetUniform("uValue"), in_value);
@@ -270,14 +270,14 @@ namespace Test {
 		int uCheckVal = 0;
 		Uniform uniform{ 0, in_value };
 		auto mod_entity_run = [&] () {
-			Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
+			Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr(), entities, "UnitTestEntity", true)
 				.AddCode("#define CREATE_OTHER")
 				.AddInputOutputVar("uCheckVal", uCheckVal)
 				.AddDataVector("DataItem", data_items)
 				.AddCreatableEntity(other_entities)
-				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::PipelineStage::BufferAccess::READ_ONLY)
+				.AddBuffer("b_TestBuffer", test_buffer, Neshny::MemberSpec::T_INT, Neshny::EntityPipeline::BufferAccess::READ_ONLY)
 				.SetUniform(uniform)
-				.Run([&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+				.Run([&uCheckVal](const Neshny::EntityPipeline::OutputResults& results) {
 					results.GetValue("uCheckVal", uCheckVal);
 				}).Wait();
 		};
@@ -323,14 +323,14 @@ namespace Test {
 
 		// add in_value to most values again to check double buffering works
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		Neshny::EntityPipeline::ModifyEntity(entities, "UnitTestEntity", true)
 		.AddDataVector("DataItem", data_items)
 		.AddEntity(other_entities)
 		.Run([float_val = float(data_items.size())](Neshny::GLShader* prog) {
 			glUniform1i(prog->GetUniform("uMode"), 1);
 			glUniform1f(prog->GetUniform("uValue"), float_val);
 		});
-		Neshny::PipelineStage::ModifyEntity(other_entities, "UnitTestEntity", true, { "RUN_OTHER" })
+		Neshny::EntityPipeline::ModifyEntity(other_entities, "UnitTestEntity", true, { "RUN_OTHER" })
 		.AddDataVector("DataItem", data_items)
 		.AddEntity(entities)
 		.Run();
@@ -342,12 +342,12 @@ namespace Test {
 
 		ExpectEqual("Checkval should match after second run", uCheckVal, initial_count * 2);
 
-		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
+		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr(), other_entities, "UnitTestEntity", true)
 			.AddInputOutputVar("uCheckVal", uCheckVal)
 			.AddDataVector("DataItem", data_items)
 			.AddEntity(entities)
 			.SetUniform(uniform)
-			.Run([&uCheckVal](const Neshny::PipelineStage::OutputResults& results) {
+			.Run([&uCheckVal](const Neshny::EntityPipeline::OutputResults& results) {
 				results.GetValue("uCheckVal", uCheckVal);
 			}).Wait();
 
@@ -386,7 +386,7 @@ namespace Test {
 
 		// delete every nth item
 #if defined(NESHNY_GL)
-		Neshny::PipelineStage::ModifyEntity(entities, "UnitTestEntity", true)
+		Neshny::EntityPipeline::ModifyEntity(entities, "UnitTestEntity", true)
 		.AddDataVector("DataItem", data_items)
 		.AddEntity(other_entities)
 		.Run([div_val](Neshny::GLShader* prog) {
@@ -540,7 +540,7 @@ namespace Test {
 			shader_defines = "#define USE_CURSOR";
 		}
 		Uniform uniform{ 0, find_radius };
-		Neshny::PipelineStage::ModifyEntity(Neshny::SrcStr(), hunter_entities, "UnitTestCache", true)
+		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr(), hunter_entities, "UnitTestCache", true)
 			.AddEntity(prey_entities, &cache)
 			.AddCode(shader_defines)
 			.SetUniform(uniform)

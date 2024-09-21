@@ -313,13 +313,13 @@ namespace Test {
 		rando_ssbo.EnsureSizeBytes(num_randoms * 4);
 
 		////////////////////////////////
-		Neshny::PipelineStage::Compute(
+		Neshny::EntityPipeline::Compute(
 			"UnitTest"
 			,num_randoms
 			,&control_ssbo
 			,{ "TEST_RANDOM" }
 		)
-		.AddBuffer("RandomBuffer", rando_ssbo, Neshny::MemberSpec::T_FLOAT, Neshny::PipelineStage::BufferAccess::READ_WRITE)
+		.AddBuffer("RandomBuffer", rando_ssbo, Neshny::MemberSpec::T_FLOAT, Neshny::EntityPipeline::BufferAccess::READ_WRITE)
 		.Run();
 
 		std::vector<float> numbers;

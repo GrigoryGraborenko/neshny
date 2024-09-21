@@ -5,7 +5,7 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, std::string_view identifer, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
+EntityPipeline::EntityPipeline(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, std::string_view identifer, SSBO* control_ssbo, int iterations, WebGPUPipeline::RenderParams render_params) :
 	m_Identifier		( identifer )
 	,m_RunType			( type )
 	,m_Entity			( entity )
@@ -25,7 +25,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
+EntityPipeline& EntityPipeline::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, false });
 	if (cache) {
 		m_CachesToBind.push_back(cache);
@@ -34,7 +34,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
+EntityPipeline& EntityPipeline::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, true });
 	if (cache) {
 		m_CachesToBind.push_back(cache);
@@ -43,7 +43,7 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool PipelineStage::OutputResults::GetValue(std::string_view name, int& value) const {
+bool EntityPipeline::OutputResults::GetValue(std::string_view name, int& value) const {
 	for (const auto& result : p_Results) {
 		if (result.first == name) {
 			value = result.second;
@@ -54,7 +54,7 @@ bool PipelineStage::OutputResults::GetValue(std::string_view name, int& value) c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, bool read_only) {
+std::string EntityPipeline::GetDataVectorStructCode(const AddedDataVector& data_vect, bool read_only) {
 
 	std::vector<std::string> insertion;
 	insertion.push_back(std::format("struct {0} {{", data_vect.p_Name));
@@ -123,7 +123,7 @@ std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_v
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<Core::CachedPipeline> PipelineStage::GetCachedPipeline(void) {
+std::shared_ptr<Core::CachedPipeline> EntityPipeline::GetCachedPipeline(void) {
 	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
 	for (auto& existing : existing_pipelines) {
 		if (existing->m_Identifier == m_Identifier) {
@@ -134,7 +134,7 @@ std::shared_ptr<Core::CachedPipeline> PipelineStage::GetCachedPipeline(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<Core::CachedPipeline> PipelineStage::Prepare(void) {
+std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 
 	auto result = GetCachedPipeline();
 	bool create_new = false;
@@ -534,7 +534,7 @@ std::shared_ptr<Core::CachedPipeline> PipelineStage::Prepare(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::AsyncOutputResults PipelineStage::RunInternal(int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
+EntityPipeline::AsyncOutputResults EntityPipeline::RunInternal(int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
 	auto prepared = Prepare();
 	if (Core::Singleton().GetPipelinePrepareOnlyMode()) {
@@ -764,16 +764,16 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 		,grid_max
 	};
 
-	Neshny::PipelineStage::IterateEntity(std::format("{}:INDEX", base_id), m_Entity, "GridCache2D", true)
-		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+	Neshny::EntityPipeline::IterateEntity(std::format("{}:INDEX", base_id), m_Entity, "GridCache2D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
 		.AddCode("#define PHASE_INDEX")
 		.AddCode(main_func)
 		.SetUniform(uniform)
 		.Run();
 
 	for (int i = 0; i < 2; i++) {
-		Neshny::PipelineStage::IterateEntity(std::format("{}:ALLOC", base_id), m_Entity, "GridCache2D", true)
-			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
+		Neshny::EntityPipeline::IterateEntity(std::format("{}:ALLOC", base_id), m_Entity, "GridCache2D", true)
+			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
 			.AddCode("#define PHASE_ALLOCATE")
 			.AddCode(main_func)
 			.AddInputVar("AllocationCount", 0)
@@ -781,9 +781,9 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 			.Run();
 	}
 
-	Neshny::PipelineStage::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)
-		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE_ATOMIC)
-		.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	Neshny::EntityPipeline::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache2D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
+		.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
 		.AddCode("#define PHASE_FILL")
 		.AddCode(main_func)
 		.SetUniform(uniform)
@@ -794,14 +794,14 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Grid2DCache::Bind(PipelineStage& target_stage, bool initial_creation) {
+void Grid2DCache::Bind(EntityPipeline& target_stage, bool initial_creation) {
 
 	auto name = m_Entity.GetName();
 
-	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
-	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
 
-	target_stage.AddStructBuffer<Grid2DCacheUniform>(std::format("b_{0}GridUniform", name), std::format("{0}GridUniformStruct", name), m_Uniform, PipelineStage::BufferAccess::READ_ONLY, false);
+	target_stage.AddStructBuffer<Grid2DCacheUniform>(std::format("b_{0}GridUniform", name), std::format("{0}GridUniformStruct", name), m_Uniform, EntityPipeline::BufferAccess::READ_ONLY, false);
 
 	if (!initial_creation) {
 		return;

@@ -525,7 +525,7 @@ public:
 		bool							m_ReadRequired = false;
 		std::shared_ptr<SSBO>			m_TemporaryFrame; // used for time travel feature
 
-		friend class PipelineStage;
+		friend class EntityPipeline;
 	public:
 										~CachedPipeline	( void ) { delete m_Pipeline; delete m_UniformBuffer; }
 

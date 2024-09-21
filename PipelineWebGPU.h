@@ -7,7 +7,7 @@ namespace Neshny {
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class PipelineStage {
+class EntityPipeline {
 
 public:
 
@@ -32,35 +32,35 @@ public:
 
 	typedef WebGPUBuffer::AsyncToken<OutputResults> AsyncOutputResults;
 
-	static PipelineStage ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, identifier);
+	static EntityPipeline ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
+		return EntityPipeline(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, identifier);
 	}
-	static PipelineStage RenderEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params) {
-		return PipelineStage(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, identifier, nullptr, 0, render_params);
+	static EntityPipeline RenderEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params) {
+		return EntityPipeline(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, identifier, nullptr, 0, render_params);
 	}
-	static PipelineStage IterateEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
-		return PipelineStage(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, identifier);
+	static EntityPipeline IterateEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
+		return EntityPipeline(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, identifier);
 	}
-	static PipelineStage RenderBuffer(std::string_view identifier, std::string_view shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, SSBO* control_ssbo = nullptr) {
-		return PipelineStage(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, identifier, control_ssbo, 0, render_params);
+	static EntityPipeline RenderBuffer(std::string_view identifier, std::string_view shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, SSBO* control_ssbo = nullptr) {
+		return EntityPipeline(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, identifier, control_ssbo, 0, render_params);
 	}
-	static PipelineStage Compute(std::string_view identifier, std::string_view shader_name, int iterations, SSBO* control_ssbo) {
-		return PipelineStage(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, identifier, control_ssbo, iterations);
+	static EntityPipeline Compute(std::string_view identifier, std::string_view shader_name, int iterations, SSBO* control_ssbo) {
+		return EntityPipeline(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, identifier, control_ssbo, iterations);
 	}
 
-	PipelineStage&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
-	PipelineStage&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
-	PipelineStage&				AddBuffer			( std::string_view name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, std::string(name), array_type, access }); return *this; }
-	PipelineStage&				AddCode				( std::string_view code ) { m_ExtraCode = std::format("{}{}\n", m_ExtraCode, code); return *this; }
-	PipelineStage&				AddCodeAtStart		( std::string_view code ) { m_ImmediateExtraCode = std::format("{}{}\n", m_ImmediateExtraCode, code); return *this; }
+	EntityPipeline&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
+	EntityPipeline&				AddCreatableEntity	( GPUEntity& entity, BaseCache* cache = nullptr );
+	EntityPipeline&				AddBuffer			( std::string_view name, SSBO& ssbo, MemberSpec::Type array_type, BufferAccess access ) { m_SSBOs.push_back({ ssbo, std::string(name), array_type, access }); return *this; }
+	EntityPipeline&				AddCode				( std::string_view code ) { m_ExtraCode = std::format("{}{}\n", m_ExtraCode, code); return *this; }
+	EntityPipeline&				AddCodeAtStart		( std::string_view code ) { m_ImmediateExtraCode = std::format("{}{}\n", m_ImmediateExtraCode, code); return *this; }
 
-	PipelineStage&				AddInputOutputVar	( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), true, value }); return *this; }
-	PipelineStage&				AddInputVar			( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), false, value }); return *this; }
-	PipelineStage&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
-	PipelineStage&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
+	EntityPipeline&				AddInputOutputVar	( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), true, value }); return *this; }
+	EntityPipeline&				AddInputVar			( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), false, value }); return *this; }
+	EntityPipeline&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
+	EntityPipeline&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
 
 	template <class T>
-	PipelineStage&				AddStructBuffer		( std::string_view name, std::string_view struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
+	EntityPipeline&				AddStructBuffer		( std::string_view name, std::string_view struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
 
 		std::vector<MemberSpec> members;
 		Serialiser<T> serializeFunc(members);
@@ -70,7 +70,7 @@ public:
 	}
 
 	template <class T>
-	PipelineStage&				SetUniform			( const T& uniform ) {
+	EntityPipeline&				SetUniform			( const T& uniform ) {
 
 		m_Uniform.p_Spec.clear();
 		Serialiser<T> serializeFunc(m_Uniform.p_Spec);
@@ -80,7 +80,7 @@ public:
 	}
 
 	template <class T>
-	PipelineStage&				AddDataVector		( std::string_view name, const std::vector<T>& items ) {
+	EntityPipeline&				AddDataVector		( std::string_view name, const std::vector<T>& items ) {
 
 		int ints_per = sizeof(T) / sizeof(int);
 		m_DataVectors.push_back({
@@ -147,7 +147,7 @@ protected:
 		std::vector<MemberSpec>	p_Members;
 	};
 
-											PipelineStage			(	RunType type,
+											EntityPipeline			(	RunType type,
 																		GPUEntity* entity,
 																		RenderableBuffer* buffer, class BaseCache* cache,
 																		std::string_view shader_name, bool replace_main,
@@ -191,7 +191,7 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class BaseCache {
 public:
-	virtual void Bind(PipelineStage& target_stage, bool initial_creation) = 0;
+	virtual void Bind(EntityPipeline& target_stage, bool initial_creation) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +253,7 @@ public:
 								Grid2DCache		( GPUEntity& entity, std::string_view pos_name );
 	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
-	virtual void				Bind			( PipelineStage& target_stage, bool initial_creation ) override;
+	virtual void				Bind			( EntityPipeline& target_stage, bool initial_creation ) override;
 
 private:
 

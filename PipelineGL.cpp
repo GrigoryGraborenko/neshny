@@ -5,7 +5,7 @@
 namespace Neshny {
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, const std::vector<std::string>& shader_defines, SSBO* control_ssbo, int iterations) :
+EntityPipeline::EntityPipeline(RunType type, GPUEntity* entity, RenderableBuffer* buffer, BaseCache* cache, std::string_view shader_name, bool replace_main, const std::vector<std::string>& shader_defines, SSBO* control_ssbo, int iterations) :
 	m_RunType			( type )
 	,m_Entity			( entity )
 	,m_Buffer			( buffer )
@@ -22,7 +22,7 @@ PipelineStage::PipelineStage(RunType type, GPUEntity* entity, RenderableBuffer* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
+EntityPipeline& EntityPipeline::AddEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, false });
 	if (cache) {
 		cache->Bind(*this);
@@ -31,7 +31,7 @@ PipelineStage& PipelineStage::AddEntity(GPUEntity& entity, BaseCache* cache) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
+EntityPipeline& EntityPipeline::AddCreatableEntity(GPUEntity& entity, BaseCache* cache) {
 	m_Entities.push_back({ &entity, true });
 	if (cache) {
 		cache->Bind(*this);
@@ -40,7 +40,7 @@ PipelineStage& PipelineStage::AddCreatableEntity(GPUEntity& entity, BaseCache* c
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_vect, std::vector<std::string>& insertion_uniforms, std::vector<std::pair<std::string, int>>& integer_vars, int offset) {
+std::string EntityPipeline::GetDataVectorStructCode(const AddedDataVector& data_vect, std::vector<std::string>& insertion_uniforms, std::vector<std::pair<std::string, int>>& integer_vars, int offset) {
 
 	std::vector<std::string> insertion;
 	insertion.push_back(std::format("struct {0} {{", data_vect.p_Name));
@@ -85,7 +85,7 @@ std::string PipelineStage::GetDataVectorStructCode(const AddedDataVector& data_v
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void PipelineStage::Run(std::optional<std::function<void(Shader* program)>> pre_execute) {
+void EntityPipeline::Run(std::optional<std::function<void(Shader* program)>> pre_execute) {
 
 	// TODO: investigate GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS
 	// TODO: debug of SSBOs is optional
@@ -481,7 +481,7 @@ int QueryEntities::ExecuteQuery(void) {
 
 	int best_index = -1;
 	int best_dist = std::numeric_limits<int>::max();
-	PipelineStage::IterateEntity(
+	EntityPipeline::IterateEntity(
 		m_Entity
 		,"Query"
 		,true
@@ -530,14 +530,14 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	std::string main_func = std::format("void ItemMain(int item_index, vec2 pos);\nvoid {0}Main(int item_index, {0} item) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
 
-	PipelineStage::IterateEntity(
+	EntityPipeline::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true
 		,{ "PHASE_INDEX" }
 	)
 	.AddCode(main_func)
-	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
 		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
@@ -545,14 +545,14 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	});
 
 	int alloc_count = 0;
-	PipelineStage::IterateEntity(
+	EntityPipeline::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true
 		,{ "PHASE_ALLOCATE" }
 	)
 	.AddCode(main_func)
-	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
 	.AddInputOutputVar("AllocationCount", &alloc_count)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
@@ -562,15 +562,15 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	//BufferViewer::Checkpoint(m_Entity.GetName() + "_Cache", "Gen", m_GridIndices, MemberSpec::Type::T_INT);
 
-	PipelineStage::IterateEntity(
+	EntityPipeline::IterateEntity(
 		m_Entity
 		,"GridCache2D"
 		,true
 		,{ "PHASE_FILL" }
 	)
 	.AddCode(main_func)
-	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
-	.AddBuffer("b_Cache", m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Index", m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
+	.AddBuffer("b_Cache", m_GridItems, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
 	.Run([grid_size, grid_min, grid_max](GLShader* prog) {
 		glUniform2i(prog->GetUniform("uGridSize"), grid_size.x, grid_size.y);
 		glUniform2f(prog->GetUniform("uGridMin"), grid_min.x, grid_min.y);
@@ -581,12 +581,12 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Grid2DCache::Bind(PipelineStage& target_stage) {
+void Grid2DCache::Bind(EntityPipeline& target_stage) {
 
 	auto name = m_Entity.GetName();
 
-	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
-	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, PipelineStage::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
 
 	target_stage.AddCode(std::format(
 			"ivec2 GetGridPos(vec2 pos, vec2 grid_min, vec2 grid_max, ivec2 grid_size); // forward declare \n"
