@@ -34,24 +34,24 @@
 #include "LinearAlgebra.h"
 #include "Preprocessor.h"
 #ifdef NESHNY_WEBGPU
-    #include "WGPUUtils.h"
+    #include "WebGPU/WGPUUtils.h"
 #elif defined(NESHNY_GL)
-    #include "GLUtils.h"
+    #include "OpenGL/GLUtils.h"
 #endif
 #include "NeshnyStructs.h"
 #include "Serialization.h"
 #include "Core.h"
 #include "Resources.h"
 #ifdef NESHNY_WEBGPU
-    #include "EntityWebGPU.h"
+    #include "WebGPU/EntityWebGPU.h"
 #elif defined(NESHNY_GL)
-    #include "EntityGL.h"
+    #include "OpenGL/EntityGL.h"
 #endif
 #include "EditorViewers.h"
 #ifdef NESHNY_WEBGPU
-    #include "PipelineWebGPU.h"
+    #include "WebGPU/PipelineWebGPU.h"
 #elif defined(NESHNY_GL)
-    #include "PipelineGL.h"
+    #include "OpenGL/PipelineGL.h"
 #endif
 #include "Geometry.h"
 #ifndef NESHNY_SKIP_TESTS

@@ -60,7 +60,7 @@ target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${NESHNY_DIR}/External
     ${CMAKE_SOURCE_DIR}/src
-    ${NESHNY_DIR}
+    ${NESHNY_DIR}/Src
     ${SDL2_DIR}/include
 )
 
@@ -155,14 +155,14 @@ if (NOT EMSCRIPTEN)
         add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp
             COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/EmbeddedFiles.txt
-            DEPENDS "${BASE_DIR}/${SHADER_PATH}/*.*" DEPENDS ${NESHNY_DIR}/Shaders/*.wgsl
+            DEPENDS "${BASE_DIR}/${SHADER_PATH}/*.*" DEPENDS ${NESHNY_DIR}/Src/Shaders/*.wgsl
         )
     else()
         add_custom_command(
             OUTPUT ${CMAKE_SOURCE_DIR}/src/EmbeddedFiles.cpp
             COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/EmbeddedFiles.txt
             DEPENDS ${BASE_DIR}/${SHADER_PATH}/*.vert DEPENDS ${BASE_DIR}/${SHADER_PATH}/*.frag DEPENDS ${BASE_DIR}/${SHADER_PATH}/*.comp DEPENDS ${BASE_DIR}/${SHADER_PATH}/*.glsl
-            DEPENDS ${NESHNY_DIR}/shaders/*.vert DEPENDS ${NESHNY_DIR}/shaders/*.frag DEPENDS ${NESHNY_DIR}/shaders/*.comp DEPENDS ${NESHNY_DIR}/shaders/*.glsl
+            DEPENDS ${NESHNY_DIR}/Src/Shaders/*.vert DEPENDS ${NESHNY_DIR}/Src/Shaders/*.frag DEPENDS ${NESHNY_DIR}/Src/Shaders/*.comp DEPENDS ${NESHNY_DIR}/Src/Shaders/*.glsl
         )
     endif()
 
@@ -170,7 +170,7 @@ if (NOT EMSCRIPTEN)
     add_custom_command(
         OUTPUT ${CMAKE_SOURCE_DIR}/src/UnitTestList.cpp
         COMMAND "${CMAKE_COMMAND}" -D BASE_DIR=${CMAKE_SOURCE_DIR} -P ${NESHNY_DIR}/CMake/UnitTests.txt
-        DEPENDS ${NESHNY_DIR}/UnitTests/*.cpp
+        DEPENDS ${NESHNY_DIR}/Src/UnitTests/*.cpp
         DEPENDS ${CMAKE_SOURCE_DIR}/src/UnitTests/*.cpp
     )
 
@@ -182,7 +182,7 @@ else()
 endif()
 
 # adds list of shader directories to allow dynamic runtime loading in debug
-file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
+file(WRITE "src/EmbeddedDirectories.cpp" "std::vector<std::string> g_ShaderBaseDirs={ \"${NESHNY_DIR}/Src/Shaders\", \"${CMAKE_CURRENT_SOURCE_DIR}/${SHADER_PATH}\" };\n")
 
 ###############################################################################
 message(STATUS "Project Structure")
@@ -200,9 +200,9 @@ file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
 # all files from neshny
 if (WEBGPU)
-    file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.wgsl)
+    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.* ${NESHNY_DIR}/Src/WebGPU/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.wgsl)
 else()
-    file(GLOB NeshnyList ${NESHNY_DIR}/*.h ${NESHNY_DIR}/*.cpp ${NESHNY_DIR}/UnitTests/*.cpp ${NESHNY_DIR}/shaders/*.*)
+    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.* ${NESHNY_DIR}/Src/OpenGL/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.*)
 endif()
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})
@@ -217,7 +217,7 @@ set_source_files_properties(src/main.cpp src/PreCompiledHeader.cpp PROPERTIES
 )
 
 if (APPLE)
-    list(APPEND NeshnyList ${NESHNY_DIR}/metal.mm)
+    list(APPEND NeshnyList ${NESHNY_DIR}/Src/metal.mm)
 endif()
 
 target_sources(${PROJECT_NAME}
@@ -229,7 +229,7 @@ target_sources(${PROJECT_NAME}
 )
 
 source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX src FILES ${FullList})
-source_group(TREE ${NESHNY_DIR} PREFIX neshny FILES ${NeshnyList})
+source_group(TREE ${NESHNY_DIR}/Src PREFIX neshny FILES ${NeshnyList})
 source_group("generated" FILES ${GeneratedList})
 
 ###############################################################################
