@@ -82,6 +82,12 @@ void Engine::Render(int width, int height) {
 		return;
 	}
 
+	QString test_str = QString("This is a test QString: %1").arg(123);
+	auto test_byte_array = test_str.toLocal8Bit();
+
+	ImGui::SetCursorPos(ImVec2(20, 100));
+	ImGui::Text("%s", test_byte_array.data());
+
 	auto view_persp = m_Cam.Get4x4Matrix(width, height);
 
 	if (1) { // examples of simple rendering for debug or early prototyping

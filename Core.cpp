@@ -495,6 +495,10 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	WGPUSurfaceDescriptor surfDesc = {};
 	surfDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&canvDesc);
 
+	// will need this on next emscripten upgrade
+	//auto instance = wgpuCreateInstance(nullptr);
+	//m_Surface = wgpuInstanceCreateSurface(instance, &surfDesc);
+
 	m_Surface = wgpuInstanceCreateSurface(nullptr, &surfDesc);
 
 	WGPUSupportedLimits supported;
@@ -507,6 +511,9 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 
 	WGPUInstanceDescriptor instanceDescriptor{};
 	instanceDescriptor.features.timedWaitAnyEnable = true;
+	instanceDescriptor.nextInChain = nullptr;
+	instanceDescriptor.features.nextInChain = nullptr;
+
 	dawn::native::Instance instance(&instanceDescriptor);
 
 	::wgpu::RequestAdapterOptions options = {};

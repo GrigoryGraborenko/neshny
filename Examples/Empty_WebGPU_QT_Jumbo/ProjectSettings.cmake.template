@@ -1,0 +1,2 @@
+# Set project settings here
+set(PROJECT_NAME "Empty_WebGPU_QT_Jumbo")

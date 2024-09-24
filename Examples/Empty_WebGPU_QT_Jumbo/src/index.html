@@ -47,32 +47,20 @@
 			font-size: 4em;
 		}
 	</style>
+	<script type='text/javascript' src="build.js"></script>
     <script type='text/javascript'>
-        var Module = {
-            onRuntimeInitialized: function() {
-                var e = document.getElementById('loadingDiv');
-                e.style.visibility = 'hidden';
-            }, 
-            canvas: (function() {
-                var canvas = document.getElementById('canvas');
-                return canvas;
-            })()
-        };
-		function showError() {
-			var err = document.getElementById('errorDiv');
-			err.style.display = '';
-            var load = document.getElementById('loadingDiv');
-            load.style.display = 'none';
-		}
-
+		var webgpu = {
+			canvas: document.getElementById('canvas')
+		};
 		if (navigator["gpu"]) {
 			navigator["gpu"]["requestAdapter"]().then(function (adapter) {
 				adapter["requestDevice"]().then( function (device) {
-					Module["preinitializedWebGPUDevice"] = device;
-					console.log("preinit complete");
-					var script = document.createElement('script');
-					script.src = "build.js";
-					document.body.appendChild(script);
+					webgpu["preinitializedWebGPUDevice"] = device;
+					console.log("WebGPU Initialized");
+					createQtAppInstance(webgpu);
+					webgpu.ready.then(() => {
+						console.log("Ready");
+					});
 
 				});
 			}, function () {

@@ -1,2 +1,2 @@
 # Set project settings here
-set(PROJECT_NAME "EmptyWebGPU_Jumbo")
+set(PROJECT_NAME "Empty_WebGPU_Jumbo")

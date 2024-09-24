@@ -18,7 +18,10 @@ add_compile_definitions(NESHNY_DIR="${NESHNY_DIR}" PROJECT_SHADER_PATH="${SHADER
 ###############################################################################
 message(STATUS "Setting up compilation")
 
-set(CMAKE_AUTOMOC ON)
+if (QT_DIR)
+    message(STATUS "Setting up QT")
+    set(CMAKE_AUTOMOC ON)
+endif()
 
 # add the executable
 add_executable(${PROJECT_NAME} src/main.cpp)
@@ -39,14 +42,18 @@ if (NOT APPLE)
 endif()
 
 if (EMSCRIPTEN)
-    set(CMAKE_PREFIX_PATH "${QT_WASM_DIR}/lib/cmake")
+    if (QT_DIR)
+        set(CMAKE_PREFIX_PATH "${QT_WASM_DIR}/lib/cmake")
+    endif()
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "build")
     set(SDL2_LIBRARIES "")
-else()
+elseif(QT_DIR)
     set(CMAKE_PREFIX_PATH ${QT_DIR})
 endif()
 
-find_package(Qt6 COMPONENTS Core Gui REQUIRED)
+if (QT_DIR)
+    find_package(Qt6 COMPONENTS Core Gui REQUIRED)
+endif()
 
 # include files
 target_include_directories(${PROJECT_NAME}
@@ -66,11 +73,15 @@ else()
 endif()
 
 # lib files
-target_link_libraries(${PROJECT_NAME}
-    Qt6::Core
-    Qt6::Gui
-    ${SDL2_LIBRARIES}
-)
+if (QT_DIR)
+    target_link_libraries(${PROJECT_NAME}
+        Qt6::Core
+        Qt6::Gui
+        ${SDL2_LIBRARIES}
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARIES})
+endif()
 
 if (APPLE)
     find_library(SDL2_LIBRARY SDL2)
@@ -121,7 +132,7 @@ else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fexperimental-library")    
 
     # Linker flags to optimize for smallest output code size
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=1 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc --output_eol=linux --preload-file=${CMAKE_SOURCE_DIR}/assets/@/assets/")
 endif()
 
 ###############################################################################
@@ -236,11 +247,13 @@ if (WIN32)
     configure_file(${SDL2_IMAGE_LIB_DIR}/SDL2_image.dll ${CMAKE_BINARY_DIR}/release/SDL2_image.dll COPYONLY)
     configure_file(${SDL2_MIXER_LIB_DIR}/SDL2_mixer.dll ${CMAKE_BINARY_DIR}/release/SDL2_mixer.dll COPYONLY)
     
-    configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
-    configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
+    if (QT_DIR)
+        configure_file(${QT_DIR}/bin/QT6Cored.dll ${CMAKE_BINARY_DIR}/release/QT6Cored.dll COPYONLY)
+        configure_file(${QT_DIR}/bin/QT6Core.dll ${CMAKE_BINARY_DIR}/release/QT6Core.dll COPYONLY)
 
-    configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
-    configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+        configure_file(${QT_DIR}/bin/QT6Guid.dll ${CMAKE_BINARY_DIR}/release/QT6Guid.dll COPYONLY)
+        configure_file(${QT_DIR}/bin/QT6Gui.dll ${CMAKE_BINARY_DIR}/release/QT6Gui.dll COPYONLY)
+    endif()
 elseif (APPLE)
     # TODO
 elseif (EMSCRIPTEN)

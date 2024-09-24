@@ -463,6 +463,8 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	tex_extent.height = hei;
 	tex_extent.depthOrArrayLayers = 1;
 
+	std::ignore = std::format("Adding this line changes the way emscripten compiles in such a way as to prevent wgpuQueueWriteTexture from crashing :)");
+
 	wgpuQueueWriteTexture(Core::Singleton().GetWebGPUQueue(), &tex_cpy, data, bytes_per_row * hei, &tex_layout, &tex_extent);
 }
 
