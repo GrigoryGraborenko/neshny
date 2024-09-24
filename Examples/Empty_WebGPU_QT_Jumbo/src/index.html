@@ -49,19 +49,21 @@
 	</style>
 	<script type='text/javascript' src="build.js"></script>
     <script type='text/javascript'>
-		var webgpu = {
-			canvas: document.getElementById('canvas')
-		};
 		if (navigator["gpu"]) {
 			navigator["gpu"]["requestAdapter"]().then(function (adapter) {
 				adapter["requestDevice"]().then( function (device) {
-					webgpu["preinitializedWebGPUDevice"] = device;
-					console.log("WebGPU Initialized");
-					createQtAppInstance(webgpu);
-					webgpu.ready.then(() => {
-						console.log("Ready");
+					console.log("WebGPU initialized");
+					Module({
+						preinitializedWebGPUDevice: device,
+						onRuntimeInitialized: function() {
+							var e = document.getElementById('loadingDiv');
+							e.style.visibility = 'hidden';
+						}, 
+						canvas: (function() {
+							var canvas = document.getElementById('canvas');
+							return canvas;
+						})()
 					});
-
 				});
 			}, function () {
 				console.error("No WebGPU adapter; not starting");

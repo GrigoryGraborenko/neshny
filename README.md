@@ -4,14 +4,15 @@ Neshny is an C++/WebGPU/OpenGL library for games and simulations. It is designed
 There are two main ways to use it - with OpenGL or with WebGPU. The two are mutually exclusive. The recommendation is to pick WebGPU, as it is set up to cross compile to both the desktop and the browser. OpenGL support will continue for some time but may be removed in the distant future, depending on how well WebGPU does. 
 
 ### <i>Dependencies</i>
-* Qt >= v6
-* Dear ImGui >= v1.89 <i>(included in starter)</i>
-* Metastuff <i>(included in starter)</i>
+* Dear ImGui >= v1.89 <i>(included)</i>
+* Metastuff <i>(included)</i>
 * SDL >= 2.26
 * CMake >= 3.18
 * NodeJS >= 16.0
 * Python >= 3.0 (for now)
-* Emscripten >= 3.1.41
+* Emscripten == 3.1.50
+### <i>Optional</i>
+* Qt == v6.7.x
 
 ## <b>Installation</b>
 Clone this repo to a location of your choice:
@@ -26,9 +27,11 @@ Make a copy of the entire directory and place it wherever you like. Ensure you h
 Rename the `UserSettings.cmake.template` to `UserSettings.cmake` and edit it to point to the correct directories where libraries are installed:
 ``` cmake
 set(NESHNY_DIR "C:/Code/Neshny") # change all these to your local
-set(QT_DIR "C:/Qt/6.5.0/msvc2019_64")
-set(QT_WASM_DIR "C:/Qt/6.5.0/wasm_singlethread")
+set(QT_DIR "C:/Qt/6.5.0/msvc2019_64") # optional
+set(QT_WASM_DIR "C:/Qt/6.5.0/wasm_singlethread") # optional
 set(SDL2_DIR "C:/SDL/SDL2-2.0.14")
+set(SDL2_IMAGE_DIR "C:/SDL/SDL2_image-2.8.2")
+set(SDL2_MIXER_DIR "C:/SDL/SDL2_mixer-2.0.4")
 set(SHADER_PATH "src/shaders")
 set(DAWN_PATH "C:/CodeLib/Dawn") # where you would like it to be installed - see below
 ```
@@ -70,7 +73,7 @@ Clone this repo and point to the base dir in your include directories list. Then
 #include <IncludeAll.cpp> // Neshny
 using namespace Neshny;
 ```
-This assumes you already have QT, SDL, ImGui and Metastuff installed.
+This assumes you already have SDL, ImGui and Metastuff installed.
 
 ## <b>WebGPU usage</b>
 TODO

@@ -471,13 +471,9 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxComputeWorkgroupSizeY = 256;
 	limits.maxComputeWorkgroupSizeZ = 64;
 	limits.maxComputeWorkgroupsPerDimension = 65535;
-
-#ifndef __EMSCRIPTEN__
-	// TODO: why are these not included in the emscripten version?
 	limits.maxBindingsPerBindGroup = 1000;
 	limits.maxBufferSize = 268435456;
 	limits.maxColorAttachmentBytesPerSample = 32;
-#endif
 
 	return limits;
 }
@@ -495,11 +491,8 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	WGPUSurfaceDescriptor surfDesc = {};
 	surfDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&canvDesc);
 
-	// will need this on next emscripten upgrade
-	//auto instance = wgpuCreateInstance(nullptr);
-	//m_Surface = wgpuInstanceCreateSurface(instance, &surfDesc);
-
-	m_Surface = wgpuInstanceCreateSurface(nullptr, &surfDesc);
+	auto instance = wgpuCreateInstance(nullptr);
+	m_Surface = wgpuInstanceCreateSurface(instance, &surfDesc);
 
 	WGPUSupportedLimits supported;
 	if (wgpuDeviceGetLimits(m_Device, &supported)) {

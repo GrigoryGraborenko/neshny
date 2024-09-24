@@ -65,11 +65,7 @@ bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::s
 
 	WGPUShaderModuleWGSLDescriptor wgsl = {};
 	wgsl.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
-	wgsl.source = m_Source.data();
-#else
 	wgsl.code = m_Source.data();
-#endif
 	WGPUShaderModuleDescriptor desc = {};
 	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
 	desc.label = filename.data();
@@ -513,13 +509,7 @@ WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool l
 	desc.magFilter = filter;
 	desc.minFilter = filter;
 	desc.maxAnisotropy = 1;
-
-	// odd inconsistency between web and native - web is probably more logical here
-#ifdef __EMSCRIPTEN__
-	desc.mipmapFilter = linear_mipmaps ? WGPUFilterMode_Linear : WGPUFilterMode_Nearest;
-#else
 	desc.mipmapFilter = linear_mipmaps ? WGPUMipmapFilterMode_Linear : WGPUMipmapFilterMode_Nearest;
-#endif
 
 	m_Sampler = wgpuDeviceCreateSampler(Core::Singleton().GetWebGPUDevice(), &desc);
 }
@@ -918,9 +908,6 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std:
 	pass_desc.nextInChain = nullptr;
 	pass_desc.label = nullptr;
 	pass_desc.timestampWrites = nullptr;
-#ifdef __EMSCRIPTEN__ // TODO: remove when emscripten catches up
-	pass_desc.timestampWriteCount = 0;
-#endif
 	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
 
 	wgpuComputePassEncoderSetPipeline(pass, m_ComputePipeline);
