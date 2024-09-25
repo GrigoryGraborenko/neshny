@@ -15,14 +15,14 @@ void UnitTester::IRender(void) {
     int index = 0;
     for (auto& result : m_Results) {
         ImGui::PushID(result.p_Label.c_str());
-        ImGui::TextColored(result.p_Success ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", result.p_Label.c_str());
+        Neshny::ImGuiTextColoredUnformatted(result.p_Label, result.p_Success ? ImVec4(0.5f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
         ImGui::SameLine();
         if (ImGui::Button("Rerun")) {
             result = ExecuteTest(g_UnitTests[index]);
         }
         if (!result.p_Success) {
             ImGui::Indent(20);
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "%s", result.p_Error.c_str());
+            Neshny::ImGuiTextColoredUnformatted(result.p_Error, ImVec4(1.0f, 0.5f, 0.5f, 1.0f));
             ImGui::Unindent(20);
         }
         ImGui::PopID();

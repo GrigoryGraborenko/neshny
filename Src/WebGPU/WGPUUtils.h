@@ -5,7 +5,7 @@
 
 namespace Neshny {
 
-// TODO: create global state for device, etc rather than using core
+// TODO: create global state for device, etc rather than using core, to make core optional
 WGPUDevice GlobalWebGPUDevice();
 
 ////////////////////////////////////////////////////////////////////////////////

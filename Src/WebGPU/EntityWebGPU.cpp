@@ -107,6 +107,28 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void GPUEntity::SetInstancesInternal(unsigned char* data, int item_count, int item_size) {
+
+	if (!m_SSBO) {
+		return;
+	}
+	m_LastKnownInfo.p_Count = item_count;
+	m_LastKnownInfo.p_MaxIndex = item_count;
+	m_LastKnownInfo.p_NextId = item_count;
+	m_LastKnownInfo.p_FreeCount = 0;
+
+#pragma msg("might be good to auto-assign ids here, otherwise user is responsible for setting it from 0...N - would need offset though")
+
+	int data_size = item_count * item_size;
+	int total_size = sizeof(EntityInfo) + data_size;
+	std::vector<std::byte> buffer(total_size, std::byte(0));
+	memcpy(buffer.data(), &m_LastKnownInfo, sizeof(EntityInfo));
+	memcpy(buffer.data() + sizeof(EntityInfo), data, data_size);
+
+	m_SSBO->Write((unsigned char*)buffer.data(), 0, buffer.size());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void GPUEntity::DeleteInstance(int index) {
 
 	// TODO: needs webgpu conversion

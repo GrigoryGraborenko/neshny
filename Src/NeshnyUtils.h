@@ -53,12 +53,14 @@ double Random(double min_val, double max_val);
 int RandomInt(int min_val, int max_val);
 int RoundUpPowerTwo(int value);
 size_t HashMemory(unsigned char* mem, int size);
+uint64_t TimeSinceEpochMilliseconds();
 bool NearlyEqual(double a, double b);
 std::string ReplaceAll(std::string_view str, std::string_view before, std::string_view after);
 std::string JoinStrings(const std::vector<std::string>& list, std::string_view insert_between);
 std::string JoinStrings(const std::list<std::string>& list, std::string_view insert_between);
 bool StringContains(std::string_view str, std::string_view search, bool case_insensitive = false);
 std::string SrcStr(const std::source_location location = std::source_location::current());
+void ImGuiTextColoredUnformatted(std::string str, ImVec4 text_col);
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>
@@ -104,9 +106,6 @@ T RadiansDiff(T rad_a, T rad_b) {
 	T diff = Modulo(rad_b - rad_a + TWOPI + PI, TWOPI) - PI;
 	return diff;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-uint64_t TimeSinceEpochMilliseconds();
 
 ////////////////////////////////////////////////////////////////////////////////
 //

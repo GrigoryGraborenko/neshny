@@ -354,12 +354,12 @@ void InfoViewer::IRenderImGui(InterfaceInfoViewer& data) {
 		for (const auto& segment : m_LoopHistogram) {
 			ImGui::TableSetColumnIndex(col++);
 			if (segment.second) {
-				ImGui::TextColored(segment.first >= 0.04 ? (segment.first >= 0.2 ? ImVec4(1.0f, 0.3f, 0.3f, 1.0f) : ImVec4(1.0f, 0.6f, 0.3f, 1.0f)) : ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "%i", segment.second);
+				ImGuiTextColoredUnformatted(std::format("{}", segment.second), segment.first >= 0.04 ? (segment.first >= 0.2 ? ImVec4(1.0f, 0.3f, 0.3f, 1.0f) : ImVec4(1.0f, 0.6f, 0.3f, 1.0f)) : ImVec4(0.6f, 1.0f, 0.6f, 1.0f));
 			}
 		}
 		ImGui::TableSetColumnIndex(col++);
 		if (m_LoopHistogramOverflow) {
-			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%i", m_LoopHistogramOverflow);
+			ImGuiTextColoredUnformatted(std::format("{}", m_LoopHistogramOverflow), ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
 		}
 		ImGui::TableSetColumnIndex(col++);
 		if (ImGui::Button("Clear")) {
@@ -441,7 +441,7 @@ void LogViewer::IRenderImGui(InterfaceLogViewer& data) {
 			//ImGui::Text(time_str.data());
 			ImGui::Text(log.p_TimeStr.c_str());
 			ImGui::TableSetColumnIndex(1);
-			ImGui::TextColored(log.p_Color, log.p_Message.c_str());
+			ImGuiTextColoredUnformatted(log.p_Message, log.p_Color);
 		}
 
 		if (data.p_AutoScroll) {
@@ -891,11 +891,11 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 			}
 
 			if (!src.m_Error.empty()) {
-				ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), src.m_Error.data());
+				ImGuiTextColoredUnformatted(src.m_Error, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 			}
 			if (search.empty()) {
 				for (int line = 0; line < lines.size(); line++) {
-					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), std::format("{}", line).c_str());
+					ImGuiTextColoredUnformatted(std::format("{}", line), ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
 					ImGui::TextUnformatted(lines[line].c_str());
@@ -929,16 +929,12 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 						ImGui::Separator();
 					}
 					auto line_num_str = std::format("{}", line);
-					ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), line_num_str.c_str());
+					ImGuiTextColoredUnformatted(line_num_str, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
-
-					ImGui::PushStyleColor(ImGuiCol_Text, found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-					ImGui::TextUnformatted(lines[line].c_str());
-					ImGui::PopStyleColor();
+					ImGuiTextColoredUnformatted(lines[line], found ? ImVec4(1.0f, 0.5f, 0.5f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 					last_line = line;
-
 					match_count -= found ? 1 : 0;
 				}
 			}
@@ -960,7 +956,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 		const ImVec4 line_num_col(0.4f, 0.4f, 0.4f, 1.0f);
 		const ImVec4 error_col(1.0f, 0.0f, 0.0f, 1.0f);
 		for (const auto& err : errors) {
-			ImGui::TextColored(error_col, err.m_Message.data());
+			ImGuiTextColoredUnformatted(err.m_Message, error_col);
 		}
 		if (search.empty()) {
 			for (int line = 0; line < lines.size(); line++) {
@@ -970,7 +966,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 						if (err.m_LineNum == line) {
 							err_found = true;
 							std::string line_str = std::format("{}", line);
-							ImGui::TextColored(error_col, line_str.data());
+							ImGuiTextColoredUnformatted(line_str, error_col);
 							ImGui::SameLine();
 							ImGui::SetCursorPosX(number_width);
 
@@ -979,16 +975,14 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 
 							ImGui::TextUnformatted(before_error.data());
 							ImGui::SameLine(0.0, 0.0);
-							ImGui::PushStyleColor(ImGuiCol_Text, error_col);
-							ImGui::TextUnformatted(after_error.data());
-							ImGui::PopStyleColor();
+							ImGuiTextColoredUnformatted(after_error, error_col);
 							break;
 						}
 					}
 				}
 				if (!err_found) {
 					std::string line_str = std::format("{}", line);
-					ImGui::TextColored(line_num_col, line_str.data());
+					ImGuiTextColoredUnformatted(line_str, line_num_col);
 					ImGui::SameLine();
 					ImGui::SetCursorPosX(number_width);
 					ImGui::TextUnformatted(lines[line].data());
@@ -1023,7 +1017,7 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 					ImGui::Separator();
 				}
 				std::string line_num_str = std::format("{}", line);
-				ImGui::TextColored(line_num_col, line_num_str.data());
+				ImGuiTextColoredUnformatted(line_num_str, line_num_col);
 				ImGui::SameLine();
 				ImGui::SetCursorPosX(number_width);
 
@@ -1251,7 +1245,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	for (auto& text : m_Texts) {
 		auto screen_pos = data.p_Cam.WorldToScreen(text.p_Pos, m_Width, m_Height);
 		ImGui::SetCursorPos(ImVec2(screen_pos.x + im_pos.x, screen_pos.y + im_pos.y));
-		ImGui::TextColored(ImVec4(text.p_Col.x, text.p_Col.y, text.p_Col.z, text.p_Col.w), text.p_Text.data());
+		ImGuiTextColoredUnformatted(text.p_Text, ImVec4(text.p_Col.x, text.p_Col.y, text.p_Col.z, text.p_Col.w));
 	}
 	m_Texts.clear();
 

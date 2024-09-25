@@ -109,6 +109,7 @@ if (NOT EMSCRIPTEN)
         set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:WINDOWS")
         set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS")
         if (WEBGPU)
+            target_link_libraries(${PROJECT_NAME} dxguid.lib) # required for d3d webgpu backend
             target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/external/WebGPU/lib/$<CONFIG>/*")
         endif()
     elseif (APPLE AND WEBGPU)

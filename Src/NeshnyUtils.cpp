@@ -127,4 +127,11 @@ std::string SrcStr(const std::source_location location) {
     return std::format("{}:{}", location.file_name(), location.line());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+void ImGuiTextColoredUnformatted(std::string str, ImVec4 text_col) {
+    ImGui::PushStyleColor(ImGuiCol_Text, text_col);
+    ImGui::TextUnformatted(str.c_str());
+    ImGui::PopStyleColor();
+}
+
 } // namespace Neshny

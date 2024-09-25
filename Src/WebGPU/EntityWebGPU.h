@@ -200,7 +200,7 @@ public:
 	~GPUEntity(void) { Destroy(); }
 
 	template <typename T> void ExtractMultiple(std::vector<T>& items, int count) {
-		// does this still make sense? should there be an offset?
+		// TODO: does this still make sense? should there be an offset?
 		if (count <= 0) {
 			return;
 		}
@@ -238,7 +238,12 @@ public:
 	bool						Init					( int expected_max_count = 100000 );
 	void						Clear					( void );
 
+	// will add instances in random order, no need to set IDs, they will be overwritten
 	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
+
+	// this version preserves the ordering, but you must set the IDs correctly yourself, and will delete all prior instances
+	template <typename T> void	SetInstances			( std::vector<T>& items ) { SetInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
+
 	void						DeleteInstance			( int index );
 
 	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
@@ -266,6 +271,7 @@ public:
 protected:
 
 	void						AddInstancesInternal	( unsigned char* data, int item_count, int item_size );
+	void						SetInstancesInternal	( unsigned char* data, int item_count, int item_size );
 	void						MakeCopyIn				( unsigned char* ptr, int offset, int size );
 	void						Destroy					( void );
 

@@ -22,6 +22,9 @@
 #endif
 
 #include <SDL.h>
+#ifndef __EMSCRIPTEN__
+    #include <SDL_syswm.h>
+#endif
 #include <SDL_image.h>
 #include <SDL_mixer.h>
 #include <Metastuff/Meta.h>
