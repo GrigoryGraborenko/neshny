@@ -18,8 +18,8 @@ public:
 	struct Error {
 		WGPUCompilationMessageType	m_Type;
 		std::string					m_Message;
-		uint64_t					m_LineNum;
-		uint64_t					m_LinePos;
+		uint64_t					m_LineNum = 0;
+		uint64_t					m_LinePos = 0;
 	};
 
 													WebGPUShader			( void );

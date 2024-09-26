@@ -35,6 +35,6 @@ endfunction()
 
 # get the list of shaders from the app
 file(GLOB_RECURSE ShaderList "${BASE_DIR}/${SHADER_PATH}/*.*")
-file(GLOB_RECURSE NeshnyShaderList ${NESHNY_DIR}/shaders/*.*)
+file(GLOB_RECURSE NeshnyShaderList ${NESHNY_DIR}/Src/Shaders/*.*)
 
 create_resources("${BASE_DIR}/src/EmbeddedFiles.cpp" ${NeshnyShaderList} ${ShaderList})
