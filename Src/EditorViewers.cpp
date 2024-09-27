@@ -194,6 +194,7 @@ void BaseSimpleRender::IRender(const Matrix4 & view_perspective, int width, int 
 		line_buffer->Draw();
 	}
 
+	ImVec2 stashed_cursor_pos = ImGui::GetCursorPos();
 	for (auto it = m_Points.begin(); it != m_Points.end(); it++) {
 
 		if (it->p_OnTop) {
@@ -210,7 +211,7 @@ void BaseSimpleRender::IRender(const Matrix4 & view_perspective, int width, int 
 			glUniform3f(debug_prog->GetUniform("uPosB"), off.x, off.y, off.z);
 			line_buffer->Draw();
 		}
-		if (it->p_Str.size() <= 0) {
+		if (it->p_Str.empty()) {
 			continue;
 		}
 		fVec3 result = gpu_vp * fVec3(dpos.x, dpos.y, dpos.z);
@@ -220,8 +221,9 @@ void BaseSimpleRender::IRender(const Matrix4 & view_perspective, int width, int 
 		int x = (int)floor((result.x + 1.0) * 0.5 * width);
 		int y = (int)floor((1.0 - result.y) * 0.5 * height);
 		ImGui::SetCursorPos(ImVec2(x, y));
-		ImGui::Text(it->p_Str.c_str());
+		ImGuiTextColoredUnformatted(it->p_Str, ImVec4(it->p_Col.x, it->p_Col.y, it->p_Col.z, it->p_Col.w));
 	}
+	ImGui::SetCursorPos(stashed_cursor_pos);
 
 	debug_prog = Core::GetShader("DebugTriangle");
 	debug_prog->UseProgram();
@@ -1155,7 +1157,8 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		return;
 	}
 
-	ImGui::Begin("2D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse);
+	ImGui::Begin("2D Scrapbook", &data.p_Visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
 
 	if (ImGui::Button("Reset Camera")) {
 		data.p_Cam = Camera2D{};
