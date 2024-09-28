@@ -101,6 +101,11 @@ void Engine::Render(int width, int height) {
 		SimpleRender2D::Texture(Vec2(-1.0, 0.0), Vec2(1.6, -2.5), "../../assets/images/Tick.png", 0.4);
 	}
 
+	if (1) { // example of scrapbook rendering
+		Scrapbook2D::Circle(Vec2(3.0, 5.0), 1.0, Vec4(1.0, 0.0, 0.0, 1.0));
+		Scrapbook2D::Circle(Vec2(10.0, 1.0), 0.5, Vec4(0.0, 1.0, 0.0, 1.0));
+	}
+
 	{
 		WebGPURTT rtt;
 		auto token = rtt.Activate({ Core::Singleton().GetCurrentSwapTextureView() }, m_DepthTex->GetTextureView());

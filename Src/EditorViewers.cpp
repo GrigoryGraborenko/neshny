@@ -1218,7 +1218,11 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	}
 
 	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
+#if defined(NESHNY_GL)
+	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
+#else
 	ImGui::Image(tex_id, im_size, ImVec2(0, 0), ImVec2(1, 1));
+#endif
 
 	ImGui::SetCursorPos(im_pos);
 	ImGui::InvisibleButton("##FullScreen", im_size);
