@@ -19,6 +19,10 @@ using namespace Neshny;
 
 int main(int, char**) {
 
+#ifdef __APPLE__
+	std::filesystem::current_path(GetMacOSExecutableDir());
+#endif
+
 	Core::Singleton().SetResourceDirs(g_ShaderBaseDirs);
 #if !defined _DEBUG || defined __EMSCRIPTEN__
 	Core::Singleton().SetEmbeddedFiles(g_EmbeddedFiles);

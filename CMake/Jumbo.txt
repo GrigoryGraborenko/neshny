@@ -92,6 +92,9 @@ if (APPLE)
     target_link_libraries(${PROJECT_NAME}
         ${SDL2_LIBRARY}
         SDL2_image::SDL2_image
+        "-framework Foundation"
+        "-framework IOKit"
+        "-framework Metal"
         "-framework QuartzCore"
         "-framework IOSurface"
     )
@@ -201,9 +204,9 @@ file(GLOB_RECURSE GeneratedList *.cxx *.hxx)
 
 # all files from neshny
 if (WEBGPU)
-    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.* ${NESHNY_DIR}/Src/WebGPU/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.wgsl)
+    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.h ${NESHNY_DIR}/Src/*.cpp ${NESHNY_DIR}/Src/WebGPU/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.wgsl)
 else()
-    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.* ${NESHNY_DIR}/Src/OpenGL/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.*)
+    file(GLOB NeshnyList ${NESHNY_DIR}/Src/*.h ${NESHNY_DIR}/Src/*.cpp ${NESHNY_DIR}/Src/OpenGL/*.* ${NESHNY_DIR}/Src/UnitTests/*.cpp ${NESHNY_DIR}/Src/Shaders/*.*)
 endif()
 
 list(APPEND FullList ${HeaderList} ${SourceList} ${ShaderList})

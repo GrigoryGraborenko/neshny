@@ -134,4 +134,20 @@ void ImGuiTextColoredUnformatted(std::string str, ImVec4 text_col) {
     ImGui::PopStyleColor();
 }
 
+#ifdef __APPLE__
+////////////////////////////////////////////////////////////////////////////////
+std::string GetMacOSExecutableDir() {
+	char path[1024];
+	uint32_t size = sizeof(path);
+	if (_NSGetExecutablePath(path, &size) != 0)
+		return "";
+	std::string result(path, size);
+	auto end_slash = result.find_last_of('/');
+	if (end_slash == std::string::npos) {
+		return result;
+	}
+	return std::string(path, end_slash);
+}
+#endif
+
 } // namespace Neshny

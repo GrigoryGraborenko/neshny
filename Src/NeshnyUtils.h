@@ -1,6 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#ifdef __APPLE__
+	#include <mach-o/dyld.h>
+#endif
 namespace Neshny {
 
 #define STRING2(x) #x
@@ -61,6 +64,9 @@ std::string JoinStrings(const std::list<std::string>& list, std::string_view ins
 bool StringContains(std::string_view str, std::string_view search, bool case_insensitive = false);
 std::string SrcStr(const std::source_location location = std::source_location::current());
 void ImGuiTextColoredUnformatted(std::string str, ImVec4 text_col);
+#ifdef __APPLE__
+	std::string GetMacOSExecutableDir();
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 template <class T>

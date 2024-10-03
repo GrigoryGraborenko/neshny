@@ -1,2 +1,2 @@
-Examples/Empty_WebGPU_Jumbo/ProjectSettings.cmake
-Examples/Empty_WebGPU_QT_Jumbo/ProjectSettings.cmake
+ProjectSettings.cmake
+UserSettings.cmake
