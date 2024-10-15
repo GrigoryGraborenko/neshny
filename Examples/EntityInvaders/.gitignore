@@ -1,0 +1,49 @@
+#generated
+/debug/
+/release/
+/build-web/
+/build/
+generated/
+/*.dir/
+/x64/
+.qt/
+/external/WebGPU
+.embedded_token
+EmbeddedFiles.cpp
+EmbeddedDirectories.cpp
+UnitTestList.cpp
+dawn_setup.js
+server.js
+
+# Visual Studio
+.vs/
+*.VC.db
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+
+# cmake
+CMakeCache.txt
+cmake_install.cmake
+UserSettings.cmake
+CMakeFiles/
+
+# Compiled Object files
+*.lib
+*.d
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Executables
+*.exe
+*.out
+*.app
+
+*.recipe
