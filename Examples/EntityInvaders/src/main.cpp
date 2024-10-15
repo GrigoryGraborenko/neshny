@@ -43,7 +43,20 @@ int main(int, char**) {
 		return 1;
 	}
 
-	Core::Singleton().WebGPUSDLLoop(Core::WebGPUNativeBackend::D3D12, sdl_window, &engine, engine.GetWidth(), engine.GetHeight());
+	void* windowLayer = nullptr;
+	Core::WebGPUNativeBackend backend = Core::WebGPUNativeBackend::D3D12;
+#ifdef __APPLE__
+	backend = Core::WebGPUNativeBackend::Metal; // \/\/
+
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(sdl_window, &wmInfo);
+
+	NSWindow* cocoa_win = wmInfo.info.cocoa.window;
+	windowLayer = MacOSGetWindowLayer(cocoa_win);
+#endif
+
+	Core::Singleton().WebGPUSDLLoop(backend, sdl_window, &engine, engine.GetWidth(), engine.GetHeight(), windowLayer);
 
 	return 0;
 }
