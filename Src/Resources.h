@@ -52,9 +52,12 @@ public:
 		return true;
 	};
 
-	void Play(void) {
+	const Mix_Chunk*	GetChunk				( void ) const { return m_Chunk; }
+
+	void				Play					( void ) {
 		Mix_PlayChannel(-1, m_Chunk, 0);
 	}
+
 protected:
 	Mix_Chunk*	m_Chunk;
 };

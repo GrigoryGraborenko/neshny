@@ -6,11 +6,13 @@ There are two main ways to use it - with OpenGL or with WebGPU. The two are mutu
 ### <i>Dependencies</i>
 * Dear ImGui >= v1.89 <i>(included)</i>
 * Metastuff <i>(included)</i>
-* SDL >= 2.26
+* SDL2 >= 2.26
+* SDL2 Image >= 2.8.2
+* SDL2 Mixer => 2.8.0
 * CMake >= 3.18
 * NodeJS >= 16.0
 * Python >= 3.0 (for now)
-* Emscripten == 3.1.50
+* Emscripten == 3.1.50 (exactly this version to work with QT)
 ### <i>Optional</i>
 * Qt == v6.7.x
 
