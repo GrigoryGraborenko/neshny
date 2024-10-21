@@ -948,7 +948,7 @@ struct BaseMatrix4 {
 			,0, 0, vect.z, 0
 			,0, 0, 0, 1
 		);
-		*this = mult * (*this);
+		*this = (*this) * mult;
 	}
 
 	T SubDeterminant2x2(const T m[4][4], int col0, int col1, int row0, int row1) const {

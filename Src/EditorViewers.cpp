@@ -131,17 +131,24 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 
 	// TODO: sort by texture name and render in batches
 	for (const auto& tex : m_Textures) {
-		auto texture = Core::GetResource<Texture2D>(tex.p_Filename);
-		if (!texture.IsValid()) {
-			return;
+		const WebGPUTexture* texture = nullptr;
+		if (std::holds_alternative<std::string>(tex.p_Texture)) {
+			auto texture_res = Core::GetResource<Texture2D>(std::get<std::string>(tex.p_Texture));
+			if (!texture_res.IsValid()) {
+				return;
+			}
+			texture = &(texture_res->Get());
+		} else {
+			texture = std::get<WebGPUTexture*>(tex.p_Texture);
 		}
 		Matrix4 modded = Matrix4::Identity();
 
 		Vec3 center = (tex.p_MaxPos + tex.p_MinPos) * 0.5;
 		Vec3 size = (tex.p_MaxPos - tex.p_MinPos) * 0.5;
 
-		modded.Scale(Vec3(size.x, size.y, 1.0));
 		modded.Translate(center);
+		modded.Scale(Vec3(size.x, size.y, 1.0));
+
 		modded = view_perspective * modded;
 		auto new_gpu = modded.ToGPU();
 

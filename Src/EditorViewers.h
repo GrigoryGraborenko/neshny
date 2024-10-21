@@ -21,6 +21,9 @@ public:
     inline void									AddCircle			( Vec3 a, double radius, Vec4 color, bool filled = false ) { m_Circles.push_back(SimpleCircle{a, radius, color, filled}); }
     inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(SimpleSquare{min_pos, max_pos, color, filled}); }
     inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, std::string_view filename ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, std::string(filename) }); }
+#if defined(NESHNY_WEBGPU)
+    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, WebGPUTexture* texture ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, texture }); }
+#endif
 
 protected:
 
@@ -63,7 +66,11 @@ protected:
 	struct SimpleTexture {
 		Vec3 p_MinPos;
 		Vec3 p_MaxPos;
+#if defined(NESHNY_WEBGPU)
+		std::variant<std::string, WebGPUTexture*> p_Texture;
+#else
 		std::string p_Filename;
+#endif
 	};
 
 #if defined(NESHNY_WEBGPU)
@@ -124,6 +131,9 @@ public:
 	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
 	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
 	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, std::string_view filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
+#if defined(NESHNY_WEBGPU)
+	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, WebGPUTexture* texture, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), texture); }
+#endif
 protected:
 												SimpleRender2D		( void ) {}
 };
