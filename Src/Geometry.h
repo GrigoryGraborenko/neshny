@@ -54,6 +54,57 @@ private:
 	iVec2 m_CurrentGrid;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+struct Grid3DStepCursor {
+
+	Grid3DStepCursor(Vec3 start, Vec3 end) {
+		m_Start = start;
+		m_Delta = end - start;
+		iVec3 grid_pos = start.Floor().ToInt3();
+
+		m_GridDirs = m_Delta.Sign().ToInt3();
+		m_Amounts = Vec3(fabs(1.0 / m_Delta.x), fabs(1.0 / m_Delta.y), fabs(1.0 / m_Delta.z));
+
+		Vec3 left_neg((double(grid_pos.x) - start.x) / m_Delta.x, (double(grid_pos.y) - start.y) / m_Delta.y, (double(grid_pos.z) - start.z) / m_Delta.z);
+		Vec3 left_pos((double(grid_pos.x) + 1.0 - start.x) / m_Delta.x, (double(grid_pos.y) + 1.0 - start.y) / m_Delta.y, (double(grid_pos.z) + 1.0 - start.z) / m_Delta.z);
+
+		m_Left = Vec3(std::max(left_neg.x, left_pos.x), std::max(left_neg.y, left_pos.y), std::max(left_neg.z, left_pos.z));
+
+		m_StepDist = 0;
+		m_CurrentGrid = grid_pos;
+	}
+
+	bool HasNext() {
+		return m_StepDist < 1.0;
+	}
+
+	void Next() {
+
+		float move_dist = std::min(m_Left.x, std::min(m_Left.y, m_Left.z));
+		m_StepDist += move_dist;
+		m_Left += Vec3(-move_dist, -move_dist, -move_dist);
+		Vec3 hit_res = (m_Left * -1).Step(0);
+		m_Left += hit_res * m_Amounts;
+		m_CurrentGrid = m_CurrentGrid + hit_res.ToInt3() * m_GridDirs;
+	}
+
+	inline iVec3 CurrentGridPos() { return m_CurrentGrid; }
+
+	inline Vec3 CurrentPos() { return m_Start + m_Delta * m_StepDist; }
+
+private:
+	Vec3 m_Start;
+	Vec3 m_Delta;
+	iVec3 m_GridDirs;
+	Vec3 m_Amounts;
+	Vec3 m_Left;
+
+	float m_StepDist;
+	iVec3 m_CurrentGrid;
+};
+
 std::optional<Vec2> GetInterceptPosition(Vec2 target_pos, Vec2 target_vel, Vec2 start_pos, double intercept_speed, double* time_mult = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////

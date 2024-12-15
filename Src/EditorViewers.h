@@ -148,7 +148,7 @@ public:
 	static inline SimpleRender3D&				Singleton			( void ) { static SimpleRender3D instance; return instance; }
 
 #if defined(NESHNY_WEBGPU)
-	static inline void							Render				( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender(rtt, view_perspective, width, height, offset, scale); }
+	static inline void							Render				( WebGPURTT& rtt, const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f, double point_size = 1.0f) { Singleton().IRender(rtt, view_perspective, width, height, offset, scale, point_size); }
 #else
 	static inline void							Render				( const Matrix4& view_perspective, int width, int height, Vec3 offset = Vec3(0, 0, 0), double scale = 1.0f) { Singleton().IRender(view_perspective, width, height, offset, scale); }
 #endif

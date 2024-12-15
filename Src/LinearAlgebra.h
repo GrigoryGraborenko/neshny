@@ -700,6 +700,22 @@ struct BaseQuat {
 		m[2] = m[2] * inv_dist;
 		m[3] = m[3] * inv_dist;
 	}
+	inline BaseQuat NormalizeCopy(void) const {
+		BaseQuat copy = *this;
+		copy.Normalize();
+		return copy;
+	}
+	static BaseQuat RotationBetween(BaseVec3<T> from, BaseVec3<T> to) {
+		from.Normalize();
+		to.Normalize();
+		T d = (from | to) + T(1);
+		if (d < ALMOST_ZERO) {
+			d += ALMOST_ZERO;
+		}
+		d = sqrt(2 * d);
+		BaseVec3<T> axis = (from ^ to) / d;
+		return BaseQuat(axis, T(d * 0.5));
+	}
 	BaseMatrix3<T> ToRotation(void) {
 		return BaseMatrix3<T>(
 			1 - 2 * m[2] * m[2] - 2 * m[3] * m[3], 2 * m[1] * m[2] - 2 * m[0] * m[3], 2 * m[1] * m[3] + 2 * m[0] * m[2],
