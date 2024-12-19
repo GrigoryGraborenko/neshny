@@ -34,7 +34,7 @@ function(create_unit_tests output_fname)
 endfunction()
 
 # get the list of unit test files
-file(GLOB_RECURSE NeshnyUnitTestFiles ${NESHNY_DIR}/UnitTests/*.cpp)
+file(GLOB_RECURSE NeshnyUnitTestFiles ${NESHNY_DIR}/src/UnitTests/*.cpp)
 file(GLOB_RECURSE UnitTestFiles ${BASE_DIR}/src/UnitTests/*.cpp)
 
 create_unit_tests("${BASE_DIR}/src/UnitTestList.cpp" ${NeshnyUnitTestFiles} ${UnitTestFiles})

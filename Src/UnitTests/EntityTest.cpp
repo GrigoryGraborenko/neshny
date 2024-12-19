@@ -55,57 +55,41 @@ namespace Test {
 			item.p_IntFourDim += v.p_IntFourDim;
 		}
 
-		bool CloseEnough(const GPUThing& other) {
+		std::optional<std::string> CloseEnough(const GPUThing& other) {
 			double delta = 0.0001;
 
 			std::vector<bool> test = {
 				//(p_Id == other.p_Id),
-				(fabs(p_Float - other.p_Float) < delta),
-				(fabs(p_TwoDim.x - other.p_TwoDim.x) < delta),
-				(fabs(p_TwoDim.y - other.p_TwoDim.y) < delta),
-				(fabs(p_ThreeDim.x - other.p_ThreeDim.x) < delta),
-				(fabs(p_ThreeDim.y - other.p_ThreeDim.y) < delta),
-				(fabs(p_ThreeDim.z - other.p_ThreeDim.z) < delta),
-				(fabs(p_FourDim.x - other.p_FourDim.x) < delta),
-				(fabs(p_FourDim.y - other.p_FourDim.y) < delta),
-				(fabs(p_FourDim.z - other.p_FourDim.z) < delta),
-				(fabs(p_FourDim.w - other.p_FourDim.w) < delta),
-				(p_IntTwoDim.x == other.p_IntTwoDim.x),
-				(p_IntTwoDim.y == other.p_IntTwoDim.y),
-				(p_IntThreeDim.x == other.p_IntThreeDim.x),
-				(p_IntThreeDim.y == other.p_IntThreeDim.y),
-				(p_IntThreeDim.z == other.p_IntThreeDim.z),
-				(p_IntFourDim.x == other.p_IntFourDim.x),
-				(p_IntFourDim.y == other.p_IntFourDim.y),
-				(p_IntFourDim.z == other.p_IntFourDim.z),
-				(p_IntFourDim.w == other.p_IntFourDim.w)
+				(fabs(p_Float - other.p_Float) < delta),			// 0
+				(fabs(p_TwoDim.x - other.p_TwoDim.x) < delta),		// 1
+				(fabs(p_TwoDim.y - other.p_TwoDim.y) < delta),		// 2
+				(fabs(p_ThreeDim.x - other.p_ThreeDim.x) < delta),	// 3
+				(fabs(p_ThreeDim.y - other.p_ThreeDim.y) < delta),	// 4
+				(fabs(p_ThreeDim.z - other.p_ThreeDim.z) < delta),	// 5
+				(fabs(p_FourDim.x - other.p_FourDim.x) < delta),	// 6
+				(fabs(p_FourDim.y - other.p_FourDim.y) < delta),	// 7
+				(fabs(p_FourDim.z - other.p_FourDim.z) < delta),	// 8
+				(fabs(p_FourDim.w - other.p_FourDim.w) < delta),	// 9
+				(p_IntTwoDim.x == other.p_IntTwoDim.x),				// 10
+				(p_IntTwoDim.y == other.p_IntTwoDim.y),				// 11
+				(p_IntThreeDim.x == other.p_IntThreeDim.x),			// 12
+				(p_IntThreeDim.y == other.p_IntThreeDim.y),			// 13
+				(p_IntThreeDim.z == other.p_IntThreeDim.z),			// 14
+				(p_IntFourDim.x == other.p_IntFourDim.x),			// 15
+				(p_IntFourDim.y == other.p_IntFourDim.y),			// 16
+				(p_IntFourDim.z == other.p_IntFourDim.z),			// 17
+				(p_IntFourDim.w == other.p_IntFourDim.w)			// 18
 			};
-
-			bool result = 
-				//(p_Id == other.p_Id) &&
-				(fabs(p_Float - other.p_Float) < delta) &&
-				(fabs(p_TwoDim.x - other.p_TwoDim.x) < delta) &&
-				(fabs(p_TwoDim.y - other.p_TwoDim.y) < delta) &&
-				(fabs(p_ThreeDim.x - other.p_ThreeDim.x) < delta) &&
-				(fabs(p_ThreeDim.y - other.p_ThreeDim.y) < delta) &&
-				(fabs(p_ThreeDim.z - other.p_ThreeDim.z) < delta) &&
-				(fabs(p_FourDim.x - other.p_FourDim.x) < delta) &&
-				(fabs(p_FourDim.y - other.p_FourDim.y) < delta) &&
-				(fabs(p_FourDim.z - other.p_FourDim.z) < delta) &&
-				(fabs(p_FourDim.w - other.p_FourDim.w) < delta) &&
-				(p_IntTwoDim.x == other.p_IntTwoDim.x) &&
-				(p_IntTwoDim.y == other.p_IntTwoDim.y) &&
-				(p_IntThreeDim.x == other.p_IntThreeDim.x) &&
-				(p_IntThreeDim.y == other.p_IntThreeDim.y) &&
-				(p_IntThreeDim.z == other.p_IntThreeDim.z) &&
-				(p_IntFourDim.x == other.p_IntFourDim.x) &&
-				(p_IntFourDim.y == other.p_IntFourDim.y) &&
-				(p_IntFourDim.z == other.p_IntFourDim.z) &&
-				(p_IntFourDim.w == other.p_IntFourDim.w);
-			if (!result) {
-				int brk = 0;
+			std::vector<std::string> failures;
+			for (int test_ind = 0; test_ind < test.size(); test_ind++) {
+				if (!test[test_ind]) {
+					failures.push_back(std::format("{}", test_ind));
+				}
 			}
-			return result;
+			if (failures.empty()) {
+				return std::nullopt;
+			}
+			return "Mismatches in test: " + Neshny::JoinStrings(failures, ", ");
 		}
 		int				p_Id;
 		int				p_Int;
@@ -120,9 +104,9 @@ namespace Test {
 
 	struct GPUOther {
 
-		bool CloseEnough(const GPUOther& other) {
+		std::optional<std::string> CloseEnough(const GPUOther& other) {
 			double delta = 0.0001;
-			return
+			bool result =
 				//(p_Id == other.p_Id) &&
 				(p_ParentIndex == other.p_ParentIndex) &&
 				(fabs(p_Float - other.p_Float) < delta) &&
@@ -130,7 +114,7 @@ namespace Test {
 				(fabs(p_FourDim.y - other.p_FourDim.y) < delta) &&
 				(fabs(p_FourDim.z - other.p_FourDim.z) < delta) &&
 				(fabs(p_FourDim.w - other.p_FourDim.w) < delta);
-
+			return result ? std::optional<std::string>{std::nullopt} : "Mismatch";
 		}
 
 		int				p_Id;
@@ -198,7 +182,8 @@ namespace Test {
 			if (expected[i].p_Id < 0) {
 				break;
 			}
-			Expect(msg_prefix + " -> Item mismatch", expected[i].CloseEnough(actual[i]));
+			auto mismatch = expected[i].CloseEnough(actual[i]);
+			Expect(std::format("{} -> Item mismatch at {} [{}]", msg_prefix, i, mismatch.value_or("")), !mismatch.has_value());
 		}
 	}
 
@@ -227,7 +212,7 @@ namespace Test {
 			GPUThing thing = GPUThing::Init(i);
 			expected.push_back(thing);
 		}
-		entities.AddInstances(expected);
+		entities.SetInstances(expected); // test needs creation order to be preserved
 
 		std::vector<int> buffer_values;
 		for (int i = 0; i < initial_count; i++) {
