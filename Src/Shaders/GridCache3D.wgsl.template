@@ -1,0 +1,68 @@
+////////////////////////////////////////////////////////////////////////////////
+
+#include "CacheUtils.wgsl"
+
+////////////////////////////////////////////////////////////////////////////////
+fn Get<<NAME>>IndexRangeAt(grid_pos: vec3i) -> vec2i {
+	let index: i32 = (grid_pos.x + (grid_pos.y + grid_pos.z * b_<<NAME>>GridUniform.GridSize.y) * b_<<NAME>>GridUniform.GridSize.x) * 3;
+	let start: i32 = b_<<NAME>>GridIndices[index + 1];
+	let count: i32 = b_<<NAME>>GridIndices[index + 2];
+	return vec2i(start, start + count);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn Get<<NAME>>IndexAtCache(index: i32) -> i32 {
+	return b_<<NAME>>GridItems[index];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn Get<<NAME>>GridPosAt(pos: vec3f) -> vec3i {
+	return GetGridPos3D(pos, b_<<NAME>>GridUniform.GridMin, b_<<NAME>>GridUniform.GridMax, b_<<NAME>>GridUniform.GridSize);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn HasNext<<NAME>>(cursor: ptr<function, Grid3DCacheCursor>) -> bool {
+	return ((*cursor).p_Pos.x <= (*cursor).p_MaxPos.x) && ((*cursor).p_Pos.y <= (*cursor).p_MaxPos.y) && ((*cursor).p_Pos.z <= (*cursor).p_MaxPos.z);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn Start<<NAME>>CacheCursor(min_pos: vec3f, max_pos: vec3f) -> Grid3DCacheCursor {
+	var cursor: Grid3DCacheCursor;
+	cursor.p_MinPos = Get<<NAME>>GridPosAt(min(min_pos, max_pos));
+	cursor.p_MaxPos = Get<<NAME>>GridPosAt(max(min_pos, max_pos));
+	cursor.p_Pos = cursor.p_MinPos;
+	cursor.p_IndexIndexIndexIndex = -1;
+	return cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn Next<<NAME>>(cursor: ptr<function, Grid3DCacheCursor>, item: ptr<function, <<NAME>>>) -> i32 {
+	if ((*cursor).p_IndexIndexIndexIndex < 0) {
+		(*cursor).p_Indices = Get<<NAME>>IndexRangeAt((*cursor).p_Pos);
+		(*cursor).p_IndexIndexIndexIndex = (*cursor).p_Indices.x;
+	}
+	if ((*cursor).p_IndexIndexIndexIndex >= (*cursor).p_Indices.y) {
+		(*cursor).p_IndexIndexIndexIndex = -1;
+		(*cursor).p_Pos.x++;
+
+		if ((*cursor).p_Pos.x > (*cursor).p_MaxPos.x) {
+			(*cursor).p_Pos.x = (*cursor).p_MinPos.x;
+			(*cursor).p_Pos.y++;
+
+			if ((*cursor).p_Pos.y > (*cursor).p_MaxPos.y) {
+				(*cursor).p_Pos.x = (*cursor).p_MinPos.x;
+				(*cursor).p_Pos.y = (*cursor).p_MinPos.y;
+				(*cursor).p_Pos.z++;
+			}
+		}
+		return -1;
+	}
+	let i: i32 = Get<<NAME>>IndexAtCache((*cursor).p_IndexIndexIndexIndex);
+	(*cursor).p_IndexIndexIndexIndex++;
+	(*item) = Get<<NAME>>(i);
+	if ((*item).<<ID>> < 0) {
+		return -1;
+	}
+
+	return i;
+}

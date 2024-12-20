@@ -171,6 +171,13 @@ public:
 		ReadSync((unsigned char*)&(items[0]), offset * sizeof(T), count * sizeof(T));
 	}
 
+	template<class T>
+	inline void										GetAllValues(std::vector<T>& items) {
+		int count = m_Size / sizeof(T);
+		items.resize(count);
+		ReadSync((unsigned char*)&(items[0]), 0, m_Size);
+	}
+
 protected:
 
 	void											Init(void);

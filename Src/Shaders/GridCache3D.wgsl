@@ -3,10 +3,10 @@
 #include "CacheUtils.wgsl"
 
 //////////////////////////////////////////////////////////////////////////////
-fn ItemMain(item_index: i32, pos: vec2f) {
+fn ItemMain(item_index: i32, pos: vec3f) {
 
-    let grid_pos = GetGridPos2D(pos, Uniform.GridMin, Uniform.GridMax, Uniform.GridSize);
-    let index: i32 = (grid_pos.x + grid_pos.y * Uniform.GridSize.x) * 3;
+    let grid_pos = GetGridPos3D(pos, Uniform.GridMin, Uniform.GridMax, Uniform.GridSize);
+    let index: i32 = (grid_pos.x + (grid_pos.y + grid_pos.z * Uniform.GridSize.y) * Uniform.GridSize.x) * 3;
 
 #ifdef PHASE_INDEX
     atomicAdd(&b_Index[index], 1);

@@ -750,8 +750,6 @@ void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 	m_GridMin = grid_min;
 	m_GridMax = grid_max;
 
-	Vec2 range = grid_max - grid_min;
-	Vec2 cell_size(range.x / grid_size.x, range.y / grid_size.y);
 	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * 3 * sizeof(int), true);
 	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
 
@@ -817,6 +815,95 @@ void Grid2DCache::Bind(EntityPipeline& target_stage, bool initial_creation) {
 
 	target_stage.AddCode(ReplaceAll(ReplaceAll(utils_file, "<<NAME>>", name), "<<ID>>", m_Entity.GetIDName()));
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+Grid3DCache::Grid3DCache(GPUEntity& entity, std::string_view pos_name) :
+	m_Entity		( entity )
+	,m_PosName		( pos_name )
+#if defined(NESHNY_WEBGPU)
+	,m_GridIndices	( WGPUBufferUsage_Storage )
+	,m_GridItems	( WGPUBufferUsage_Storage )
+	,m_Uniform		( WGPUBufferUsage_Uniform, sizeof(Grid3DCacheUniform) )
+#endif
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Grid3DCache::GenerateCache(iVec3 grid_size, Vec3 grid_min, Vec3 grid_max) {
+
+	m_GridSize = grid_size;
+	m_GridMin = grid_min;
+	m_GridMax = grid_max;
+
+	m_GridIndices.EnsureSizeBytes(grid_size.x * grid_size.y * grid_size.z * 3 * sizeof(int), true);
+	m_GridItems.EnsureSizeBytes(m_Entity.GetMaxCount() * sizeof(int), false);
+
+	std::string main_func = std::format("fn {0}Main(item_index: i32, item: {0}) {{ ItemMain(item_index, item.{1}); }}", m_Entity.GetName(), m_PosName);
+	std::string base_id = std::format("GridCache3D:{}:{}", m_Entity.GetName(), m_PosName);
+
+	Grid3DCacheUniform uniform;
+	uniform.p_GridSize = grid_size;
+	uniform.p_GridMin = grid_min.ToFloat3();
+	uniform.p_GridMax = grid_max.ToFloat3();
+
+	Neshny::EntityPipeline::IterateEntity(std::format("{}:INDEX", base_id), m_Entity, "GridCache3D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
+		.AddCode("#define PHASE_INDEX")
+		.AddCode(main_func)
+		.SetUniform(uniform)
+		.Run();
+
+	for (int i = 0; i < 2; i++) {
+		Neshny::EntityPipeline::IterateEntity(std::format("{}:ALLOC", base_id), m_Entity, "GridCache3D", true)
+			.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
+			.AddCode("#define PHASE_ALLOCATE")
+			.AddCode(main_func)
+			.AddInputVar("AllocationCount", 0)
+			.SetUniform(uniform)
+			.Run();
+	}
+
+	Neshny::EntityPipeline::IterateEntity(std::format("{}:FILL", base_id), m_Entity, "GridCache3D", true)
+		.AddBuffer("b_Index", m_GridIndices, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE_ATOMIC)
+		.AddBuffer("b_Cache", m_GridItems, MemberSpec::T_INT, EntityPipeline::BufferAccess::READ_WRITE)
+		.AddCode("#define PHASE_FILL")
+		.AddCode(main_func)
+		.SetUniform(uniform)
+		.Run();
+
+	// gets used by the entity run that uses the buffer
+	m_Uniform.SetSingleValue(0, uniform);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Grid3DCache::Bind(EntityPipeline& target_stage, bool initial_creation) {
+
+	auto name = m_Entity.GetName();
+
+	target_stage.AddBuffer(std::format("b_{0}GridIndices", name), m_GridIndices, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
+	target_stage.AddBuffer(std::format("b_{0}GridItems", name), m_GridItems, MemberSpec::Type::T_INT, EntityPipeline::BufferAccess::READ_ONLY);
+
+	target_stage.AddStructBuffer<Grid3DCacheUniform>(std::format("b_{0}GridUniform", name), std::format("{0}GridUniformStruct", name), m_Uniform, EntityPipeline::BufferAccess::READ_ONLY, false);
+
+	if (!initial_creation) {
+		return;
+	}
+
+	std::string err_msg;
+	std::string utils_file = Core::Singleton().LoadEmbedded("GridCache3D.wgsl.template", err_msg);
+	if (utils_file.empty()) {
+		Core::Log(std::format("could not open 'GridCache3D.wgsl.template' {}", err_msg), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+		target_stage.AddCode("#error could not open 'GridCache3D.wgsl.template'");
+		return;
+	}
+
+	target_stage.AddCode(ReplaceAll(ReplaceAll(utils_file, "<<NAME>>", name), "<<ID>>", m_Entity.GetIDName()));
+}
+
 
 } // namespace Neshny
 #endif

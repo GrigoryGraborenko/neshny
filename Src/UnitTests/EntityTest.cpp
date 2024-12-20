@@ -451,7 +451,7 @@ namespace Test {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
-	void GPUEntityCache(bool use_cursor) {
+	void GPUEntityCache2D(bool use_cursor) {
 
 		const int prey_count = 50;
 		const int hunter_count = 20;
@@ -514,18 +514,18 @@ namespace Test {
 		// run the generation algorithm
 		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
 
-		// run again to make sure results do not accumilate
+		// run again to make sure results are idempotent
 		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
 
 #if defined(NESHNY_GL)
 		// TODO: test here as well
 #elif defined(NESHNY_WEBGPU)
-		std::string shader_defines;
+		std::string shader_defines = "#define TWO_DIM\n";
 		if (use_cursor) {
-			shader_defines = "#define USE_CURSOR";
+			shader_defines += "#define USE_CURSOR";
 		}
 		Uniform uniform{ 0, find_radius };
-		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr(), hunter_entities, "UnitTestCache", true)
+		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr() + shader_defines, hunter_entities, "UnitTestCache", true)
 			.AddEntity(prey_entities, &cache)
 			.AddCode(shader_defines)
 			.SetUniform(uniform)
@@ -539,13 +539,112 @@ namespace Test {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
-	void UnitTest_GPUEntityCacheCursor(void) {
-		GPUEntityCache(true);
+	void GPUEntityCache3D(bool use_cursor) {
+
+		const int prey_count = 50;
+		const int hunter_count = 20;
+
+		const float map_radius = 50;
+		const int grids = 10;
+		const float find_radius = 11;
+
+		const float find_radius_sqr = find_radius * find_radius;
+
+		Neshny::RandomSeed(0);
+
+#if defined(NESHNY_GL)
+		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
+		Neshny::GPUEntity hunter_entities("Hunter", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUOther::p_Id, "Id");
+#elif defined(NESHNY_WEBGPU)
+		Neshny::GPUEntity prey_entities("Prey", &GPUThing::p_Id, "Id");
+		Neshny::GPUEntity hunter_entities("Hunter", &GPUOther::p_Id, "Id");
+#endif
+
+		prey_entities.Init(1000);
+		hunter_entities.Init(1000);
+
+		Neshny::Grid3DCache cache(prey_entities, "ThreeDim");
+
+		std::vector<GPUThing> expected_prey;
+		for (int i = 0; i < prey_count; i++) {
+			GPUThing prey = GPUThing::Init(i);
+			prey.p_Float = Neshny::Random(0.0, 10);
+			prey.p_ThreeDim = Neshny::fVec3(Neshny::Random(-map_radius, map_radius), Neshny::Random(-map_radius, map_radius), Neshny::Random(-map_radius, map_radius));
+			expected_prey.push_back(prey);
+		}
+		prey_entities.AddInstances(expected_prey);
+
+		std::vector<GPUOther> expected_hunters;
+		for (int i = 0; i < hunter_count; i++) {
+			float x = Neshny::Random(-map_radius, map_radius);
+			float y = Neshny::Random(-map_radius, map_radius);
+			float z = Neshny::Random(-map_radius, map_radius);
+			GPUOther hunter{
+				i,
+				0,
+				0,
+				Neshny::fVec4(x, y, z, 0.0)
+			};
+			expected_hunters.push_back(hunter);
+		}
+		hunter_entities.AddInstances(expected_hunters);
+
+		for (auto& hunter : expected_hunters) {
+			Neshny::fVec3 hunter_pos(hunter.p_FourDim.x, hunter.p_FourDim.y, hunter.p_FourDim.z);
+			for (const auto& prey : expected_prey) {
+				float dist_sqr = (prey.p_ThreeDim - hunter_pos).LengthSquared();
+				if (dist_sqr < find_radius_sqr) {
+					hunter.p_ParentIndex++;
+					hunter.p_Float += prey.p_Float;
+				}
+			}
+		}
+
+		// run the generation algorithm
+		cache.GenerateCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
+
+		// run again to make sure results are idempotent
+		cache.GenerateCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
+
+#if defined(NESHNY_GL)
+		// TODO: test here as well
+#elif defined(NESHNY_WEBGPU)
+		std::string shader_defines;
+		if (use_cursor) {
+			shader_defines = "#define USE_CURSOR";
+		}
+		Uniform uniform{ 0, find_radius };
+		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr() + shader_defines, hunter_entities, "UnitTestCache", true)
+			.AddEntity(prey_entities, &cache)
+			.AddCode(shader_defines)
+			.SetUniform(uniform)
+			.Run();
+#endif
+
+		std::vector<GPUOther> gpu_values;
+		hunter_entities.ExtractMultiple(gpu_values, hunter_count);
+
+		CompareEntities<GPUOther>("Cache lookup", expected_hunters, gpu_values);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
-	void UnitTest_GPUEntityCacheRaw(void) {
-		GPUEntityCache(false);
+	void UnitTest_GPUEntityCache2DCursor(void) {
+		GPUEntityCache2D(true);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCache2DRaw(void) {
+		GPUEntityCache2D(false);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCache3DCursor(void) {
+		GPUEntityCache3D(true);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCache3DRaw(void) {
+		GPUEntityCache3D(false);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
