@@ -300,6 +300,8 @@ private:
 	iVec3						m_GridSize;
 	Vec3						m_GridMin;
 	Vec3						m_GridMax;
+	int							m_RequiredItemCacheSize = 0;
+	bool						m_InitialRun = true;
 };
 
 } // namespace Neshny

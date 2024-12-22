@@ -541,7 +541,7 @@ namespace Test {
 	////////////////////////////////////////////////////////////////////////////////
 	void GPUEntityCache3D(bool use_cursor, bool use_radius = false) {
 
-		const int prey_count = 50;
+		const int prey_count = 2000;
 		const int hunter_count = 20;
 
 		const float map_radius = 50;
@@ -560,7 +560,7 @@ namespace Test {
 		Neshny::GPUEntity hunter_entities("Hunter", &GPUOther::p_Id, "Id");
 #endif
 
-		prey_entities.Init(1000);
+		prey_entities.Init(prey_count + 1);
 		hunter_entities.Init(1000);
 
 		Neshny::Grid3DCache cache(prey_entities, "ThreeDim", use_radius ? std::optional<std::string_view>("Float") : std::nullopt);

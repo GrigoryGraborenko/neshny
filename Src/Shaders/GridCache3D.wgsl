@@ -9,6 +9,7 @@ fn ItemMain(item_index: i32, pos: vec3f) {
     let index: i32 = (grid_pos.x + (grid_pos.y + grid_pos.z * Uniform.GridSize.y) * Uniform.GridSize.x) * 3;
 
 #ifdef PHASE_INDEX
+    atomicAdd(&TotalSize, 1);
     atomicAdd(&b_Index[index], 1);
     atomicCompareExchangeWeak(&b_Index[index + 1], 0, -1);
 #elifdef PHASE_ALLOCATE
@@ -48,6 +49,7 @@ fn ItemRadiusMain(item_index: i32, pos: vec3f, radius: f32) {
                 let grid_pos = vec3i(x, y, z);
                 let index : i32 = (grid_pos.x + (grid_pos.y + grid_pos.z * Uniform.GridSize.y) * Uniform.GridSize.x) * 3;
 #ifdef PHASE_INDEX
+                atomicAdd(&TotalSize, 1);
                 atomicAdd(&b_Index[index], 1);
                 atomicCompareExchangeWeak(&b_Index[index + 1], 0, -1);
 #elifdef PHASE_ALLOCATE
