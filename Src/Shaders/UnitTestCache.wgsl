@@ -55,6 +55,28 @@ fn HunterMain(item_index: i32, hunter: Hunter, new_hunter : ptr<function, Hunter
 			}
 		}
 	}
+
+#elifdef USE_RADIUS
+
+	let grid_pos = GetPreyGridPosAt(pos);
+	let indices : vec2i = GetPreyIndexRangeAt(grid_pos);
+	for (var index = indices.x; index < indices.y; index++) {
+		let i : i32 = GetPreyIndexAtCache(index);
+		let prey : Prey = GetPrey(i);
+		if (prey.Id < 0) {
+			continue;
+		}
+
+		let delta = prey.POS_MEMBER - pos;
+		let dist_sqr : f32 = dot(delta, delta);
+
+		let rad_sqr_check = prey.Float * prey.Float;
+		if (dist_sqr < rad_sqr_check) {
+			(*new_hunter).Float += prey.Float;
+			(*new_hunter).ParentIndex++;
+		}
+	}
+
 #else
 
 	let grid_search_min = GetPreyGridPosAt(pos - rad_vec);

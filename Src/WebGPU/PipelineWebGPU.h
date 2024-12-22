@@ -243,6 +243,12 @@ private:
 	std::variant<fVec2, fVec3, int>		m_QueryParam;
 };
 
+struct GridCacheUniform {
+	iVec4	p_GridSize;
+	fVec4	p_GridMin;
+	fVec4	p_GridMax;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,12 +275,6 @@ private:
 	Vec2						m_GridMax;
 };
 
-struct Grid2DCacheUniform {
-	iVec2	p_GridSize;
-	fVec2	p_GridMin;
-	fVec2	p_GridMax;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +282,7 @@ class Grid3DCache : public BaseCache {
 
 public:
 
-								Grid3DCache		( GPUEntity& entity, std::string_view pos_name );
+								Grid3DCache		( GPUEntity& entity, std::string_view pos_name, std::optional<std::string_view> radius_name = std::nullopt );
 	void						GenerateCache	( iVec3 grid_size, Vec3 grid_min, Vec3 grid_max );
 
 	virtual void				Bind			( EntityPipeline& target_stage, bool initial_creation ) override;
@@ -291,6 +291,7 @@ private:
 
 	GPUEntity&					m_Entity;
 	std::string					m_PosName;
+	std::optional<std::string>	m_RadiusName;
 
 	SSBO						m_GridIndices;
 	SSBO						m_GridItems;
@@ -301,30 +302,14 @@ private:
 	Vec3						m_GridMax;
 };
 
-struct Grid3DCacheUniform {
-	iVec3	p_GridSize;
-	int		p_PaddingA = 0;
-	fVec3	p_GridMin;
-	float	p_PaddingB = 0;
-	fVec3	p_GridMax;
-	float	p_PaddingC = 0;
-};
-
 } // namespace Neshny
 
 namespace meta {
-	template<> inline auto registerMembers<Neshny::Grid2DCacheUniform>() {
+	template<> inline auto registerMembers<Neshny::GridCacheUniform>() {
 		return members(
-			member("GridSize", &Neshny::Grid2DCacheUniform::p_GridSize),
-			member("GridMin", &Neshny::Grid2DCacheUniform::p_GridMin),
-			member("GridMax", &Neshny::Grid2DCacheUniform::p_GridMax)
-		);
-	}
-	template<> inline auto registerMembers<Neshny::Grid3DCacheUniform>() {
-		return members(
-			member("GridSize", &Neshny::Grid3DCacheUniform::p_GridSize),
-			member("GridMin", &Neshny::Grid3DCacheUniform::p_GridMin),
-			member("GridMax", &Neshny::Grid3DCacheUniform::p_GridMax)
+			member("GridSize", &Neshny::GridCacheUniform::p_GridSize),
+			member("GridMin", &Neshny::GridCacheUniform::p_GridMin),
+			member("GridMax", &Neshny::GridCacheUniform::p_GridMax)
 		);
 	}
 }

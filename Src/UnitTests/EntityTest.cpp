@@ -539,7 +539,7 @@ namespace Test {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////
-	void GPUEntityCache3D(bool use_cursor) {
+	void GPUEntityCache3D(bool use_cursor, bool use_radius = false) {
 
 		const int prey_count = 50;
 		const int hunter_count = 20;
@@ -563,7 +563,7 @@ namespace Test {
 		prey_entities.Init(1000);
 		hunter_entities.Init(1000);
 
-		Neshny::Grid3DCache cache(prey_entities, "ThreeDim");
+		Neshny::Grid3DCache cache(prey_entities, "ThreeDim", use_radius ? std::optional<std::string_view>("Float") : std::nullopt);
 
 		std::vector<GPUThing> expected_prey;
 		for (int i = 0; i < prey_count; i++) {
@@ -593,7 +593,8 @@ namespace Test {
 			Neshny::fVec3 hunter_pos(hunter.p_FourDim.x, hunter.p_FourDim.y, hunter.p_FourDim.z);
 			for (const auto& prey : expected_prey) {
 				float dist_sqr = (prey.p_ThreeDim - hunter_pos).LengthSquared();
-				if (dist_sqr < find_radius_sqr) {
+				float rad_sqr_check = use_radius ? (prey.p_Float * prey.p_Float) : find_radius_sqr;
+				if (dist_sqr < rad_sqr_check) {
 					hunter.p_ParentIndex++;
 					hunter.p_Float += prey.p_Float;
 				}
@@ -611,7 +612,10 @@ namespace Test {
 #elif defined(NESHNY_WEBGPU)
 		std::string shader_defines;
 		if (use_cursor) {
-			shader_defines = "#define USE_CURSOR";
+			shader_defines = "#define USE_CURSOR\n";
+		}
+		if (use_radius) {
+			shader_defines += "#define USE_RADIUS\n";
 		}
 		Uniform uniform{ 0, find_radius };
 		Neshny::EntityPipeline::ModifyEntity(Neshny::SrcStr() + shader_defines, hunter_entities, "UnitTestCache", true)
@@ -645,6 +649,11 @@ namespace Test {
 	////////////////////////////////////////////////////////////////////////////////
 	void UnitTest_GPUEntityCache3DRaw(void) {
 		GPUEntityCache3D(false);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////
+	void UnitTest_GPUEntityCache3DRadius(void) {
+		GPUEntityCache3D(false, true);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////

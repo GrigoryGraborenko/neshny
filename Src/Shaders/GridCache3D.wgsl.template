@@ -17,7 +17,7 @@ fn Get<<NAME>>IndexAtCache(index: i32) -> i32 {
 
 ////////////////////////////////////////////////////////////////////////////////
 fn Get<<NAME>>GridPosAt(pos: vec3f) -> vec3i {
-	return GetGridPos3D(pos, b_<<NAME>>GridUniform.GridMin, b_<<NAME>>GridUniform.GridMax, b_<<NAME>>GridUniform.GridSize);
+	return GetGridPos3D(pos, b_<<NAME>>GridUniform.GridMin.xyz, b_<<NAME>>GridUniform.GridMax.xyz, b_<<NAME>>GridUniform.GridSize.xyz);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
