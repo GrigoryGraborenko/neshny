@@ -156,6 +156,24 @@ struct BaseVec3 {
 		return true;
 	}
 
+	static bool			LinePlaneIntersect(BaseVec3<T> a0, BaseVec3<T> a1, BaseVec3<T> point_on_plane, BaseVec3<T> plane_normal, bool clamp, BaseVec3<T>& out, T* line_frac = nullptr) {
+		auto delta = a1 - a0;
+		T denom = plane_normal | delta;
+		if (denom == 0) {
+			return false;
+		}
+		T numer = plane_normal | (point_on_plane - a0);
+		T u = numer / denom;
+		if (clamp) {
+			u = GETCLAMP(u, 0.0, 1.0);
+		}
+		if (line_frac) {
+			*line_frac = u;
+		}
+		out = a0 + (delta * u);
+		return true;
+	}
+
 	inline static BaseVec3<T>	Min				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)); }
 	inline static BaseVec3<T>	Max				( BaseVec3<T> a, BaseVec3<T> b ) { return BaseVec3<T>(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)); }
 	inline static Axis			IntToAxis		( int ax ) { return ax == 0 ? Axis::X : (ax == 1 ? Axis::Y : Axis::Z); }
