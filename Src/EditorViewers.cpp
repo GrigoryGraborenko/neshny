@@ -616,7 +616,7 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 			found = &(data.p_Items.back());
 		}
 
-		auto check_header = ("###" + buffer.first);
+		auto check_header = ("##" + buffer.first);
 
 		if (data.p_AllEnabled) {
 			ImGui::BeginDisabled();

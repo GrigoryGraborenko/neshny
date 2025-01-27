@@ -442,6 +442,9 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));
 			result->m_Pipeline->AddSampler(*sampler.p_Sampler);
 		}
+		if (m_RunType == RunType::BASIC_COMPUTE) {
+			m_Vars.push_back({ "ioMaxIndex", false, m_Iterations });
+		}
 
 		if (control_ssbo) { // avoid initial validation error for zero-sized buffers
 			control_ssbo->EnsureSizeBytes(std::max(int(m_Vars.size()), 1) * sizeof(int));
@@ -496,6 +499,14 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			end_insertion.push_back(std::format(
 				"\t{0}Main(item_index, item);\n"
 				"}}\n////////////////", m_Entity->GetName()));
+		} else if (m_ReplaceMain && (m_RunType == RunType::BASIC_COMPUTE)) {
+			end_insertion.push_back(std::format("@compute @workgroup_size({0}, {1}, {2})", m_LocalSize.x, m_LocalSize.y, m_LocalSize.z));
+			end_insertion.push_back(
+				"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
+				"\tlet item_index = i32(global_id.x);\n"
+				"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+				"\tComputeMain(item_index);\n"
+				"}}\n////////////////");
 		}
 
 		if (!m_ExtraCode.empty()) {
@@ -550,6 +561,8 @@ EntityPipeline::AsyncOutputResults EntityPipeline::RunInternal(int iterations, R
 
 	if (m_Entity) {
 		iterations = m_Entity->GetMaxCount();
+	} else if (m_RunType == RunType::BASIC_COMPUTE) {
+		iterations = m_Iterations;
 	}
 
 	bool previously_using_temp_frame = prepared->m_TemporaryFrame.get();

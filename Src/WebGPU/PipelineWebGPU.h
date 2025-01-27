@@ -44,8 +44,8 @@ public:
 	static EntityPipeline RenderBuffer(std::string_view identifier, std::string_view shader_name, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, SSBO* control_ssbo = nullptr) {
 		return EntityPipeline(RunType::BASIC_RENDER, nullptr, buffer, nullptr, shader_name, false, identifier, control_ssbo, 0, render_params);
 	}
-	static EntityPipeline Compute(std::string_view identifier, std::string_view shader_name, int iterations, SSBO* control_ssbo) {
-		return EntityPipeline(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, false, identifier, control_ssbo, iterations);
+	static EntityPipeline Compute(std::string_view identifier, std::string_view shader_name, int iterations, bool replace_main, SSBO* control_ssbo) {
+		return EntityPipeline(RunType::BASIC_COMPUTE, nullptr, nullptr, nullptr, shader_name, replace_main, identifier, control_ssbo, iterations);
 	}
 
 	EntityPipeline&				AddEntity			( GPUEntity& entity, BaseCache* cache = nullptr );
