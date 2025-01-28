@@ -216,8 +216,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	if (create_new) {
 		if (m_Entity && is_render) {
 			insertion.push_back(std::format("#define Get_ioMaxIndex (b_{0}[3])", m_Entity->GetName()));
-		}
-		else if (m_Entity) {
+		} else if (m_Entity) {
 			insertion.push_back(std::format("#define Get_ioMaxIndex (atomicLoad(&b_{0}[3]))", m_Entity->GetName()));
 		}
 		if (entity_processing) {
@@ -415,6 +414,10 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		}
 	}
 
+	if (m_RunType == RunType::BASIC_COMPUTE) {
+		m_Vars.push_back({ "ioIterations", false, m_Iterations });
+	}
+
 	if (create_new) {
 
 		for (const auto& tex : m_Textures) {
@@ -441,9 +444,6 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		for (const auto& sampler : m_Samplers) {
 			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));
 			result->m_Pipeline->AddSampler(*sampler.p_Sampler);
-		}
-		if (m_RunType == RunType::BASIC_COMPUTE) {
-			m_Vars.push_back({ "ioMaxIndex", false, m_Iterations });
 		}
 
 		if (control_ssbo) { // avoid initial validation error for zero-sized buffers
@@ -504,7 +504,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			end_insertion.push_back(
 				"fn main(@builtin(global_invocation_id) global_id: vec3u) {{\n"
 				"\tlet item_index = i32(global_id.x);\n"
-				"\tif (item_index >= Get_ioMaxIndex) {{ return; }}\n"
+				"\tif (item_index >= Get_ioIterations) {{ return; }}\n"
 				"\tComputeMain(item_index);\n"
 				"}}\n////////////////");
 		}
