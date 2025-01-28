@@ -395,7 +395,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 				auto max_index = std::format("io{0}MaxIndex", entity.GetName());
 				auto free_count = std::format("io{0}FreeCount", entity.GetName());
 
-				insertion.push_back(std::format("fn Create{0}(input_item: {0}) {{", entity.GetName()));
+				insertion.push_back(std::format("fn Create{0}(input_item: {0}) -> i32 {{", entity.GetName()));
 				insertion.push_back("\tvar item = input_item;");
 				insertion.push_back(std::format("\tlet item_id: i32 = atomicAdd(&{0}, 1);", next_id));
 
@@ -410,7 +410,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 				insertion.push_back("\t}");
 
 				insertion.push_back(std::format("\titem.{0} = item_id;", entity.GetIDName()));
-				insertion.push_back(std::format("\tSet{0}(item, item_pos);\n}}", entity.GetName()));
+				insertion.push_back(std::format("\tSet{0}(item, item_pos);\n\treturn item_pos;\n}}", entity.GetName()));
 			}
 		}
 	}
