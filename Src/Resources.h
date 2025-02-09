@@ -148,39 +148,16 @@ public:
 	struct Params {};
 #pragma pack(pop)
 
-	virtual				~TextureSkybox(void) {}
-	virtual bool		Init(std::string_view path, Params params, std::string& err) {
-		std::vector<std::string> names = { "right", "left", "top", "bottom", "front", "back" };
-		for (int i = 0; i < 6; i++) {
+	virtual					~TextureSkybox			( void ) {}
+	virtual bool			Init					( std::string_view path, Params params, std::string& err );
 
-			std::string fullname = ReplaceAll(path, "*", names[i]);
-
-			SDL_Surface* surface = IMG_Load(fullname.data());
-			if (!surface) {
-				err = std::format("Could not load image {}", path);
-				return false;
-			}
-
-			if (surface->format->format != g_CorrectSDLFormat) {
-				SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
-				SDL_FreeSurface(surface);
-				surface = converted_surface;
-			}
-
-			if (i == 0) {
-				m_Texture.InitCubeMap(surface->w, surface->h);
-			}
-			auto sync_token = Core::Singleton().SyncWithMainThread();
-			m_Texture.CopyDataLayer(i, (unsigned char*)surface->pixels, surface->format->BytesPerPixel, surface->pitch, false);
-		}
-		return true;
-	};
+	void					Render					( WebGPURTT& rtt, const Matrix4& view_perspective );
 
 	const WebGPUTexture&	Get						( void ) const { return m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
 
-	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
-	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
+	virtual uint64_t		GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 protected:
 	WebGPUTexture	m_Texture;

@@ -73,8 +73,12 @@ public:
 	EntityPipeline&				SetUniform			( const T& uniform ) {
 
 		m_Uniform.p_Spec.clear();
-		Serialiser<T> serializeFunc(m_Uniform.p_Spec);
-		meta::doForAllMembers<T>(serializeFunc);
+		if constexpr (std::is_same<T, fMatrix4>::value) {
+			m_Uniform.p_Spec.push_back({ "Matrix4x4", MemberSpec::T_MAT4, sizeof(fMatrix4), false });
+		} else {
+			Serialiser<T> serializeFunc(m_Uniform.p_Spec);
+			meta::doForAllMembers<T>(serializeFunc);
+		}
 		m_Uniform.p_Data = { (unsigned char*)&uniform, sizeof(uniform) };
 		return *this;
 	}

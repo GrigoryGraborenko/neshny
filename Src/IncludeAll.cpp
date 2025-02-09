@@ -21,6 +21,7 @@
     #include "OpenGL/PipelineGL.cpp"
 #endif
 #include "Core.cpp"
+#include "Resources.cpp"
 #include "EditorViewers.cpp"
 #include "Geometry.cpp"
 #ifndef NESHNY_SKIP_TESTS
