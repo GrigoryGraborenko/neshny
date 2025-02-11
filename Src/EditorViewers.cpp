@@ -1224,7 +1224,7 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 		m_NeedsReset = true;
 	}
 
-	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTexView(0);
 #if defined(NESHNY_GL)
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
 #else
@@ -1332,7 +1332,7 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 		m_NeedsReset = true;
 	}
 
-	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTex(0);
+	ImTextureID tex_id = (ImTextureID)(unsigned long long)m_RTT.GetColorTexView(0);
 	ImGui::Image(tex_id, im_size, ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::SetCursorPos(im_pos);

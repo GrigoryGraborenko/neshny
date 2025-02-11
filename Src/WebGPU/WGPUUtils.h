@@ -449,8 +449,10 @@ public:
 	Token							RenderPassToken	( WGPURenderPassEncoder& pass );
 
 	inline void						ClearBeforeNextRender	( void ) { m_ClearNext = true; }
-	inline WGPUTextureView			GetColorTex				( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
-	inline WGPUTextureView			GetDepthTex				( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
+	inline WebGPUTexture*			GetColorTex				( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]; }
+	inline WebGPUTexture*			GetDepthTex				( void ) { return m_DepthTex ? m_DepthTex : nullptr; }
+	inline WGPUTextureView			GetColorTexView			( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
+	inline WGPUTextureView			GetDepthTexView			( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
 
 private:
 
