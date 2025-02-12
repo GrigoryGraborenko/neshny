@@ -672,11 +672,19 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	blend.alpha.srcFactor = params.p_AlphaBlend.srcFactor;
 	blend.alpha.dstFactor = params.p_AlphaBlend.dstFactor;
 
-	WGPUColorTargetState color_target = {};
-	color_target.nextInChain = nullptr;
-	color_target.format = WGPUTextureFormat_BGRA8Unorm;
-	color_target.blend = &blend;
-	color_target.writeMask = WGPUColorWriteMask_All;
+	std::vector<WGPUColorTargetState> color_targets;
+	for (auto attach: params.p_Attachments) {
+		WGPUColorTargetState color_target;
+		color_target.nextInChain = nullptr;
+		if (attach == AttachmentMode::RGBA) {
+			color_target.format = WGPUTextureFormat_BGRA8Unorm;
+		} else {
+			throw "Non-RGBA attachment modes not implemented yet";
+		}
+		color_target.blend = &blend;
+		color_target.writeMask = WGPUColorWriteMask_All;
+		color_targets.push_back(color_target);
+	}
 
 	WGPUDepthStencilState depth_state = {};
 	depth_state.nextInChain = nullptr;
@@ -692,8 +700,8 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 		WGPUFragmentState fragment = {};
 		fragment.module = shader;
 		fragment.entryPoint = "frag_main";
-		fragment.targetCount = 1;
-		fragment.targets = &color_target;
+		fragment.targetCount = color_targets.size();
+		fragment.targets = color_targets.data();
 
 		WGPURenderPipelineDescriptor desc = {};
 		desc.fragment = &fragment;
@@ -931,6 +939,7 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std:
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WebGPURTT::WebGPURTT(void) :
 	m_PassDescriptor{}
 	,m_DepthDesc	{}
@@ -946,7 +955,7 @@ WebGPURTT::WebGPURTT(void) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear) {
+Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear, WGPUTextureView existing_depth_tex) {
 
 	int num_color_tex = (int)color_attachments.size();
 	bool modes_same = color_attachments.size() == m_Modes.size();
@@ -972,9 +981,10 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding, 1);
 			m_ColorTextures.push_back(tex);
 		}
-		if (m_CaptureDepthStencil) {
+		if (m_CaptureDepthStencil && (existing_depth_tex == nullptr)) {
 			m_DepthTex = new WebGPUTexture();
 			m_DepthTex->InitDepth(m_Width, m_Height);
+			existing_depth_tex = m_DepthTex->GetTextureView();
 		}
 
 		m_ColorDescriptors.resize(num_color_tex);
@@ -995,8 +1005,8 @@ Token WebGPURTT::Activate(std::vector<Mode> color_attachments, bool capture_dept
 		m_PassDescriptor.colorAttachmentCount = num_color_tex;
 		m_PassDescriptor.colorAttachments = &m_ColorDescriptors[0];
 
-		if (m_DepthTex) {
-			m_DepthDesc.view = m_DepthTex->GetTextureView();
+		if (existing_depth_tex) {
+			m_DepthDesc.view = existing_depth_tex;
 			m_PassDescriptor.depthStencilAttachment = &m_DepthDesc;
 		} else {
 			m_PassDescriptor.depthStencilAttachment = nullptr;

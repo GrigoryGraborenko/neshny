@@ -366,6 +366,12 @@ public:
 		COMPUTE
 	};
 
+	enum class AttachmentMode {
+		RGBA
+		//,RGBA_FLOAT32
+		//,RGBA_FLOAT16
+	};
+
 	struct RenderParams {
 		RenderParams() {};
 
@@ -384,6 +390,8 @@ public:
 
 		WGPUFrontFace			p_FrontFace = WGPUFrontFace_CCW;
 		WGPUCullMode			p_CullMode = WGPUCullMode_None;
+
+		std::vector<WebGPUPipeline::AttachmentMode>	p_Attachments = { AttachmentMode::RGBA };
 	};
 
 								WebGPUPipeline			( void ) : m_Type(Type::UNKNOWN) {}
@@ -433,16 +441,10 @@ class WebGPURTT {
 
 public:
 
-	enum class Mode {
-		RGBA
-		//,RGBA_FLOAT32
-		//,RGBA_FLOAT16
-	};
-
 									WebGPURTT		( void );
 									~WebGPURTT		( void ) { Destroy(); }
 
-	Token							Activate		( std::vector<Mode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true );
+	Token							Activate		( std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true, WGPUTextureView existing_depth_tex = nullptr );
 	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, bool clear = true );
 
 	void							Render			( WebGPUPipeline* pipeline, int instances = 1 );
@@ -453,18 +455,19 @@ public:
 	inline WebGPUTexture*			GetDepthTex				( void ) { return m_DepthTex ? m_DepthTex : nullptr; }
 	inline WGPUTextureView			GetColorTexView			( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
 	inline WGPUTextureView			GetDepthTexView			( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
+	inline auto						GetAttachmentModes		( void ) { return m_Modes; }
 
 private:
 
 	void							Destroy		( void );
 
-	std::vector<Mode>				m_Modes = {};
 	bool							m_CaptureDepthStencil = false;
 	int								m_Width = 0;
 	int								m_Height = 0;
 	std::vector<WebGPUTexture*>		m_ColorTextures;
 	WebGPUTexture*					m_DepthTex = nullptr;
 
+	std::vector<WebGPUPipeline::AttachmentMode>	m_Modes = {};
 	std::vector<WGPURenderPassColorAttachment>	m_ColorDescriptors;
 	WGPURenderPassDepthStencilAttachment		m_DepthDesc;
 	WGPURenderPassDescriptor		m_PassDescriptor;

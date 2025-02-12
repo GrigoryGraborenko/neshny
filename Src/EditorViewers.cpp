@@ -1154,7 +1154,11 @@ Token Scrapbook2D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
+#ifdef NESHNY_WEBGPU
+	return self.m_RTT.Activate({ WebGPUPipeline::AttachmentMode::RGBA }, true, self.m_Width, self.m_Height, reset);
+#else
 	return self.m_RTT.Activate({ RTT::Mode::RGBA }, true, self.m_Width, self.m_Height, reset);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1271,7 +1275,12 @@ Token Scrapbook3D::ActivateRTT(void) {
 	auto& self = Singleton();
 	bool reset = self.m_NeedsReset;
 	self.m_NeedsReset = false;
+
+#ifdef NESHNY_WEBGPU
+	return self.m_RTT.Activate({ WebGPUPipeline::AttachmentMode::RGBA }, true, self.m_Width, self.m_Height, reset);
+#else
 	return self.m_RTT.Activate({ RTT::Mode::RGBA }, true, self.m_Width, self.m_Height, reset);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
