@@ -71,13 +71,13 @@ public:
 
 	template <class T>
 	EntityPipeline&				SetUniform			( const T& uniform ) {
-
 		m_Uniform.p_Spec.clear();
-		if constexpr (std::is_same<T, fMatrix4>::value) {
-			m_Uniform.p_Spec.push_back({ "Matrix4x4", MemberSpec::T_MAT4, sizeof(fMatrix4), false });
-		} else {
+		auto known_type = MemberSpec::GetTypeOf<T>();
+		if (known_type == MemberSpec::Type::T_UNKNOWN) {
 			Serialiser<T> serializeFunc(m_Uniform.p_Spec);
 			meta::doForAllMembers<T>(serializeFunc);
+		} else {
+			m_Uniform.p_Spec.push_back({ "Value", known_type, sizeof(T), false }); // TODO: don't create struct
 		}
 		m_Uniform.p_Data = { (unsigned char*)&uniform, sizeof(uniform) };
 		return *this;
@@ -85,15 +85,19 @@ public:
 
 	template <class T>
 	EntityPipeline&				AddDataVector		( std::string_view name, const std::vector<T>& items ) {
-
 		int ints_per = sizeof(T) / sizeof(int);
 		m_DataVectors.push_back({
 			std::string(name), ints_per, (unsigned char*)items.data(), (int)items.size(),
 			std::format("io{0}Count", name), std::format("io{0}Offset", name), std::format("io{0}Num", name)
 		});
 		AddedDataVector& ref = m_DataVectors.back();
-		Serialiser<T> serializeFunc(ref.p_Members);
-		meta::doForAllMembers<T>(serializeFunc);
+		auto known_type = MemberSpec::GetTypeOf<T>();
+		if (known_type == MemberSpec::Type::T_UNKNOWN) {
+			Serialiser<T> serializeFunc(ref.p_Members);
+			meta::doForAllMembers<T>(serializeFunc);
+		} else {
+			ref.p_Members.push_back({ "Value", known_type, sizeof(T), false }); // TODO: don't create struct
+		}
 		return *this;
 	}
 

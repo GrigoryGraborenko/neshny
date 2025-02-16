@@ -20,6 +20,34 @@ struct MemberSpec {
 		T_MAT4
 	};
 
+	template<typename T>
+	static Type GetTypeOf(void) {
+		if constexpr (std::is_same<T, int>::value) {
+			return MemberSpec::T_INT;
+		} else if constexpr (std::is_same<T, unsigned int>::value) {
+			return MemberSpec::T_UINT;
+		} else if constexpr (std::is_same<T, float>::value) {
+			return MemberSpec::T_FLOAT;
+		} else if constexpr (std::is_same<T, fVec2>::value) {
+			return MemberSpec::T_VEC2;
+		} else if constexpr (std::is_same<T, fVec3>::value) {
+			return MemberSpec::T_VEC3;
+		} else if constexpr (std::is_same<T, fVec4>::value) {
+			return MemberSpec::T_VEC4;
+		} else if constexpr (std::is_same<T, iVec2>::value) {
+			return MemberSpec::T_IVEC2;
+		} else if constexpr (std::is_same<T, iVec3>::value) {
+			return MemberSpec::T_IVEC3;
+		} else if constexpr (std::is_same<T, iVec4>::value) {
+			return MemberSpec::T_IVEC4;
+		} else if constexpr (std::is_same<T, fMatrix3>::value) {
+			return MemberSpec::T_MAT3;
+		} else if constexpr (std::is_same<T, fMatrix4>::value) {
+			return MemberSpec::T_MAT4;
+		}
+		return MemberSpec::T_UNKNOWN;
+	}
+
 	static std::string GetGPUType(Type type) {
 #if defined(NESHNY_GL)
 		if (type == MemberSpec::T_INT) {
@@ -162,10 +190,48 @@ struct MemberSpec {
 		return std::string();
 	}
 
-	std::string	p_Name;
-	Type		p_Type;
-	int			p_Size;
-	bool		p_IsID = false;
+	static std::pair<std::string, std::string> GetGPUSetSyntax(Type type, int pos_index, std::string entity_name, std::string name) {
+		std::string mod_str;
+		std::string value_mod_str;
+
+#if defined(NESHNY_GL)
+		// TODO: fill this in and use it
+#elif defined(NESHNY_WEBGPU)
+		if (type == MemberSpec::T_INT) {
+			mod_str = std::format("\t{2}_SET(base, {0}, item.{1});", pos_index, name, entity_name);
+			value_mod_str = std::format("\t{1}_SET(base, {0}, value);", pos_index, entity_name);
+		} else if (type == MemberSpec::T_FLOAT) {
+			mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(item.{1}));", pos_index, name, entity_name);
+			value_mod_str = std::format("\t{1}_SET(base, {0}, bitcast<i32>(value));", pos_index, entity_name);
+		} else if (type == MemberSpec::T_VEC2) {
+			mod_str = std::format("\t{3}_SET(base, {0}, bitcast<i32>(item.{2}.x)); {3}_SET(base, {1}, bitcast<i32>(item.{2}.y));", pos_index, pos_index + 1, name, entity_name);
+			value_mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(value.x)); {2}_SET(base, {1}, bitcast<i32>(value.y));", pos_index, pos_index + 1, entity_name);
+		} else if (type == MemberSpec::T_VEC3) {
+			mod_str = std::format("\t{4}_SET(base, {0}, bitcast<i32>(item.{3}.x)); {4}_SET(base, {1}, bitcast<i32>(item.{3}.y)); {4}_SET(base, {2}, bitcast<i32>(item.{3}.z));", pos_index, pos_index + 1, pos_index + 2, name, entity_name);
+			value_mod_str = std::format("\t{3}_SET(base, {0}, bitcast<i32>(value.x)); {3}_SET(base, {1}, bitcast<i32>(value.y)); {3}_SET(base, {2}, bitcast<i32>(value.z));", pos_index, pos_index + 1, pos_index + 2, entity_name);
+		} else if (type == MemberSpec::T_VEC4) {
+			mod_str = std::format("\t{5}_SET(base, {0}, bitcast<i32>(item.{4}.x)); {5}_SET(base, {1}, bitcast<i32>(item.{4}.y)); {5}_SET(base, {2}, bitcast<i32>(item.{4}.z)); {5}_SET(base, {3}, bitcast<i32>(item.{4}.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, name, entity_name);
+			value_mod_str = std::format("\t{4}_SET(base, {0}, bitcast<i32>(value.x)); {4}_SET(base, {1}, bitcast<i32>(value.y)); {4}_SET(base, {2}, bitcast<i32>(value.z)); {4}_SET(base, {3}, bitcast<i32>(value.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
+		} else if (type == MemberSpec::T_IVEC2) {
+			mod_str = std::format("\t{3}_SET(base, {0}, item.{2}.x); {3}_SET(base, {1}, item.{2}.y);", pos_index, pos_index + 1, name, entity_name);
+			value_mod_str = std::format("\t{2}_SET(base, {0}, value.x); {2}_SET(base, {1}, value.y);", pos_index, pos_index + 1, entity_name);
+		} else if (type == MemberSpec::T_IVEC3) {
+			mod_str = std::format("\t{4}_SET(base, {0}, item.{3}.x); {4}_SET(base, {1}, item.{3}.y); {4}_SET(base, {2}, item.{3}.z);", pos_index, pos_index + 1, pos_index + 2, name, entity_name);
+			value_mod_str = std::format("\t{3}_SET(base, {0}, value.x); {3}_SET(base, {1}, value.y); {3}_SET(base, {2}, value.z);", pos_index, pos_index + 1, pos_index + 2, entity_name);
+		} else if (type == MemberSpec::T_IVEC4) {
+			mod_str = std::format("\t{5}_SET(base, {0}, item.{4}.x); {5}_SET(base, {1}, item.{4}.y); {5}_SET(base, {2}, item.{4}.z); {5}_SET(base, {3}, item.{4}.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, name, entity_name);
+			value_mod_str = std::format("\t{4}_SET(base, {0}, value.x); {4}_SET(base, {1}, value.y); {4}_SET(base, {2}, value.z); {4}_SET(base, {3}, value.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
+		}
+#endif
+		return { mod_str, value_mod_str };
+	}
+
+
+	std::string					p_Name;
+	Type						p_Type;
+	int							p_Size;
+	bool						p_IsID = false;
+	std::optional<std::size_t>	p_ArrayCount;
 };
 
 struct StructInfo {

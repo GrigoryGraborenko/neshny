@@ -226,9 +226,9 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		}
 
 		if (control_ssbo && (!m_DataVectors.empty())) {
-			end_insertion.push_back("//////////////// Data vector helpers");
+			insertion.push_back("//////////////// Data vector helpers");
 			for (const auto& data_vect : m_DataVectors) {
-				end_insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
+				insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
 				m_Vars.push_back({ data_vect.p_CountVar });
 				m_Vars.push_back({ data_vect.p_OffsetVar });
 				m_Vars.push_back({ data_vect.p_NumVar });
@@ -634,7 +634,9 @@ EntityPipeline::AsyncOutputResults EntityPipeline::RunInternal(int iterations, R
 			int offset = control_size;
 			control_size += data_size;
 			values.resize(control_size);
-			memcpy((unsigned char*)&(values[offset]), data_vect.p_Data, sizeof(int) * data_size);
+			if (data_size > 0) {
+				memcpy((unsigned char*)&(values[offset]), data_vect.p_Data, sizeof(int) * data_size);
+			}
 		}
 
 		control_ssbo->EnsureSizeBytes(control_size * sizeof(int), false);

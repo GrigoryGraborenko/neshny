@@ -12,6 +12,19 @@ struct EntityInfo {
 
 const int ENTITY_OFFSET_INTS = 4;
 
+template<typename>
+struct is_std_array : std::false_type {};
+
+template<typename T, std::size_t N>
+struct is_std_array<std::array<T, N>> : std::true_type {};
+
+template <class T>
+using element_type = typename std::conditional<
+	std::is_array<T>::value,
+	typename std::remove_all_extents<T>::type,
+	typename T::value_type
+>::type;
+
 template<typename T>
 class Serialiser {
 public:
@@ -19,44 +32,23 @@ public:
 
 	template<typename Member>
 	void operator()(Member& member) {
-		//member.getPtr();
 		std::string name = member.getName();
 		using CurrentMemberType = meta::get_member_type<decltype(member)>;
 
 		MemberSpec::Type type = MemberSpec::T_UNKNOWN;
 		bool is_id = false;
-		if constexpr (std::is_same<CurrentMemberType, int>::value) {
-			type = MemberSpec::T_INT;
-			//auto mem_ptr = &
-			//auto thing = member.getPtr();
-			//if constexpr (std::is_same<decltype(member.getPtr()), decltype(m_IdRef)>::value) {
-				//member.getPtr() == m_IdRef;
-				//is_id = member.getPtr() == m_IdRef;
-			//}
-			//int brk = 0;
-			//is_id = member.getPtr() == m_IdRef;
-		} else if constexpr (std::is_same<CurrentMemberType, unsigned int>::value) {
-			type = MemberSpec::T_UINT;
-		} else if constexpr (std::is_same<CurrentMemberType, float>::value) {
-			type = MemberSpec::T_FLOAT;
-		} else if constexpr (std::is_same<CurrentMemberType, fVec2>::value) {
-			type = MemberSpec::T_VEC2;
-		} else if constexpr (std::is_same<CurrentMemberType, fVec3>::value) {
-			type = MemberSpec::T_VEC3;
-		} else if constexpr (std::is_same<CurrentMemberType, fVec4>::value) {
-			type = MemberSpec::T_VEC4;
-		} else if constexpr (std::is_same<CurrentMemberType, iVec2>::value) {
-			type = MemberSpec::T_IVEC2;
-		} else if constexpr (std::is_same<CurrentMemberType, iVec3>::value) {
-			type = MemberSpec::T_IVEC3;
-		} else if constexpr (std::is_same<CurrentMemberType, iVec4>::value) {
-			type = MemberSpec::T_IVEC4;
-		} else if constexpr (std::is_same<CurrentMemberType, fMatrix3>::value) {
-			type = MemberSpec::T_MAT3;
-		} else if constexpr (std::is_same<CurrentMemberType, fMatrix4>::value) {
-			type = MemberSpec::T_MAT4;
+		std::optional<std::size_t> array_count;
+
+		//if constexpr (std::is_same<decltype(member.getPtr()), decltype(m_IdRef)>::value) { // TODO: automate ID name
+		auto byte_size = sizeof(CurrentMemberType);
+		if constexpr (is_std_array<CurrentMemberType>::value) {
+			type = MemberSpec::GetTypeOf<element_type<CurrentMemberType>>();
+			array_count = std::tuple_size<CurrentMemberType>::value;
+			byte_size = sizeof(element_type<CurrentMemberType>);
+		} else {
+			type = MemberSpec::GetTypeOf<CurrentMemberType>();
 		}
-		m_Specs.push_back({ name, type, sizeof(CurrentMemberType), is_id });
+		m_Specs.push_back({ name, type, (int)byte_size, is_id, array_count });
 	}
 
 private:
@@ -75,7 +67,8 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	{
 		std::vector<std::string> member_vars;
 		for (auto member : info.p_Members) {
-			member_vars.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			auto type_str = MemberSpec::GetGPUType(member.p_Type);
+			member_vars.push_back(std::format("\t{}: {}", member.p_Name, member.p_ArrayCount.has_value() ? std::format("array<{}, {}>", type_str, *member.p_ArrayCount) : type_str));
 		}
 		read_only_lines.push_back(JoinStrings(member_vars, ",\n"));
 	}
@@ -88,6 +81,17 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	std::vector<std::string> functions;
 	for (auto member : info.p_Members) {
 		auto member_name = member.p_Name;
+
+		if (member.p_ArrayCount.has_value()) {
+			std::size_t num = *member.p_ArrayCount;
+			for (std::size_t i = 0; i < num; i++) {
+				std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
+				pos_index += member.p_Size / sizeof(float);
+				read_only_lines.push_back(std::format("\tresult.{}[{}] = {};", member_name, i, get_syntax));
+			}
+			continue;
+		}
+
 		std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
 		read_only_lines.push_back(std::format("\tresult.{} = {};", member_name, get_syntax));
 		functions.push_back(std::format("fn Get{2}{1}(index: i32) -> {0} {{\n", MemberSpec::GetGPUType(member.p_Type), member_name, entity_name) + get_base_str + std::format("\n\treturn {};\n}}", get_syntax));
@@ -116,36 +120,20 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	pos_index = 0;
 	functions = {};
 	for (auto member : info.p_Members) {
-		std::string name = member.p_Name;
-		std::string mod_str;
-		std::string value_mod_str;
-		if (member.p_Type == MemberSpec::T_INT) {
-			mod_str = std::format("\t{2}_SET(base, {0}, item.{1});", pos_index, name, entity_name);
-			value_mod_str = std::format("\t{1}_SET(base, {0}, value);", pos_index, entity_name);
-		} else if (member.p_Type == MemberSpec::T_FLOAT) {
-			mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(item.{1}));", pos_index, name, entity_name);
-			value_mod_str = std::format("\t{1}_SET(base, {0}, bitcast<i32>(value));", pos_index, entity_name);
-		} else if (member.p_Type == MemberSpec::T_VEC2) {
-			mod_str = std::format("\t{3}_SET(base, {0}, bitcast<i32>(item.{2}.x)); {3}_SET(base, {1}, bitcast<i32>(item.{2}.y));", pos_index, pos_index + 1, name, entity_name);
-			value_mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(value.x)); {2}_SET(base, {1}, bitcast<i32>(value.y));", pos_index, pos_index + 1, entity_name);
-		} else if (member.p_Type == MemberSpec::T_VEC3) {
-			mod_str = std::format("\t{4}_SET(base, {0}, bitcast<i32>(item.{3}.x)); {4}_SET(base, {1}, bitcast<i32>(item.{3}.y)); {4}_SET(base, {2}, bitcast<i32>(item.{3}.z));", pos_index, pos_index + 1, pos_index + 2, name, entity_name);
-			value_mod_str = std::format("\t{3}_SET(base, {0}, bitcast<i32>(value.x)); {3}_SET(base, {1}, bitcast<i32>(value.y)); {3}_SET(base, {2}, bitcast<i32>(value.z));", pos_index, pos_index + 1, pos_index + 2, entity_name);
-		} else if (member.p_Type == MemberSpec::T_VEC4) {
-			mod_str = std::format("\t{5}_SET(base, {0}, bitcast<i32>(item.{4}.x)); {5}_SET(base, {1}, bitcast<i32>(item.{4}.y)); {5}_SET(base, {2}, bitcast<i32>(item.{4}.z)); {5}_SET(base, {3}, bitcast<i32>(item.{4}.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, name, entity_name);
-			value_mod_str = std::format("\t{4}_SET(base, {0}, bitcast<i32>(value.x)); {4}_SET(base, {1}, bitcast<i32>(value.y)); {4}_SET(base, {2}, bitcast<i32>(value.z)); {4}_SET(base, {3}, bitcast<i32>(value.w));", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
-		} else if (member.p_Type == MemberSpec::T_IVEC2) {
-			mod_str = std::format("\t{3}_SET(base, {0}, item.{2}.x); {3}_SET(base, {1}, item.{2}.y);", pos_index, pos_index + 1, name, entity_name);
-			value_mod_str = std::format("\t{2}_SET(base, {0}, value.x); {2}_SET(base, {1}, value.y);", pos_index, pos_index + 1, entity_name);
-		} else if (member.p_Type == MemberSpec::T_IVEC3) {
-			mod_str = std::format("\t{4}_SET(base, {0}, item.{3}.x); {4}_SET(base, {1}, item.{3}.y); {4}_SET(base, {2}, item.{3}.z);", pos_index, pos_index + 1, pos_index + 2, name, entity_name);
-			value_mod_str = std::format("\t{3}_SET(base, {0}, value.x); {3}_SET(base, {1}, value.y); {3}_SET(base, {2}, value.z);", pos_index, pos_index + 1, pos_index + 2, entity_name);
-		} else if (member.p_Type == MemberSpec::T_IVEC4) {
-			mod_str = std::format("\t{5}_SET(base, {0}, item.{4}.x); {5}_SET(base, {1}, item.{4}.y); {5}_SET(base, {2}, item.{4}.z); {5}_SET(base, {3}, item.{4}.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, name, entity_name);
-			value_mod_str = std::format("\t{4}_SET(base, {0}, value.x); {4}_SET(base, {1}, value.y); {4}_SET(base, {2}, value.z); {4}_SET(base, {3}, value.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
+
+		if (member.p_ArrayCount.has_value()) {
+			std::size_t num = *member.p_ArrayCount;
+			for (std::size_t i = 0; i < num; i++) {
+				auto [mod_str, value_mod_str] = MemberSpec::GetGPUSetSyntax(member.p_Type, pos_index, entity_name, std::format("{}[{}]", member.p_Name, i));
+				lines.push_back(mod_str);
+				pos_index += member.p_Size / sizeof(float);
+			}
+			continue;
 		}
+
+		auto [mod_str, value_mod_str] = MemberSpec::GetGPUSetSyntax(member.p_Type, pos_index, entity_name, member.p_Name);
 		lines.push_back(mod_str);
-		functions.push_back(std::format("fn Set{2}{0}(index: i32, value: {1}) {{\n", name, MemberSpec::GetGPUType(member.p_Type), entity_name) + get_base_str + std::format("\n{}\n}}", value_mod_str));
+		functions.push_back(std::format("fn Set{2}{0}(index: i32, value: {1}) {{\n", member.p_Name, MemberSpec::GetGPUType(member.p_Type), entity_name) + get_base_str + std::format("\n{}\n}}", value_mod_str));
 
 		pos_index += member.p_Size / sizeof(float);
 	}
@@ -154,8 +142,6 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 	lines.push_back(JoinStrings(functions, "\n"));
 
 	info.p_GPUReadOnlyInsertion = JoinStrings(read_only_lines, "\n");
-	//lines.push_front(info.p_GPUReadOnlyInsertion);
-	//info.p_GPUInsertion = JoinStrings(lines, "\n");
 	info.p_GPUInsertion = std::format("{}{}", info.p_GPUReadOnlyInsertion, JoinStrings(lines, "\n"));
 }
 
