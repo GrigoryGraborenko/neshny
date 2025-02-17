@@ -200,6 +200,9 @@ struct MemberSpec {
 		if (type == MemberSpec::T_INT) {
 			mod_str = std::format("\t{2}_SET(base, {0}, item.{1});", pos_index, name, entity_name);
 			value_mod_str = std::format("\t{1}_SET(base, {0}, value);", pos_index, entity_name);
+		} else if (type == MemberSpec::T_UINT) {
+			mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(item.{1}));", pos_index, name, entity_name);
+			value_mod_str = std::format("\t{1}_SET(base, {0}, bitcast<i32>(value));", pos_index, entity_name);
 		} else if (type == MemberSpec::T_FLOAT) {
 			mod_str = std::format("\t{2}_SET(base, {0}, bitcast<i32>(item.{1}));", pos_index, name, entity_name);
 			value_mod_str = std::format("\t{1}_SET(base, {0}, bitcast<i32>(value));", pos_index, entity_name);
@@ -222,6 +225,7 @@ struct MemberSpec {
 			mod_str = std::format("\t{5}_SET(base, {0}, item.{4}.x); {5}_SET(base, {1}, item.{4}.y); {5}_SET(base, {2}, item.{4}.z); {5}_SET(base, {3}, item.{4}.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, name, entity_name);
 			value_mod_str = std::format("\t{4}_SET(base, {0}, value.x); {4}_SET(base, {1}, value.y); {4}_SET(base, {2}, value.z); {4}_SET(base, {3}, value.w);", pos_index, pos_index + 1, pos_index + 2, pos_index + 3, entity_name);
 		}
+		// TODO: fill in mat3x3 and mat4x4
 #endif
 		return { mod_str, value_mod_str };
 	}
