@@ -84,6 +84,10 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 
 		if (member.p_ArrayCount.has_value()) {
 			std::size_t num = *member.p_ArrayCount;
+			if ((member.p_Type == MemberSpec::Type::T_INT) || (member.p_Type == MemberSpec::Type::T_UINT)) {
+				functions.push_back(std::format("// defined macro Access{}{}(index, array_index)\n", entity_name, member_name));
+				functions.push_back(std::format("#define Access{2}{0}(index,num) (b_{2}[(index) * FLOATS_PER_{2} + {1} + ENTITY_OFFSET_INTS + (num)])\n", member_name, pos_index, entity_name));
+			}
 			for (std::size_t i = 0; i < num; i++) {
 				std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
 				pos_index += member.p_Size / sizeof(float);
@@ -95,7 +99,7 @@ void SerializeStructInfo(StructInfo& info, std::string get_base_str, std::string
 		std::string get_syntax = MemberSpec::GetGPUGetSyntax(member.p_Type, pos_index, entity_name);
 		read_only_lines.push_back(std::format("\tresult.{} = {};", member_name, get_syntax));
 		functions.push_back(std::format("fn Get{2}{1}(index: i32) -> {0} {{\n", MemberSpec::GetGPUType(member.p_Type), member_name, entity_name) + get_base_str + std::format("\n\treturn {};\n}}", get_syntax));
-		if (member.p_Type == MemberSpec::Type::T_INT) {
+		if ((member.p_Type == MemberSpec::Type::T_INT) || (member.p_Type == MemberSpec::Type::T_UINT)) {
 			functions.push_back(std::format("// defined macro Access{}{}(index)\n", entity_name, member_name));
 			functions.push_back(std::format("#define Access{2}{0}(index) (b_{2}[(index) * FLOATS_PER_{2} + {1} + ENTITY_OFFSET_INTS])\n", member_name, pos_index, entity_name));
 		} else if ((member.p_Type == MemberSpec::Type::T_IVEC2) || (member.p_Type == MemberSpec::Type::T_IVEC3) || (member.p_Type == MemberSpec::Type::T_IVEC4)) {
