@@ -81,8 +81,8 @@ public:
 		friend class WebGPUBuffer;
 	};
 
-													WebGPUBuffer			( WGPUBufferUsageFlags flags, int size = 0 );
-													WebGPUBuffer			( WGPUBufferUsageFlags flags, unsigned char* data, int size );
+													WebGPUBuffer			( WGPUBufferUsage flags, int size = 0 );
+													WebGPUBuffer			( WGPUBufferUsage flags, unsigned char* data, int size );
 			 										~WebGPUBuffer			( void );
 
 	void											EnsureSizeBytes			( int size_bytes, bool clear_after = true );
@@ -122,7 +122,7 @@ public:
 		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
 		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
 			auto info = (AsyncInfo*)user_data;
-			if (status == WGPUBufferMapAsyncStatus_Success) {
+			if (status == WGPUMapAsyncStatus_Success) {
 				auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
 				info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
  				wgpuBufferUnmap(info->p_Buffer);
@@ -140,7 +140,7 @@ public:
 
 	inline WGPUBuffer								Get						( void ) { return m_Buffer; }
 	inline int										GetSizeBytes			( void ) const { return m_Size; }
-	inline WGPUBufferUsageFlags						GetUsageFlags			( void ) const { return m_Flags; }
+	inline WGPUBufferUsage							GetUsageFlags			( void ) const { return m_Flags; }
 
 	template<class T>
 	inline void										SetSingleValue(int index, const T& value) {
@@ -183,7 +183,7 @@ protected:
 	void											Init(void);
 	void											Create(int size, unsigned char* data);
 
-	WGPUBufferUsageFlags							m_Flags = 0;
+	WGPUBufferUsage									m_Flags = 0;
 	WGPUBuffer										m_Buffer = nullptr;
 	int												m_Size = 0;
 };
@@ -241,13 +241,13 @@ public:
 	void											Init2D				(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsageFlags usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	void											InitCubeMap			(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsageFlags usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
 																			int mip_maps = 1
 																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	inline void										InitDepth			( int width, int height ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, WGPUTextureUsage_RenderAttachment, WGPUTextureAspect_DepthOnly, 1); }
@@ -256,7 +256,7 @@ public:
 																			int height,
 																			int layers,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsageFlags usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, layers, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2DArray, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 
@@ -264,7 +264,7 @@ public:
 																			WGPUTextureFormat format,
 																			WGPUTextureDimension dimension,
 																			WGPUTextureViewDimension view_dimension,
-																			WGPUTextureUsageFlags usage,
+																			WGPUTextureUsage usage,
 																			WGPUTextureAspect aspect,
 																			int mip_maps );
 
@@ -347,7 +347,7 @@ class WebGPUPipeline {
 
 	struct Buffer {
 		WebGPUBuffer*			p_Buffer;
-		WGPUShaderStageFlags	p_VisibilityFlags;
+		WGPUShaderStage			p_VisibilityFlags;
 		bool					p_ReadOnly;
 		WGPUBuffer				p_LastSeenBuffer = nullptr;
 	};
@@ -398,7 +398,7 @@ public:
 								~WebGPUPipeline			( void );
 	void						Reset					( void );
 
-	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStageFlags visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
+	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStage visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
 	WebGPUPipeline&				AddTexture				( WGPUTextureViewDimension texture_dimension, WGPUTextureView view ) { m_Textures.push_back({ texture_dimension, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 

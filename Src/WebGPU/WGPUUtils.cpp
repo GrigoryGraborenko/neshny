@@ -82,7 +82,7 @@ bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::s
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
+WebGPUBuffer::WebGPUBuffer(WGPUBufferUsage flags, int size) :
 	m_Flags	( flags )
 {
 	Init();
@@ -95,7 +95,7 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, int size) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-WebGPUBuffer::WebGPUBuffer(WGPUBufferUsageFlags flags, unsigned char* data, int size) :
+WebGPUBuffer::WebGPUBuffer(WGPUBufferUsage flags, unsigned char* data, int size) :
 	m_Flags		( flags )
 	,m_Size		( std::max(size, (int)sizeof(int)) ) // zero sized buffers cause too many issues
 {
@@ -345,7 +345,7 @@ int WebGPUTexture::GetMipMaps(int width, int height, int mip_maps) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat format, WGPUTextureDimension dimension, WGPUTextureViewDimension view_dimension, WGPUTextureUsageFlags usage, WGPUTextureAspect aspect, int mip_maps) {
+void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat format, WGPUTextureDimension dimension, WGPUTextureViewDimension view_dimension, WGPUTextureUsage usage, WGPUTextureAspect aspect, int mip_maps) {
 
 	if (m_Texture) {
 		throw "Cannot init texture more than once";
