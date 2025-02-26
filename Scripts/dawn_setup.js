@@ -231,9 +231,13 @@ async function run(all_libs, update_existing, only_copy) {
 
     fs.mkdirSync('./external/WebGPU/lib/Debug', { recursive: true });
     fs.mkdirSync('./external/WebGPU/lib/Release', { recursive: true });
+    fs.mkdirSync('./external/WebGPU/dawn/common/src/utils', { recursive: true });
     
     let debug_lib_list = [];
     let release_lib_list = [];
+
+    fs.copyFileSync(`${dawn_path}/src/utils/compiler.h`, "./external/WebGPU/dawn/common/src/utils/compiler.h"); // weird structure just for this file
+
     if (all_libs) {
         console.log("Copying all lib files...");
         crawlExtensionFiles(debug_lib_list, lib_ext, `${dawn_path}/build-debug`);

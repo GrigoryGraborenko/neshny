@@ -603,7 +603,11 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);
 
+	//WGPUSurfaceCapabilities capabilities;
+	//bool capabilities_success = wgpuSurfaceGetCapabilities(m_Surface, backendAdapter.Get(), &capabilities) == WGPUStatus_Success;
+
 #endif
+
 	SetResolution(width, height);
 	SyncResolution();
 }
@@ -611,21 +615,22 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 ////////////////////////////////////////////////////////////////////////////////
 void Core::SyncResolution(void) {
 
-	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight) && m_SwapChain) {
+	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight)) {
 		return;
 	}
 
-	if (m_SwapChain) {
-		wgpuSwapChainRelease(m_SwapChain);
-	}
+	WGPUSurfaceConfiguration config;
+	config.nextInChain = nullptr;
+	config.device = m_Device;
+	config.format = WGPUTextureFormat_BGRA8Unorm;
+	config.width = m_RequestedWidth;
+	config.height = m_RequestedHeight;
+	config.viewFormatCount = 0;
+	config.alphaMode = WGPUCompositeAlphaMode_Auto;
+	config.presentMode = WGPUPresentMode_Fifo;
+	config.usage = WGPUTextureUsage_RenderAttachment;
 
-	WGPUSwapChainDescriptor swapChainDesc = {};
-	swapChainDesc.usage = WGPUTextureUsage_RenderAttachment;
-	swapChainDesc.format = WGPUTextureFormat_BGRA8Unorm;
-	swapChainDesc.width = m_RequestedWidth;
-	swapChainDesc.height = m_RequestedHeight;
-	swapChainDesc.presentMode = WGPUPresentMode_Fifo;
-	m_SwapChain = wgpuDeviceCreateSwapChain(m_Device, m_Surface, &swapChainDesc);
+	wgpuSurfaceConfigure(m_Surface, &config);
 
 	delete m_DepthTex;
 	m_DepthTex = new WebGPUTexture();
@@ -674,9 +679,16 @@ void Core::SDLLoopInner() {
 
 	SyncResolution();
 #ifdef NESHNY_WEBGPU
-	WGPUTextureView view = GetCurrentSwapTextureView();
-	if (!view) {
-		LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
+
+	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+	if (m_SurfaceTextureView) {
+		wgpuTextureViewRelease(m_SurfaceTextureView); // release textureView
+	}
+
+	WGPUSurfaceTexture surface_texture = { nullptr };
+	wgpuSurfaceGetCurrentTexture(m_Surface, &surface_texture);
+	if (!surface_texture.texture) {
+		//LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
 		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
 #ifndef __EMSCRIPTEN__
 		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
@@ -684,13 +696,13 @@ void Core::SDLLoopInner() {
 		return;
 	}
 #endif
+	m_SurfaceTextureView = wgpuTextureCreateView(surface_texture.texture, nullptr);
 
 	///////////////////////////////////////////// render engine
 
 	// Start the Dear ImGui frame
 	ImGui_ImplWGPU_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
-	//ImGui_ImplSDL2_NewFrame(m_Window);
 
 	ImGui::NewFrame();
 	LoopInner(m_Engine, m_CurrentWidth, m_CurrentHeight);
@@ -701,7 +713,7 @@ void Core::SDLLoopInner() {
 #ifdef NESHNY_WEBGPU
 
 	WGPURenderPassColorAttachment color_desc = {};
-	color_desc.view = view;
+	color_desc.view = m_SurfaceTextureView;
 	//color_desc.loadOp = WGPULoadOp_Clear;
 	color_desc.loadOp = WGPULoadOp_Load;
 	color_desc.storeOp = WGPUStoreOp_Store;
@@ -744,9 +756,8 @@ void Core::SDLLoopInner() {
 	wgpuQueueSubmit(GetWebGPUQueue(), 1, &commands);
 	wgpuCommandBufferRelease(commands);														// release commands
 
-	wgpuTextureViewRelease(view);													// release textureView
 #ifndef __EMSCRIPTEN__
-	wgpuSwapChainPresent(GetWebGPUSwapChain());
+	wgpuSurfacePresent(m_Surface);
 #endif
 	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
 #ifndef __EMSCRIPTEN__

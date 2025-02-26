@@ -538,14 +538,13 @@ public:
 	void								SyncResolution				( void );
 
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
-	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface, WGPUSwapChain chain ) { m_Device = device; m_Queue = queue; m_Surface = surface; m_SwapChain = chain; }
+	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface ) { m_Device = device; m_Queue = queue; m_Surface = surface; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
 	inline WGPUSurface					GetWebGPUSurface			( void ) { return m_Surface; }
-	inline WGPUSwapChain				GetWebGPUSwapChain			( void ) { return m_SwapChain; }
 	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
 	WGPULimits							GetDefaultLimits			( void );
-	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return wgpuSwapChainGetCurrentTextureView(m_SwapChain); }
+	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return m_SurfaceTextureView; }
 	static WebGPUShader*				GetShader					( std::string_view name, std::string_view start_insert = std::string_view(), std::string_view end_insert = std::string_view()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
@@ -799,7 +798,7 @@ private:
 	WGPUDevice										m_Device = nullptr;
 	WGPUQueue										m_Queue = nullptr;
 	WGPUSurface										m_Surface = nullptr;
-	WGPUSwapChain									m_SwapChain = nullptr;
+	WGPUTextureView									m_SurfaceTextureView = nullptr;
 	WGPULimits										m_Limits;
 	int												m_CurrentWidth = -1;
 	int												m_CurrentHeight = -1;
