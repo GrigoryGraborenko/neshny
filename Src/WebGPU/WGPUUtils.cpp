@@ -689,7 +689,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	WGPUDepthStencilState depth_state = {};
 	depth_state.nextInChain = nullptr;
 	depth_state.depthCompare = params.p_DepthCompare;
-	depth_state.depthWriteEnabled = params.p_DepthWriteEnabled;
+	depth_state.depthWriteEnabled = params.p_DepthWriteEnabled ? WGPUOptionalBool_True : WGPUOptionalBool_False;
 	depth_state.format = WGPUTextureFormat_Depth24Plus;
 	depth_state.stencilReadMask = 0;
 	depth_state.stencilWriteMask = 0;
