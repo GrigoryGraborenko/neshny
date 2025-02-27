@@ -26,7 +26,7 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 		const auto& msg = compilationInfo->messages[i];
 		shader->m_Errors.push_back({
 			msg.type,
-			std::string(msg.message),
+			std::string(msg.message.data, msg.message.length),
 			msg.lineNum - 1, // device outputs line numbers starting with 1
 			msg.linePos - 2 // device outputs line pos starting with 2 for some reason
 		});
@@ -63,12 +63,13 @@ bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::s
 		return false;
 	}
 
-	WGPUShaderModuleWGSLDescriptor wgsl = {};
-	wgsl.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
-	wgsl.code = m_Source.data();
+	WGPUShaderSourceWGSL wgsl = {};
+	wgsl.chain.next = nullptr;
+	wgsl.chain.sType = WGPUSType_ShaderSourceWGSL;
+	wgsl.code = { m_Source.data(), m_Source.length() };
 	WGPUShaderModuleDescriptor desc = {};
 	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
-	desc.label = filename.data();
+	desc.label = { filename.data(), filename.length() };
 
 	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetWebGPUDevice(), &desc);
 #ifndef __EMSCRIPTEN__
@@ -116,7 +117,7 @@ void WebGPUBuffer::Create(int size, unsigned char* data) {
 	desc.usage = m_Flags;
 	desc.size = size;
 	desc.nextInChain = nullptr;
-	desc.label = nullptr;
+	desc.label = { nullptr, 0 };
 	desc.mappedAtCreation = false;
 
 	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
@@ -195,7 +196,7 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
 	desc.size = size;
 	desc.nextInChain = nullptr;
-	desc.label = nullptr;
+	desc.label = { nullptr, 0 };
 	desc.mappedAtCreation = false;
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
 	CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
@@ -360,7 +361,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_DepthBytes = 4; // TODO: support other formats
 
 	WGPUTextureDescriptor descriptor;
-	descriptor.label = nullptr;
+	descriptor.label = { nullptr, 0 };
 	descriptor.nextInChain = nullptr;
 	descriptor.viewFormats = nullptr;
 	descriptor.viewFormatCount = 0;
@@ -376,7 +377,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_Texture = wgpuDeviceCreateTexture(Core::Singleton().GetWebGPUDevice(), &descriptor);
 
 	WGPUTextureViewDescriptor view_desc;
-	view_desc.label = nullptr;
+	view_desc.label = { nullptr, 0 };
 	view_desc.nextInChain = nullptr;
 	view_desc.arrayLayerCount = depth;
 	view_desc.aspect = aspect;
@@ -385,6 +386,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	view_desc.dimension = view_dimension;
 	view_desc.format = format;
 	view_desc.mipLevelCount = mip_maps;
+	view_desc.usage = usage;
 
 	m_View = wgpuTextureCreateView(m_Texture, &view_desc);
 }
@@ -471,7 +473,7 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 WebGPUTextureView::WebGPUTextureView(WGPUTexture texture, WGPUTextureViewDimension dimension, WGPUTextureFormat format, WGPUTextureAspect aspect, int layers, int mipmaps) {
 	WGPUTextureViewDescriptor view_desc;
 	view_desc.nextInChain = nullptr;
-	view_desc.label = nullptr;
+	view_desc.label = { nullptr, 0 };
 	view_desc.arrayLayerCount = layers;
 	view_desc.aspect = aspect;
 	view_desc.baseArrayLayer = 0;
@@ -479,6 +481,7 @@ WebGPUTextureView::WebGPUTextureView(WGPUTexture texture, WGPUTextureViewDimensi
 	view_desc.dimension = dimension;
 	view_desc.format = format;
 	view_desc.mipLevelCount = mipmaps;
+	view_desc.usage = WGPUTextureUsage_TextureBinding;
 	m_View = wgpuTextureCreateView(texture, &view_desc);
 }
 
@@ -499,7 +502,7 @@ WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool l
 {
 	WGPUSamplerDescriptor desc;
 	desc.nextInChain = nullptr;
-	desc.label = nullptr;
+	desc.label = { nullptr, 0 };
 	desc.compare = WGPUCompareFunction_Undefined;
 	desc.addressModeU = mode;
 	desc.addressModeV = mode;
@@ -699,7 +702,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	{
 		WGPUFragmentState fragment = {};
 		fragment.module = shader;
-		fragment.entryPoint = "frag_main";
+		fragment.entryPoint = { "frag_main", WGPU_STRLEN }; // todo: param this instead of hardcoding
 		fragment.targetCount = color_targets.size();
 		fragment.targets = color_targets.data();
 
@@ -711,7 +714,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 		desc.layout = pipeline_layout;
 
 		desc.vertex.module = shader;
-		desc.vertex.entryPoint = "vertex_main";
+		desc.vertex.entryPoint = { "vertex_main", WGPU_STRLEN }; // todo: param this instead of hardcoding
 		desc.vertex.bufferCount = 1;
 		desc.vertex.buffers = &vertex_buffer_layout;
 
@@ -753,11 +756,11 @@ void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, std::string_v
 
 	WGPUComputePipelineDescriptor desc;
 	desc.nextInChain = nullptr;
-	desc.label = nullptr;
+	desc.label = { nullptr, 0 };
 	desc.layout = pipeline_layout;
 	desc.compute.nextInChain = nullptr;
 	desc.compute.module = shader;
-	desc.compute.entryPoint = "main";
+	desc.compute.entryPoint = { "main", WGPU_STRLEN };
 	desc.compute.constants = nullptr;
 	desc.compute.constantCount = 0;
 
@@ -914,7 +917,7 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std:
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	WGPUComputePassDescriptor pass_desc;
 	pass_desc.nextInChain = nullptr;
-	pass_desc.label = nullptr;
+	pass_desc.label = { nullptr, 0 };
 	pass_desc.timestampWrites = nullptr;
 	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
 

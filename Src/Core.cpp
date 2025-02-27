@@ -431,12 +431,12 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #ifdef SDL_WEBGPU_LOOP
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::WebGPUErrorCallback(WGPUErrorType type, char const* message) {
+void Core::WebGPUErrorCallback(WGPUErrorType type, WGPUStringView message) {
 
 	if (WGPUErrorType_NoError == type) {
 		return;
 	}
-	Core::Log(std::format("WebGPU validation error: {}", message), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+	Core::Log(std::format("WebGPU validation error: {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -525,10 +525,6 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 		throw "No adapters found for this backend";
 	}
 	dawn::native::Adapter backendAdapter = adapters[0];
-	::wgpu::DawnAdapterPropertiesPowerPreference power_props{};
-	::wgpu::AdapterProperties adapterProperties{};
-	adapterProperties.nextInChain = &power_props;
-	backendAdapter.GetProperties(&adapterProperties);
 
 	WGPUSupportedLimits supported;
 	supported.nextInChain = nullptr;
@@ -567,15 +563,15 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	deviceDesc.nextInChain = nullptr;
 	deviceDesc.requiredFeatures = nullptr;
 	deviceDesc.requiredFeatureCount = 0;
-	deviceDesc.label = nullptr;
+	deviceDesc.label = { nullptr, 0 };
 	deviceDesc.requiredLimits = &requiredLimits;
 
 	m_Device = backendAdapter.CreateDevice(&deviceDesc);
 	DawnProcTable backendProcs = dawn::native::GetProcs();
 	dawnProcSetProcs(&backendProcs);
 
-	static auto cCallback = [](WGPUErrorType type, char const* message, void* userdata) -> void {
-		Core::Log(std::format("Uncaptured error {}", message), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+	static auto cCallback = [](WGPUErrorType type, WGPUStringView message, void* userdata) -> void {
+		Core::Log(std::format("Uncaptured error {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 	};
 	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 
@@ -598,7 +594,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 #endif
 
 	WGPUSurfaceDescriptor surfaceDesc;
-	surfaceDesc.label = nullptr;
+	surfaceDesc.label = { nullptr, 0 };
 	surfaceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(surfaceChainedDesc.get());
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);

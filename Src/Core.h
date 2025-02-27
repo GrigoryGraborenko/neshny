@@ -712,8 +712,8 @@ private:
 	WebGPUShader*						IGetShader					( std::string_view name, std::string_view start_insert, std::string_view end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( std::string name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
-	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, char const* message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
-	void								WebGPUErrorCallback			( WGPUErrorType type, char const* message );
+	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, WGPUStringView message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
+	void								WebGPUErrorCallback			( WGPUErrorType type, WGPUStringView message );
 #endif
 	void								EnsureEmbeddableLoaderInit	( void );
 

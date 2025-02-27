@@ -100,7 +100,7 @@ public:
 		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
 		desc.size = size;
 		desc.nextInChain = nullptr;
-		desc.label = nullptr;
+		desc.label = WGPUStringView{ nullptr, 0 };
 		desc.mappedAtCreation = false;
 		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
 		CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
