@@ -6,6 +6,9 @@ namespace Neshny {
 WGPUDevice GlobalWebGPUDevice() {
 	return Core::Singleton().GetWebGPUDevice();
 }
+WGPUInstance GlobalWebGPUInstance() {
+	return Core::Singleton().GetWebGPUInstance();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 WebGPUShader::WebGPUShader(void) :
@@ -19,9 +22,11 @@ WebGPUShader::~WebGPUShader(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus status, WGPUCompilationInfo const* compilationInfo, void* userdata) {
-
-	WebGPUShader* shader = (WebGPUShader*)userdata;
+void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus status, WGPUCompilationInfo const* compilationInfo, void* userdata1, void* userdata2) {
+	if (!compilationInfo) {
+		return;
+	}
+	WebGPUShader* shader = (WebGPUShader*)userdata1;
 	for (uint32_t i = 0; i < compilationInfo->messageCount; ++i) {
 		const auto& msg = compilationInfo->messages[i];
 		shader->m_Errors.push_back({
@@ -73,7 +78,13 @@ bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::s
 
 	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetWebGPUDevice(), &desc);
 #ifndef __EMSCRIPTEN__
-	wgpuShaderModuleGetCompilationInfo(m_Shader, CompilationInfoCallback, this);
+	WGPUCompilationInfoCallbackInfo callback_info = {
+		nullptr,
+		DEFAULT_CALLBACK_MODE,
+		CompilationInfoCallback,
+		this, nullptr
+	};
+	wgpuShaderModuleGetCompilationInfo(m_Shader, std::move(callback_info));
 #endif
 
 	return m_Errors.size() == 0;
@@ -201,12 +212,17 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
 	CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
 
-	std::optional<WGPUBufferMapAsyncStatus> status;
+	std::optional<WGPUMapAsyncStatus> status;
+	WGPUBufferMapCallbackInfo callback_info = {
+		nullptr, DEFAULT_CALLBACK_MODE,
+		[] (WGPUMapAsyncStatus status, WGPUStringView message, void* userdata1, void* userdata2) {
+			auto info = (std::optional<WGPUMapAsyncStatus>*)userdata1;
+			*info = status;
+		}, &status, nullptr
+	};
+
 	// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
-	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
-		auto info = (std::optional<WGPUBufferMapAsyncStatus>*)user_data;
-		*info = status;
-	}, &status);
+	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
 
 	Core::WaitForCommandsToFinish();
 
@@ -451,8 +467,7 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	tex_cpy.origin.z = layer;
 	tex_cpy.texture = m_Texture;
 	tex_cpy.aspect = WGPUTextureAspect_All;
-	WGPUTextureDataLayout tex_layout;
-	tex_layout.nextInChain = nullptr;
+	WGPUTexelCopyBufferLayout tex_layout;
 	tex_layout.bytesPerRow = bytes_per_row;
 	tex_layout.rowsPerImage = hei;
 	tex_layout.offset = 0;

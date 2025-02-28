@@ -448,12 +448,13 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxTextureDimension3D = 2048;
 	limits.maxTextureArrayLayers = 256;
 	limits.maxBindGroups = 4;
+	limits.maxBindGroupsPlusVertexBuffers = 24;
 	limits.maxDynamicUniformBuffersPerPipelineLayout = 8;
 	limits.maxDynamicStorageBuffersPerPipelineLayout = 4;
 	limits.maxSampledTexturesPerShaderStage = 16;
 	limits.maxSamplersPerShaderStage = 16;
-	limits.maxStorageBuffersPerShaderStage = 8;
-	limits.maxStorageTexturesPerShaderStage = 4;
+	limits.maxStorageBuffersPerShaderStage = 10;
+	limits.maxStorageTexturesPerShaderStage = 8;
 	limits.maxUniformBuffersPerShaderStage = 12;
 	limits.maxUniformBufferBindingSize = 65536;
 	limits.maxStorageBufferBindingSize = 134217728;
@@ -474,6 +475,10 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxBindingsPerBindGroup = 1000;
 	limits.maxBufferSize = 268435456;
 	limits.maxColorAttachmentBytesPerSample = 32;
+	limits.maxStorageBuffersInVertexStage = 10;
+	limits.maxStorageTexturesInVertexStage = 8;
+	limits.maxStorageBuffersInFragmentStage = 10;
+	limits.maxStorageTexturesInFragmentStage = 8;
 
 	return limits;
 }
@@ -508,6 +513,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	instanceDescriptor.features.nextInChain = nullptr;
 
 	dawn::native::Instance instance(&instanceDescriptor);
+	m_Instance = instance.Get();
 
 	::wgpu::RequestAdapterOptions options = {};
 	options.backendType = ::wgpu::BackendType::Null;
@@ -526,13 +532,11 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	}
 	dawn::native::Adapter backendAdapter = adapters[0];
 
-	WGPUSupportedLimits supported;
-	supported.nextInChain = nullptr;
-	bool limits_success = backendAdapter.GetLimits(&supported);
+	bool limits_success = false;
+	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported) == WGPUStatus_Success;
+	//bool limits_success = backendAdapter.GetLimits(&supported);
 	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
-	if (limits_success) {
-		m_Limits = supported.limits;
-	} else {
+	if (!limits_success) {
 		m_Limits = GetDefaultLimits();
 	}
 	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
@@ -554,12 +558,21 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	toggles.disabledToggles = disabledToggleNames.data();
 	toggles.disabledToggleCount = static_cast<uint32_t>(disabledToggleNames.size());
 
-	WGPUDeviceDescriptor deviceDesc = {};
-	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
+	static auto cCallback = [](WGPUDevice const* device, WGPUErrorType type, WGPUStringView message, void* userdata1, void* userdata2) -> void {
+		Core::Log(std::format("Uncaptured error {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+	};
+	static auto cLostCallback = [](WGPUDevice const* device, WGPUDeviceLostReason reason, WGPUStringView message, void* userdata1, void* userdata2) -> void {
+		Core::Log(std::format("Device lost error {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+	};
 
 	WGPURequiredLimits requiredLimits;
 	requiredLimits.nextInChain = nullptr;
-	requiredLimits.limits = supported.limits;
+	requiredLimits.limits = m_Limits;
+
+	WGPUDeviceDescriptor deviceDesc = {};
+	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
+	deviceDesc.uncapturedErrorCallbackInfo = { nullptr, cCallback, nullptr, nullptr };
+	deviceDesc.deviceLostCallbackInfo = { nullptr, DEFAULT_CALLBACK_MODE, cLostCallback, nullptr, nullptr };
 	deviceDesc.nextInChain = nullptr;
 	deviceDesc.requiredFeatures = nullptr;
 	deviceDesc.requiredFeatureCount = 0;
@@ -569,11 +582,6 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	m_Device = backendAdapter.CreateDevice(&deviceDesc);
 	DawnProcTable backendProcs = dawn::native::GetProcs();
 	dawnProcSetProcs(&backendProcs);
-
-	static auto cCallback = [](WGPUErrorType type, WGPUStringView message, void* userdata) -> void {
-		Core::Log(std::format("Uncaptured error {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
-	};
-	wgpuDeviceSetUncapturedErrorCallback(m_Device, cCallback, nullptr);
 
 #ifdef __APPLE__
 
@@ -599,6 +607,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	m_Surface = backendProcs.instanceCreateSurface(instance.Get(), &surfaceDesc);
 	m_Queue = wgpuDeviceGetQueue(m_Device);
 
+	wgpuInstanceAddRef(m_Instance); // TODO: this is untracked, do this better
 	//WGPUSurfaceCapabilities capabilities;
 	//bool capabilities_success = wgpuSurfaceGetCapabilities(m_Surface, backendAdapter.Get(), &capabilities) == WGPUStatus_Success;
 
@@ -644,6 +653,9 @@ void Core::SDLLoopInner() {
 #endif
 
 	wgpuDevicePushErrorScope(Core::Singleton().GetWebGPUDevice(), WGPUErrorFilter_Validation);
+	WGPUPopErrorScopeCallbackInfo error_callback_info = {
+		nullptr, DEFAULT_CALLBACK_MODE, WebGPUErrorCallbackStatic, this, nullptr
+	};
 
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -677,6 +689,7 @@ void Core::SDLLoopInner() {
 #ifdef NESHNY_WEBGPU
 
 	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+	wgpuInstanceProcessEvents(m_Instance);
 	if (m_SurfaceTextureView) {
 		wgpuTextureViewRelease(m_SurfaceTextureView); // release textureView
 	}
@@ -685,7 +698,7 @@ void Core::SDLLoopInner() {
 	wgpuSurfaceGetCurrentTexture(m_Surface, &surface_texture);
 	if (!surface_texture.texture) {
 		//LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
-		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
+		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), error_callback_info);
 #ifndef __EMSCRIPTEN__
 		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
 #endif
@@ -755,7 +768,7 @@ void Core::SDLLoopInner() {
 #ifndef __EMSCRIPTEN__
 	wgpuSurfacePresent(m_Surface);
 #endif
-	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
+	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), error_callback_info);
 #ifndef __EMSCRIPTEN__
 	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
 #endif
@@ -1369,10 +1382,15 @@ void Core::WaitForCommandsToFinish(void) {
 
 #ifndef __EMSCRIPTEN__
 	std::optional<WGPUQueueWorkDoneStatus> status_result;
-	wgpuQueueOnSubmittedWorkDone(self.m_Queue, [](WGPUQueueWorkDoneStatus status, void* user_data) {
-		auto info = (std::optional<WGPUQueueWorkDoneStatus>*)user_data;
-		*info = status;
-		}, &status_result);
+
+	WGPUQueueWorkDoneCallbackInfo callback_info = {
+		nullptr, DEFAULT_CALLBACK_MODE,
+		[](WGPUQueueWorkDoneStatus status, void* user_data1, void* user_data2) {
+			auto info = (std::optional<WGPUQueueWorkDoneStatus>*)user_data1;
+			*info = status;
+		}, &status_result, nullptr
+	};
+	wgpuQueueOnSubmittedWorkDone(self.m_Queue, std::move(callback_info));
 
 	while (!status_result.has_value()) {
 		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());

@@ -7,6 +7,9 @@ namespace Neshny {
 
 // TODO: create global state for device, etc rather than using core, to make core optional
 WGPUDevice GlobalWebGPUDevice();
+WGPUInstance GlobalWebGPUInstance();
+
+constexpr WGPUCallbackMode DEFAULT_CALLBACK_MODE = WGPUCallbackMode_AllowProcessEvents;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -36,7 +39,7 @@ public:
 
 private:
 
-	static void										CompilationInfoCallback ( WGPUCompilationInfoRequestStatus status, WGPUCompilationInfo const* compilationInfo, void* userdata );
+	static void										CompilationInfoCallback ( WGPUCompilationInfoRequestStatus status, WGPUCompilationInfo const* compilationInfo, void* userdata1, void* userdata2 );
 
 	WGPUShaderModule					m_Shader;
 	std::string							m_Source;
@@ -65,6 +68,7 @@ public:
 			while (!m_Internals->m_Finished) {
 #ifndef __EMSCRIPTEN__
 				wgpuDeviceTick(GlobalWebGPUDevice());
+				wgpuInstanceProcessEvents(GlobalWebGPUInstance());
 #else
 				emscripten_sleep(0);
 #endif
@@ -119,21 +123,26 @@ public:
 			token
 		};
 
+		WGPUBufferMapCallbackInfo callback_info = {
+			nullptr, DEFAULT_CALLBACK_MODE,
+			[](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2) {
+				auto info = (AsyncInfo*)userdata1;
+				if (status == WGPUMapAsyncStatus_Success) {
+					auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
+					info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
+ 					wgpuBufferUnmap(info->p_Buffer);
+				} else {
+					info->p_Token.m_Internals->m_Error = true;
+				}
+				wgpuBufferDestroy(info->p_Buffer);
+				info->p_Token.m_Internals->m_Finished = true;
+				delete info;
+			}, info, nullptr
+		};
+
 		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
-		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
-			auto info = (AsyncInfo*)user_data;
-			if (status == WGPUMapAsyncStatus_Success) {
-				auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
-				info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
- 				wgpuBufferUnmap(info->p_Buffer);
-			} else {
-				info->p_Token.m_Internals->m_Error = true;
-			}
-			wgpuBufferDestroy(info->p_Buffer);
-			info->p_Token.m_Internals->m_Finished = true;
-			delete info;
-		}, info);
-		return token;
+		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
+		return std::move(token);
 	}
 	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );

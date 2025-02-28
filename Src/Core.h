@@ -539,6 +539,8 @@ public:
 
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
 	inline void							SetWebGPU					( WGPUDevice device, WGPUQueue queue, WGPUSurface surface ) { m_Device = device; m_Queue = queue; m_Surface = surface; }
+
+	inline WGPUInstance					GetWebGPUInstance			( void ) { return m_Instance; }
 	inline WGPUDevice					GetWebGPUDevice				( void ) { return m_Device; }
 	inline WGPUQueue					GetWebGPUQueue				( void ) { return m_Queue; }
 	inline WGPUSurface					GetWebGPUSurface			( void ) { return m_Surface; }
@@ -712,7 +714,7 @@ private:
 	WebGPUShader*						IGetShader					( std::string_view name, std::string_view start_insert, std::string_view end_insert );
 	WebGPURenderBuffer*					IGetBuffer					( std::string name );
 	WebGPUSampler*						IGetSampler					( WGPUAddressMode mode, WGPUFilterMode filter, bool linear_mipmaps, unsigned int max_anisotropy );
-	static void							WebGPUErrorCallbackStatic	( WGPUErrorType type, WGPUStringView message, void* userdata ) { ((Core*)userdata)->WebGPUErrorCallback(type, message); }
+	static void							WebGPUErrorCallbackStatic	( WGPUPopErrorScopeStatus status, WGPUErrorType type, WGPUStringView message, void* userdata1, void* userdata2) { ((Core*)userdata1)->WebGPUErrorCallback(type, message); }
 	void								WebGPUErrorCallback			( WGPUErrorType type, WGPUStringView message );
 #endif
 	void								EnsureEmbeddableLoaderInit	( void );
@@ -795,6 +797,7 @@ private:
 	std::vector<WebGPUSampler*>						m_Samplers;
 	bool											m_PrepareOnlyMode = false;
 	IEngine*										m_Engine = nullptr;
+	WGPUInstance									m_Instance = nullptr;
 	WGPUDevice										m_Device = nullptr;
 	WGPUQueue										m_Queue = nullptr;
 	WGPUSurface										m_Surface = nullptr;

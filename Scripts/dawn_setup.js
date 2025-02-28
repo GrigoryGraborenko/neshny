@@ -4,7 +4,7 @@ const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 const os = require('os');
 
-const DAWN_VERSION = `chromium/6800`;
+const DAWN_VERSION = `chromium/7000`;
 const DAWN_URL = `https://dawn.googlesource.com/dawn`;
 const search_str = "DAWN_PATH";
 
