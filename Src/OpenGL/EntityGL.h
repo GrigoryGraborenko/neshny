@@ -226,6 +226,7 @@ public:
 
 	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
 	int							AddInstance				( void* data, int* index = nullptr );
+	template <typename T> void	SetInstances			( std::vector<T>& items ) { Clear(); AddInstances(items); }
 	void						DeleteInstance			( int index );
 
 	std::string					GetDebugInfo			( void );

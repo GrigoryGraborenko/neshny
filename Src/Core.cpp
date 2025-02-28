@@ -1394,6 +1394,7 @@ void Core::WaitForCommandsToFinish(void) {
 
 	while (!status_result.has_value()) {
 		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+		wgpuInstanceProcessEvents(Core::Singleton().GetWebGPUInstance());
 	}
 #else
 	await_device_queue();
