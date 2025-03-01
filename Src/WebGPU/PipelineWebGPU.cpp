@@ -162,7 +162,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	std::vector<std::string> insertion_buffers;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
-	WGPUShaderStage vis_flags = is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute;
+	WGPUShaderStage vis_flags = WGPUShaderStage(is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute);
 
 	if (create_new) {
 		if (!m_ImmediateExtraCode.empty()) {

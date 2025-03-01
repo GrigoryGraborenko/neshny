@@ -3,6 +3,10 @@
 
 #define NESHNY_WEBGPU
 
+#ifdef __EMSCRIPTEN__
+typedef WGPUBufferMapAsyncStatus WGPUMapAsyncStatus;
+#endif
+
 namespace Neshny {
 
 // TODO: create global state for device, etc rather than using core, to make core optional
@@ -104,7 +108,11 @@ public:
 		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
 		desc.size = size;
 		desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+		desc.label = nullptr;
+#else
 		desc.label = WGPUStringView{ nullptr, 0 };
+#endif
 		desc.mappedAtCreation = false;
 		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
 		CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
@@ -123,9 +131,27 @@ public:
 			token
 		};
 
+#ifdef __EMSCRIPTEN__
+
+		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
+		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size,
+			[](WGPUMapAsyncStatus status, void* userdata) {
+				auto info = (AsyncInfo*)userdata;
+				if (status == WGPUBufferMapAsyncStatus_Success) {
+					auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
+					info->p_Token.m_Internals->m_Payload = info->p_Callback((unsigned char*)buffer_data, info->p_Size, info->p_Token);
+ 					wgpuBufferUnmap(info->p_Buffer);
+				} else {
+					info->p_Token.m_Internals->m_Error = true;
+				}
+				wgpuBufferDestroy(info->p_Buffer);
+				info->p_Token.m_Internals->m_Finished = true;
+				delete info;
+			}, info);
+#else
 		WGPUBufferMapCallbackInfo callback_info = {
 			nullptr, DEFAULT_CALLBACK_MODE,
-			[](WGPUMapAsyncStatus status, struct WGPUStringView message, void* userdata1, void* userdata2) {
+			[](WGPUMapAsyncStatus status, WGPUStringView message, void* userdata1, void* userdata2) {
 				auto info = (AsyncInfo*)userdata1;
 				if (status == WGPUMapAsyncStatus_Success) {
 					auto buffer_data = wgpuBufferGetConstMappedRange(info->p_Buffer, 0, info->p_Size);
@@ -142,6 +168,7 @@ public:
 
 		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
 		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
+#endif
 		return std::move(token);
 	}
 	void											Write					( unsigned char* buffer, int offset, int size );
@@ -192,7 +219,7 @@ protected:
 	void											Init(void);
 	void											Create(int size, unsigned char* data);
 
-	WGPUBufferUsage									m_Flags = 0;
+	WGPUBufferUsage									m_Flags = WGPUBufferUsage_None;
 	WGPUBuffer										m_Buffer = nullptr;
 	int												m_Size = 0;
 };
@@ -250,13 +277,13 @@ public:
 	void											Init2D				(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	void											InitCubeMap			(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
 																			int mip_maps = 1
 																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	inline void										InitDepth			( int width, int height ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, WGPUTextureUsage_RenderAttachment, WGPUTextureAspect_DepthOnly, 1); }
@@ -265,7 +292,7 @@ public:
 																			int height,
 																			int layers,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst,
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, layers, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2DArray, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 

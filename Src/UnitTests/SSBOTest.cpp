@@ -6,7 +6,7 @@ namespace Test {
 #if defined(NESHNY_GL)
         Neshny::SSBO buffer;
 #elif defined(NESHNY_WEBGPU)
-        Neshny::SSBO buffer(0);
+        Neshny::SSBO buffer(WGPUBufferUsage_None);
 #endif
 
         buffer.EnsureSizeBytes(5 * sizeof(int));

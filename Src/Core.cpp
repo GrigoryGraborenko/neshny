@@ -431,12 +431,12 @@ bool Core::SDLLoop(SDL_Window* window, IEngine* engine) {
 #ifdef SDL_WEBGPU_LOOP
 
 ////////////////////////////////////////////////////////////////////////////////
-void Core::WebGPUErrorCallback(WGPUErrorType type, WGPUStringView message) {
+void Core::WebGPUErrorCallback(WGPUErrorType type, std::string message) {
 
 	if (WGPUErrorType_NoError == type) {
 		return;
 	}
-	Core::Log(std::format("WebGPU validation error: {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
+	Core::Log(std::format("WebGPU validation error: {}", message), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -475,11 +475,12 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxBindingsPerBindGroup = 1000;
 	limits.maxBufferSize = 268435456;
 	limits.maxColorAttachmentBytesPerSample = 32;
+#ifndef __EMSCRIPTEN__
 	limits.maxStorageBuffersInVertexStage = 10;
 	limits.maxStorageTexturesInVertexStage = 8;
 	limits.maxStorageBuffersInFragmentStage = 10;
 	limits.maxStorageTexturesInFragmentStage = 8;
-
+#endif
 	return limits;
 }
 
@@ -653,9 +654,6 @@ void Core::SDLLoopInner() {
 #endif
 
 	wgpuDevicePushErrorScope(Core::Singleton().GetWebGPUDevice(), WGPUErrorFilter_Validation);
-	WGPUPopErrorScopeCallbackInfo error_callback_info = {
-		nullptr, DEFAULT_CALLBACK_MODE, WebGPUErrorCallbackStatic, this, nullptr
-	};
 
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -688,7 +686,12 @@ void Core::SDLLoopInner() {
 	SyncResolution();
 #ifdef NESHNY_WEBGPU
 
+#ifndef __EMSCRIPTEN__
 	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+	WGPUPopErrorScopeCallbackInfo error_callback_info = {
+		nullptr, DEFAULT_CALLBACK_MODE, WebGPUErrorCallbackStatic, this, nullptr
+	};
+#endif
 	wgpuInstanceProcessEvents(m_Instance);
 	if (m_SurfaceTextureView) {
 		wgpuTextureViewRelease(m_SurfaceTextureView); // release textureView
@@ -698,9 +701,11 @@ void Core::SDLLoopInner() {
 	wgpuSurfaceGetCurrentTexture(m_Surface, &surface_texture);
 	if (!surface_texture.texture) {
 		//LoopFinishImGui(m_Engine, m_CurrentWidth, m_CurrentHeight);
-		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), error_callback_info);
 #ifndef __EMSCRIPTEN__
+		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), error_callback_info);
 		wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#else
+		wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
 #endif
 		return;
 	}
@@ -767,10 +772,10 @@ void Core::SDLLoopInner() {
 
 #ifndef __EMSCRIPTEN__
 	wgpuSurfacePresent(m_Surface);
-#endif
 	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), error_callback_info);
-#ifndef __EMSCRIPTEN__
 	wgpuDeviceTick(Core::Singleton().GetWebGPUDevice());
+#else
+	wgpuDevicePopErrorScope(Core::Singleton().GetWebGPUDevice(), WebGPUErrorCallbackStatic, this);
 #endif
 #endif
 }

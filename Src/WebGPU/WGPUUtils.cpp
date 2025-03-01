@@ -31,7 +31,11 @@ void WebGPUShader::CompilationInfoCallback(WGPUCompilationInfoRequestStatus stat
 		const auto& msg = compilationInfo->messages[i];
 		shader->m_Errors.push_back({
 			msg.type,
+#ifdef __EMSCRIPTEN__
+			std::string(msg.message),
+#else
 			std::string(msg.message.data, msg.message.length),
+#endif
 			msg.lineNum - 1, // device outputs line numbers starting with 1
 			msg.linePos - 2 // device outputs line pos starting with 2 for some reason
 		});
@@ -68,13 +72,21 @@ bool WebGPUShader::Init(const std::function<std::string(std::string_view, std::s
 		return false;
 	}
 
+	WGPUShaderModuleDescriptor desc = {};
+#ifdef __EMSCRIPTEN__
+	WGPUShaderModuleWGSLDescriptor wgsl = {};
+	wgsl.chain.next = nullptr;
+	wgsl.chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
+	wgsl.code = m_Source.data();
+	desc.label = filename.data();
+#else
 	WGPUShaderSourceWGSL wgsl = {};
 	wgsl.chain.next = nullptr;
 	wgsl.chain.sType = WGPUSType_ShaderSourceWGSL;
 	wgsl.code = { m_Source.data(), m_Source.length() };
-	WGPUShaderModuleDescriptor desc = {};
-	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
 	desc.label = { filename.data(), filename.length() };
+#endif
+	desc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&wgsl);
 
 	m_Shader = wgpuDeviceCreateShaderModule(Core::Singleton().GetWebGPUDevice(), &desc);
 #ifndef __EMSCRIPTEN__
@@ -118,7 +130,7 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsage flags, unsigned char* data, int size)
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::Init(void) {
 	// this is the only option if you want an expandable buffer - CopySrc has to be included, and thus MapRead can't be
-	m_Flags |= WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
+	m_Flags = WGPUBufferUsage(m_Flags | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +140,11 @@ void WebGPUBuffer::Create(int size, unsigned char* data) {
 	desc.usage = m_Flags;
 	desc.size = size;
 	desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+	desc.label = nullptr;
+#else
 	desc.label = { nullptr, 0 };
+#endif
 	desc.mappedAtCreation = false;
 
 	m_Buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
@@ -207,11 +223,22 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 	desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
 	desc.size = size;
 	desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+	desc.label = nullptr;
+#else
 	desc.label = { nullptr, 0 };
+#endif
 	desc.mappedAtCreation = false;
 	WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(Core::Singleton().GetWebGPUDevice(), &desc);
 	CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
 
+#ifdef __EMSCRIPTEN__
+	std::optional<WGPUBufferMapAsyncStatus> status;
+	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, [](WGPUBufferMapAsyncStatus status, void* user_data) {
+		auto info = (std::optional<WGPUBufferMapAsyncStatus>*)user_data;
+		*info = status;
+	}, &status);
+#else
 	std::optional<WGPUMapAsyncStatus> status;
 	WGPUBufferMapCallbackInfo callback_info = {
 		nullptr, DEFAULT_CALLBACK_MODE,
@@ -223,6 +250,7 @@ void WebGPUBuffer::ReadSync(unsigned char* buffer, int offset, int size) {
 
 	// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
 	wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
+#endif
 
 	Core::WaitForCommandsToFinish();
 
@@ -315,9 +343,8 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 			case WGPUVertexFormat_Sint32x4: item.p_Size = sizeof(int) * 4; break;
 #ifdef __EMSCRIPTEN__
 			case WGPUVertexFormat_Undefined:
-#else
-			case WGPUVertexFormat_Unorm10_10_10_2:
 #endif
+			case WGPUVertexFormat_Unorm10_10_10_2:
 			case WGPUVertexFormat_Force32: item.p_Size = 0; break;
 		}
 		vertex_bytes += item.p_Size;
@@ -377,7 +404,11 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_DepthBytes = 4; // TODO: support other formats
 
 	WGPUTextureDescriptor descriptor;
+#ifdef __EMSCRIPTEN__
+	descriptor.label = nullptr;
+#else
 	descriptor.label = { nullptr, 0 };
+#endif
 	descriptor.nextInChain = nullptr;
 	descriptor.viewFormats = nullptr;
 	descriptor.viewFormatCount = 0;
@@ -393,7 +424,11 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_Texture = wgpuDeviceCreateTexture(Core::Singleton().GetWebGPUDevice(), &descriptor);
 
 	WGPUTextureViewDescriptor view_desc;
+#ifdef __EMSCRIPTEN__
+	view_desc.label = nullptr;
+#else
 	view_desc.label = { nullptr, 0 };
+#endif
 	view_desc.nextInChain = nullptr;
 	view_desc.arrayLayerCount = depth;
 	view_desc.aspect = aspect;
@@ -402,7 +437,9 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	view_desc.dimension = view_dimension;
 	view_desc.format = format;
 	view_desc.mipLevelCount = mip_maps;
+#ifndef __EMSCRIPTEN__
 	view_desc.usage = usage;
+#endif
 
 	m_View = wgpuTextureCreateView(m_Texture, &view_desc);
 }
@@ -467,7 +504,12 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	tex_cpy.origin.z = layer;
 	tex_cpy.texture = m_Texture;
 	tex_cpy.aspect = WGPUTextureAspect_All;
+#ifdef __EMSCRIPTEN__
+	WGPUTextureDataLayout tex_layout;
+#else
 	WGPUTexelCopyBufferLayout tex_layout;
+#endif
+
 	tex_layout.bytesPerRow = bytes_per_row;
 	tex_layout.rowsPerImage = hei;
 	tex_layout.offset = 0;
@@ -488,7 +530,12 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 WebGPUTextureView::WebGPUTextureView(WGPUTexture texture, WGPUTextureViewDimension dimension, WGPUTextureFormat format, WGPUTextureAspect aspect, int layers, int mipmaps) {
 	WGPUTextureViewDescriptor view_desc;
 	view_desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+	view_desc.label = nullptr;
+#else
 	view_desc.label = { nullptr, 0 };
+	view_desc.usage = WGPUTextureUsage_TextureBinding;
+#endif
 	view_desc.arrayLayerCount = layers;
 	view_desc.aspect = aspect;
 	view_desc.baseArrayLayer = 0;
@@ -496,7 +543,6 @@ WebGPUTextureView::WebGPUTextureView(WGPUTexture texture, WGPUTextureViewDimensi
 	view_desc.dimension = dimension;
 	view_desc.format = format;
 	view_desc.mipLevelCount = mipmaps;
-	view_desc.usage = WGPUTextureUsage_TextureBinding;
 	m_View = wgpuTextureCreateView(texture, &view_desc);
 }
 
@@ -517,7 +563,11 @@ WebGPUSampler::WebGPUSampler(WGPUAddressMode mode, WGPUFilterMode filter, bool l
 {
 	WGPUSamplerDescriptor desc;
 	desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+	desc.label = nullptr;
+#else
 	desc.label = { nullptr, 0 };
+#endif
 	desc.compare = WGPUCompareFunction_Undefined;
 	desc.addressModeU = mode;
 	desc.addressModeV = mode;
@@ -707,7 +757,11 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	WGPUDepthStencilState depth_state = {};
 	depth_state.nextInChain = nullptr;
 	depth_state.depthCompare = params.p_DepthCompare;
+#ifdef __EMSCRIPTEN__
+	depth_state.depthWriteEnabled = params.p_DepthWriteEnabled;
+#else
 	depth_state.depthWriteEnabled = params.p_DepthWriteEnabled ? WGPUOptionalBool_True : WGPUOptionalBool_False;
+#endif
 	depth_state.format = WGPUTextureFormat_Depth24Plus;
 	depth_state.stencilReadMask = 0;
 	depth_state.stencilWriteMask = 0;
@@ -717,7 +771,11 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	{
 		WGPUFragmentState fragment = {};
 		fragment.module = shader;
+#ifdef __EMSCRIPTEN__
+		fragment.entryPoint = "frag_main"; // todo: param this instead of hardcoding
+#else
 		fragment.entryPoint = { "frag_main", WGPU_STRLEN }; // todo: param this instead of hardcoding
+#endif
 		fragment.targetCount = color_targets.size();
 		fragment.targets = color_targets.data();
 
@@ -729,7 +787,11 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 		desc.layout = pipeline_layout;
 
 		desc.vertex.module = shader;
+#ifdef __EMSCRIPTEN__
+		desc.vertex.entryPoint = "vertex_main"; // todo: param this instead of hardcoding
+#else
 		desc.vertex.entryPoint = { "vertex_main", WGPU_STRLEN }; // todo: param this instead of hardcoding
+#endif
 		desc.vertex.bufferCount = 1;
 		desc.vertex.buffers = &vertex_buffer_layout;
 
@@ -771,11 +833,16 @@ void WebGPUPipeline::FinalizeCompute(std::string_view shader_name, std::string_v
 
 	WGPUComputePipelineDescriptor desc;
 	desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+	desc.label = nullptr;
+	desc.compute.entryPoint = "main";
+#else
 	desc.label = { nullptr, 0 };
+	desc.compute.entryPoint = { "main", WGPU_STRLEN };
+#endif
 	desc.layout = pipeline_layout;
 	desc.compute.nextInChain = nullptr;
 	desc.compute.module = shader;
-	desc.compute.entryPoint = { "main", WGPU_STRLEN };
 	desc.compute.constants = nullptr;
 	desc.compute.constantCount = 0;
 
@@ -932,7 +999,12 @@ void WebGPUPipeline::Compute(int calls, iVec3 workgroup_size, std::optional<std:
 	WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	WGPUComputePassDescriptor pass_desc;
 	pass_desc.nextInChain = nullptr;
+
+#ifdef __EMSCRIPTEN__
+	pass_desc.label = nullptr;
+#else
 	pass_desc.label = { nullptr, 0 };
+#endif
 	pass_desc.timestampWrites = nullptr;
 	WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, &pass_desc);
 
@@ -996,7 +1068,7 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 
 		for (int i = 0; i < num_color_tex; i++) {
 			WebGPUTexture* tex = new WebGPUTexture();
-			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding, 1);
+			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding), 1);
 			m_ColorTextures.push_back(tex);
 		}
 		if (m_CaptureDepthStencil && (existing_depth_tex == nullptr)) {
