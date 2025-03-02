@@ -13,6 +13,7 @@
 #include <emscripten.h>
 #include <emscripten/html5_webgpu.h>
 #else
+#define IMGUI_IMPL_WEBGPU_BACKEND_DAWN
 #define WEBGPU_BACKEND_WGPU
 #include "utils/WGPUHelpers.h"
 #include "dawn/common/Platform.h"

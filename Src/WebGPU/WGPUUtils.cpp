@@ -130,7 +130,7 @@ WebGPUBuffer::WebGPUBuffer(WGPUBufferUsage flags, unsigned char* data, int size)
 ////////////////////////////////////////////////////////////////////////////////
 void WebGPUBuffer::Init(void) {
 	// this is the only option if you want an expandable buffer - CopySrc has to be included, and thus MapRead can't be
-	m_Flags = WGPUBufferUsage(m_Flags | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc);
+	m_Flags = WGPUBufferUsage(m_Flags | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc | WGPUBufferUsage_Storage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1087,9 +1087,7 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 			color_desc.clearValue.g = 0.0f;
 			color_desc.clearValue.b = 0.0f;
 			color_desc.clearValue.a = 1.0f;
-#ifndef __EMSCRIPTEN__
 			color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
-#endif
 		}
 
 		m_PassDescriptor.colorAttachmentCount = num_color_tex;
@@ -1130,9 +1128,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 		color_desc.clearValue.g = 0.0f;
 		color_desc.clearValue.b = 0.0f;
 		color_desc.clearValue.a = 1.0f;
-#ifndef __EMSCRIPTEN__
 		color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
-#endif
 	}
 
 	m_PassDescriptor.colorAttachmentCount = num_color_tex;

@@ -735,9 +735,7 @@ void Core::SDLLoopInner() {
 	color_desc.clearValue.g = 0.0f;
 	color_desc.clearValue.b = 0.0f;
 	color_desc.clearValue.a = 1.0f;
-#ifndef __EMSCRIPTEN__
 	color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
-#endif
 	WGPURenderPassDepthStencilAttachment depth_desc = {};
 	depth_desc.view = m_DepthTex->GetTextureView();
 	depth_desc.depthClearValue = 1.0f;
