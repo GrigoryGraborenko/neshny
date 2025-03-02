@@ -16,6 +16,7 @@ EntityPipeline::EntityPipeline(RunType type, GPUEntity* entity, RenderableBuffer
 	,m_Iterations		( iterations )
 	,m_ControlSSBO		( control_ssbo )
 	,m_RenderParams		( render_params )
+	,m_UsingRandom		( (type == RunType::ENTITY_PROCESS) || (type == RunType::ENTITY_ITERATE) )
 {
 	if (cache) {
 		m_CachesToBind.push_back(cache);
@@ -162,6 +163,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	std::vector<std::string> insertion_buffers;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
+	bool control_readonly = is_render && (!m_UsingRandom);
 	WGPUShaderStage vis_flags = WGPUShaderStage(is_render ? WGPUShaderStage_Vertex | WGPUShaderStage_Fragment : WGPUShaderStage_Compute);
 
 	if (create_new) {
@@ -176,13 +178,13 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	result->m_ReadRequired = false;
 	if (control_ssbo) {
 		if (create_new) {
-			if (is_render) {
+			if (control_readonly) {
 				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read> b_Control: array<i32>;");
 			} else {
 				insertion_buffers.push_back("@group(0) @binding(0) var<storage, read_write> b_Control: array<atomic<i32>>;");
 			}
 		}
-		pipeline_buffers.push_back({ *control_ssbo, vis_flags, is_render });
+		pipeline_buffers.push_back({ *control_ssbo, vis_flags, control_readonly });
 		for (const auto& var : m_Vars) {
 			if (var.p_ReadBack) {
 				result->m_ReadRequired = true;
@@ -228,15 +230,15 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		if (control_ssbo && (!m_DataVectors.empty())) {
 			insertion.push_back("//////////////// Data vector helpers");
 			for (const auto& data_vect : m_DataVectors) {
-				insertion.push_back(GetDataVectorStructCode(data_vect, is_render));
+				insertion.push_back(GetDataVectorStructCode(data_vect, control_readonly));
 				m_Vars.push_back({ data_vect.p_CountVar });
 				m_Vars.push_back({ data_vect.p_OffsetVar });
 				m_Vars.push_back({ data_vect.p_NumVar });
 			}
 		}
 
-		result->m_UsingRandom = !is_render;
-		if (result->m_UsingRandom) {
+		result->m_UsingRandom = m_UsingRandom;
+		if (m_UsingRandom) {
 			m_Vars.push_back({ "ioRandSeed" });
 			insertion.push_back("#include \"Random.wgsl\"\n");
 			insertion.push_back("fn RandomRange(min_val: f32, max_val: f32) -> f32 { return GetRandomFromSeed(min_val, max_val, u32(atomicAdd(&ioRandSeed, 1))); }");

@@ -58,6 +58,7 @@ public:
 	EntityPipeline&				AddInputVar			( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), false, value }); return *this; }
 	EntityPipeline&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
 	EntityPipeline&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
+	EntityPipeline&				SetUsingRandom		( bool using_random = true ) { m_UsingRandom = using_random; return *this; }
 
 	template <class T>
 	EntityPipeline&				AddStructBuffer		( std::string_view name, std::string_view struct_name, SSBO& ssbo, BufferAccess access, bool is_array ) {
@@ -176,6 +177,7 @@ protected:
 	BaseCache*								m_Cache = nullptr;
 	std::string								m_ShaderName;
 	bool									m_ReplaceMain = false;
+	bool									m_UsingRandom = false;
 	iVec3									m_LocalSize = iVec3(8, 8, 8);
 	int										m_Iterations = 0;
 	SSBO*									m_ControlSSBO = nullptr;
