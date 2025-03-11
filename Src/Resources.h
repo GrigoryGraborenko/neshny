@@ -379,4 +379,49 @@ protected:
 };
 #endif
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////
+class ObjModelFile : public FileResource {
+public:
+	struct Params {};
+
+	struct Vertex {
+		fVec4 p_Pos;
+		fVec4 p_Texture; // w is integer index of tileset, ie which texture/material is to be used
+		fVec3 p_Normal;
+	};
+
+	virtual				~ObjModelFile(void) {}
+	bool				Init(std::string_view path, Params params, std::string& err) { return Load(path, err); }
+
+	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_GPUSize; };
+
+	virtual bool		FileInit(std::string_view path, unsigned char* data, int length, std::string& err);
+
+	inline const auto	GetRenderBuffer			( void ) const { return m_RenderBuffer; }
+	inline auto			GetTexture				( void ) const { return m_Texture; }
+
+protected:
+
+	std::vector<Vertex>		m_Vertices;
+
+	uint64_t				m_GPUSize = 0;
+
+#if defined(NESHNY_GL)
+	// todo
+
+	std::shared_ptr<GLBuffer>	m_RenderBuffer = nullptr; // TODO: placeholder only
+	GLTexture	m_Texture; // TODO: placeholder only
+
+#elif defined(NESHNY_WEBGPU)
+	std::shared_ptr<WebGPURenderBuffer>	m_RenderBuffer = nullptr;
+	std::shared_ptr<WebGPUTexture>		m_Texture = nullptr;
+#endif
+
+};
+
+
 } // namespace Neshny

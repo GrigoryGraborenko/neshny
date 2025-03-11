@@ -296,7 +296,7 @@ std::shared_ptr<unsigned char[]> WebGPUBuffer::MakeCopy(int max_size) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint16_t> index_data) {
+void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrimitiveTopology topology, unsigned char* vertex_data, int vertex_data_size, std::vector<uint32_t> index_data) {
 
 	delete m_VertexBuffer;
 	delete m_IndexBuffer;
@@ -356,7 +356,7 @@ void WebGPURenderBuffer::Init(std::vector<WGPUVertexFormat> attributes, WGPUPrim
 	m_NumIndices = (int)index_data.size();
 	m_VertexBuffer = new WebGPUBuffer(WGPUBufferUsage_Vertex, vertex_data, vertex_data_size);
 	if (!index_data.empty()) {
-		m_IndexBuffer = new WebGPUBuffer(WGPUBufferUsage_Index, (unsigned char*)index_data.data(), sizeof(uint16_t) * m_NumIndices);
+		m_IndexBuffer = new WebGPUBuffer(WGPUBufferUsage_Index, (unsigned char*)index_data.data(), sizeof(uint32_t) * m_NumIndices);
 	}
 }
 
@@ -970,7 +970,7 @@ void WebGPUPipeline::Render(WGPURenderPassEncoder pass, int instances) {
 	wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_RenderBuffer->GetVertex(), 0, WGPU_WHOLE_SIZE);
 
 	if (m_RenderBuffer->GetIndex()) {
-		wgpuRenderPassEncoderSetIndexBuffer(pass, m_RenderBuffer->GetIndex(), WGPUIndexFormat_Uint16, 0, WGPU_WHOLE_SIZE);
+		wgpuRenderPassEncoderSetIndexBuffer(pass, m_RenderBuffer->GetIndex(), WGPUIndexFormat_Uint32, 0, WGPU_WHOLE_SIZE);
 		wgpuRenderPassEncoderDrawIndexed(pass, m_RenderBuffer->GetNumIndices(), instances, 0, 0, 0);
 	} else {
 		wgpuRenderPassEncoderDraw(pass, m_RenderBuffer->GetNumVertices(), instances, 0, 0);
