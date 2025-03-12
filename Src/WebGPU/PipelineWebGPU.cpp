@@ -199,7 +199,11 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			int size = 0;
 			for (const auto& member : m_Uniform.p_Spec) {
 				size += member.p_Size;
-				members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+				if (member.p_ArrayCount.has_value()) {
+					members.push_back(std::format("\t{}: array<{}, {}>", member.p_Name, MemberSpec::GetGPUType(member.p_Type), *member.p_ArrayCount));
+				} else {
+					members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+				}
 			}
 			immediate_insertion.push_back("struct UniformStruct {");
 			immediate_insertion.push_back(JoinStrings(members, ",\n"));
@@ -540,6 +544,9 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	} else {
 		for (int i = 0; i < pipeline_buffers.size(); i++) {
 			result->m_Pipeline->ReplaceBuffer(i, pipeline_buffers[i].p_Buffer);
+		}
+		for (int i = 0; i < m_Textures.size(); i++) {
+			result->m_Pipeline->ReplaceTexture(i, m_Textures[i].p_Tex->GetTextureView());
 		}
 	}
 

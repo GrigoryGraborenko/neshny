@@ -17,8 +17,8 @@ fn vertex_main(input : VertexIn) -> VertexOut {
 @fragment
 fn frag_main(input: VertexOut) -> @location(0) vec4f {
 
-	var eye_pos_a : vec4f = Uniform.Matrix4x4 * vec4f(input.vScreenPos.xy, -1.0, 1.0);
-	var eye_pos_b : vec4f = Uniform.Matrix4x4 * vec4f(input.vScreenPos.xy, -0.9, 1.0);
+	var eye_pos_a : vec4f = Uniform.Value * vec4f(input.vScreenPos.xy, -1.0, 1.0);
+	var eye_pos_b : vec4f = Uniform.Value * vec4f(input.vScreenPos.xy, -0.9, 1.0);
 	eye_pos_a /= eye_pos_a.w;
 	eye_pos_b /= eye_pos_b.w;
 	let eye_pos_dir : vec3f = normalize(eye_pos_b.xyz - eye_pos_a.xyz);

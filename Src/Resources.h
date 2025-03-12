@@ -151,7 +151,7 @@ public:
 	virtual					~TextureSkybox			( void ) {}
 	virtual bool			Init					( std::string_view path, Params params, std::string& err );
 
-	void					Render					( WebGPURTT& rtt, const Matrix4& view_perspective );
+	void					Render					( WebGPURTT& rtt, const Matrix4& inverse_view_perspective );
 
 	const WebGPUTexture&	Get						( void ) const { return m_Texture; }
 	WGPUTextureView			GetTextureView			( void ) const { return m_Texture.GetTextureView(); }

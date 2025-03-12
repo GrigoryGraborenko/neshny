@@ -37,12 +37,12 @@ bool TextureSkybox::Init(std::string_view path, Params params, std::string& err)
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-void TextureSkybox::Render(WebGPURTT& rtt, const Matrix4& view_perspective) {
+void TextureSkybox::Render(WebGPURTT& rtt, const Matrix4& inverse_view_perspective) {
     WebGPUPipeline::RenderParams render_params;
     render_params.p_DepthWriteEnabled = false;
     render_params.p_DepthCompare = WGPUCompareFunction_Always;
     Neshny::EntityPipeline::RenderBuffer(SrcStr(), "SkyBox", Core::GetBuffer("Square"), render_params)
-        .SetUniform(view_perspective.ToGPU())
+        .SetUniform(inverse_view_perspective.ToGPU())
         .AddTexture("SkyBox", &m_Texture)
         .AddSampler("Sampler", Core::GetSampler(WGPUAddressMode_Repeat))
         .Render(&rtt);
@@ -109,7 +109,11 @@ bool ObjModelFile::FileInit(std::string_view path, unsigned char* data, int leng
 			if (str.empty()) {
 				return result;
 			}
+#ifdef __EMSCRIPTEN__
+			return std::stof(std::string(str));
+#else
 			std::from_chars(str.data(), str.data() + str.size(), result);
+#endif
 			return result;
 		};
 		auto read_vertex_int = [] (std::string_view str) -> int {
@@ -117,8 +121,12 @@ bool ObjModelFile::FileInit(std::string_view path, unsigned char* data, int leng
 			if (str.empty()) {
 				return result;
 			}
+#ifdef __EMSCRIPTEN__
+			return std::stoi(std::string(str)) - 1;
+#else
 			std::from_chars(str.data(), str.data() + str.size(), result);
 			return result - 1;
+#endif
 		};
 		auto get_vertex = [&read_vertex_int] (std::string_view str) -> VertexInfo {
 			int first_slash = -1;
