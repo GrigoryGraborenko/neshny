@@ -773,16 +773,22 @@ struct BaseMatrix4 {
 
 	BaseMatrix4(void) { m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[0][3] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[1][3] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; m[2][3] = 0; m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 0; }
 	BaseMatrix4(BaseVec3<T> row_a, BaseVec3<T> row_b, BaseVec3<T> row_c, BaseVec3<T> row_d) {
-		m[0][0] = row_a.x; m[0][1] = row_a.y; m[0][2] = row_a.z; m[0][3] = 0.0;
-		m[1][0] = row_b.x; m[1][1] = row_b.y; m[1][2] = row_b.z; m[1][3] = 0.0;
-		m[2][0] = row_c.x; m[2][1] = row_c.y; m[2][2] = row_c.z; m[2][3] = 0.0;
-		m[3][0] = row_d.x; m[3][1] = row_d.y; m[3][2] = row_d.z; m[3][3] = 0.0;
+		m[0][0] = row_a.x; m[0][1] = row_a.y; m[0][2] = row_a.z; m[0][3] = 0;
+		m[1][0] = row_b.x; m[1][1] = row_b.y; m[1][2] = row_b.z; m[1][3] = 0;
+		m[2][0] = row_c.x; m[2][1] = row_c.y; m[2][2] = row_c.z; m[2][3] = 0;
+		m[3][0] = row_d.x; m[3][1] = row_d.y; m[3][2] = row_d.z; m[3][3] = 0;
 	}
 	BaseMatrix4(T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33) {
 		m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[0][3] = e03;
 		m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[1][3] = e13;
 		m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; m[2][3] = e23;
 		m[3][0] = e30; m[3][1] = e31; m[3][2] = e32; m[3][3] = e33;
+	}
+	BaseMatrix4(BaseMatrix3<T> mat) {
+		m[0][0] = mat.m[0][0]; m[0][1] = mat.m[0][1]; m[0][2] = mat.m[0][2]; m[0][3] = 0;
+		m[1][0] = mat.m[1][0]; m[1][1] = mat.m[1][1]; m[1][2] = mat.m[1][2]; m[1][3] = 0;
+		m[2][0] = mat.m[2][0]; m[2][1] = mat.m[2][1]; m[2][2] = mat.m[2][2]; m[2][3] = 0;
+		m[3][0] = 0; m[3][1] = 0; m[3][2] = 0; m[3][3] = 1;
 	}
 
 	void Set(T e00, T e01, T e02, T e03, T e10, T e11, T e12, T e13, T e20, T e21, T e22, T e23, T e30, T e31, T e32, T e33) {

@@ -91,8 +91,19 @@ std::string EntityPipeline::GetDataVectorStructCode(const AddedDataVector& data_
 				function.push_back(std::format("\titem.{0} = vec3i(b_Control[index + {1}], b_Control[index + {1} + 1], b_Control[index + {1} + 2]);", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC4) {
 				function.push_back(std::format("\titem.{0} = vec4i(b_Control[index + {1}], b_Control[index + {1} + 1], b_Control[index + {1} + 2], b_Control[index + {1} + 3]);", name, pos_index));
+			} else if (member.p_Type == MemberSpec::T_MAT3) {
+				std::vector<std::string> items;
+				for (int i = 0; i < 9; i++) {
+					items.push_back(std::format("bitcast<f32>(b_Control[index + {} + {}])", pos_index, i));
+				}
+				function.push_back(std::format("\titem.{} = mat3x3f({});", name, JoinStrings(items, ", ")));
+			} else if (member.p_Type == MemberSpec::T_MAT4) {
+				std::vector<std::string> items;
+				for (int i = 0; i < 16; i++) {
+					items.push_back(std::format("bitcast<f32>(b_Control[index + {} + {}])", pos_index, i));
+				}
+				function.push_back(std::format("\titem.{} = mat4x4f({});", name, JoinStrings(items, ", ")));
 			}
-
 		} else {
 			if (member.p_Type == MemberSpec::T_INT) {
 				function.push_back(std::format("\titem.{0} = atomicLoad(&b_Control[index + {1}]);", name, pos_index));
@@ -110,6 +121,18 @@ std::string EntityPipeline::GetDataVectorStructCode(const AddedDataVector& data_
 				function.push_back(std::format("\titem.{0} = vec3i(atomicLoad(&b_Control[index + {1}]), atomicLoad(&b_Control[index + {1} + 1]), atomicLoad(&b_Control[index + {1} + 2]));", name, pos_index));
 			} else if (member.p_Type == MemberSpec::T_IVEC4) {
 				function.push_back(std::format("\titem.{0} = vec4i(atomicLoad(&b_Control[index + {1}]), atomicLoad(&b_Control[index + {1} + 1]), atomicLoad(&b_Control[index + {1} + 2]), atomicLoad(&b_Control[index + {1} + 3]));", name, pos_index));
+			} else if (member.p_Type == MemberSpec::T_MAT3) {
+				std::vector<std::string> items;
+				for (int i = 0; i < 9; i++) {
+					items.push_back(std::format("bitcast<f32>(atomicLoad(&b_Control[index + {} + {}]))", pos_index, i));
+				}
+				function.push_back(std::format("\titem.{} = mat3x3f({});", name, JoinStrings(items, ", ")));
+			} else if (member.p_Type == MemberSpec::T_MAT4) {
+				std::vector<std::string> items;
+				for (int i = 0; i < 16; i++) {
+					items.push_back(std::format("bitcast<f32>(atomicLoad(&b_Control[index + {} + {}]))", pos_index, i));
+				}
+				function.push_back(std::format("\titem.{} = mat4x4f({});", name, JoinStrings(items, ", ")));
 			}
 		}
 		pos_index += member.p_Size / sizeof(int);
