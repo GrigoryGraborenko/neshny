@@ -134,6 +134,19 @@ void ImGuiTextColoredUnformatted(std::string str, ImVec4 text_col) {
     ImGui::PopStyleColor();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+double BSpline(double v0, double v1, double v2, double v3, double t) {
+    double t2 = t * t;
+    double t3 = t2 * t;
+    double mt = 1.0 - t;
+    double mt3 = mt * mt * mt;
+    return
+        (v0 * mt3
+        + v1 * (3.0 * t3 - 6.0 * t2 + 4.0)
+        + v2 * (-3.0 * t3 + 3.0 * t2 + 3.0 * t + 1.0)
+        + v3 * t3) / 6.0;
+}
+
 #ifdef __APPLE__
 ////////////////////////////////////////////////////////////////////////////////
 std::string GetMacOSExecutableDir() {
