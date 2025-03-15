@@ -191,21 +191,21 @@ bool ObjModelFile::FileInit(std::string_view path, unsigned char* data, int leng
 				vertex_textures.push_back(uv);
 			} else if ((line_tokens[0] == "f") && (tokens >= 4)) {
 
-				if (tokens == 4) {
-					VertexInfo v0 = get_vertex(line_tokens[1]);
-					VertexInfo v1 = get_vertex(line_tokens[2]);
-					VertexInfo v2 = get_vertex(line_tokens[3]);
-					vertex_info_set.insert_or_assign(v0, -1); vertex_info_set.insert_or_assign(v1, -1); vertex_info_set.insert_or_assign(v2, -1);
-					triangles.push_back({ v0, v1, v2, material_index });
+				std::vector<VertexInfo> face_vertices;
+				face_vertices.reserve(line_tokens.size() - 1);
+				for (std::size_t i = 1; i < line_tokens.size(); i++) {
+					VertexInfo v = get_vertex(line_tokens[i]);
+					vertex_info_set.insert_or_assign(v, -1);
+					face_vertices.push_back(v);
+				}
+				if (face_vertices.size() == 4) {
+					triangles.push_back({ face_vertices[0], face_vertices[1], face_vertices[2], material_index });
+					triangles.push_back({ face_vertices[2], face_vertices[3], face_vertices[0], material_index });
 				} else {
-					Face face;
-					for (std::size_t i = 1; i < line_tokens.size(); i++) {
-						VertexInfo v = get_vertex(line_tokens[i]);
-						vertex_info_set.insert_or_assign(v, -1);
-						face.p_Vertices.push_back(v);
+					int num_tri = face_vertices.size() - 2;
+					for (int ind = 0; ind < num_tri; ind++) {
+						triangles.push_back({ face_vertices[ind], face_vertices[ind + 1], face_vertices[ind + 2], material_index });
 					}
-					face.p_MaterialIndex = material_index;
-					faces.emplace_back(std::move(face));
 				}
 			} else if ((line_tokens[0] == "mtllib") && (tokens >= 2)) {
 				std::ifstream file(std::format("{}{}", directory, line_tokens[1]), std::ios::in | std::ios::binary);

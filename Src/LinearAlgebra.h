@@ -484,7 +484,7 @@ struct BaseMatrix3 {
 
 					BaseMatrix3		( void ) { m[0][0] = 0; m[0][1] = 0; m[0][2] = 0; m[1][0] = 0; m[1][1] = 0; m[1][2] = 0; m[2][0] = 0; m[2][1] = 0; m[2][2] = 0; }
 					BaseMatrix3		( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
-					BaseMatrix3		( BaseVec3<T> side, BaseVec3<T> up, BaseVec3<T> forward ) { Set(side.x, side.y, side.z, up.x, up.y, up.z, forward.x, forward.y, forward.z); }
+					BaseMatrix3		( BaseVec3<T> forward, BaseVec3<T> side, BaseVec3<T> up ) { Set(forward.x, side.x, up.x, forward.y, side.y, up.y, forward.z, side.z, up.z); }
 
 	void			Set				( T e00, T e01, T e02, T e10, T e11, T e12, T e20, T e21, T e22 ) { m[0][0] = e00; m[0][1] = e01; m[0][2] = e02; m[1][0] = e10; m[1][1] = e11; m[1][2] = e12; m[2][0] = e20; m[2][1] = e21; m[2][2] = e22; }
 

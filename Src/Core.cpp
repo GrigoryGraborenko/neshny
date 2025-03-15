@@ -542,15 +542,13 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	}
 	//bool limits_success = wgpuAdapterGetLimits(backendAdapter.Get(), &supported);
 
-	std::vector<const char*> enableToggleNames;
-	std::vector<const char*> disabledToggleNames;
-	//for (const std::string& toggle : enableToggles) {
-	//	enableToggleNames.push_back(toggle.c_str());
-	//}
+	std::vector<const char*> enableToggleNames = { "use_tint_ir" };
+#if _DEBUG
+	std::vector<const char*> disabledToggleNames = {};
+#else
+	std::vector<const char*> disabledToggleNames = { "skip_validation" };
+#endif
 
-	//for (const std::string& toggle : disableToggles) {
-	//	disabledToggleNames.push_back(toggle.c_str());
-	//}
 	WGPUDawnTogglesDescriptor toggles;
 	toggles.chain.sType = WGPUSType_DawnTogglesDescriptor;
 	toggles.chain.next = nullptr;
@@ -574,7 +572,6 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
 	deviceDesc.uncapturedErrorCallbackInfo = { nullptr, cCallback, nullptr, nullptr };
 	deviceDesc.deviceLostCallbackInfo = { nullptr, DEFAULT_CALLBACK_MODE, cLostCallback, nullptr, nullptr };
-	deviceDesc.nextInChain = nullptr;
 	deviceDesc.requiredFeatures = nullptr;
 	deviceDesc.requiredFeatureCount = 0;
 	deviceDesc.label = { nullptr, 0 };
