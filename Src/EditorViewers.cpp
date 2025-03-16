@@ -648,37 +648,38 @@ void BufferViewer::RenderImGui(InterfaceBufferViewer& data) {
 				};
 
 				std::vector<StructType> struct_types;
-
-				int accum_size = 0;
 				for (const auto& member : buffer.second.p_Members) {
-					if (member.p_Type == MemberSpec::T_VEC2) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
-					} else if (member.p_Type == MemberSpec::T_VEC3) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
-						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
-					} else if (member.p_Type == MemberSpec::T_VEC4) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
-						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
-						struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_FLOAT, member.p_Type, -3 });
-					} else if (member.p_Type == MemberSpec::T_IVEC2) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
-					} else if (member.p_Type == MemberSpec::T_IVEC3) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
-						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT, member.p_Type, -2 });
-					} else if (member.p_Type == MemberSpec::T_IVEC4) {
-						struct_types.push_back({ member.p_Name + ".x", MemberSpec::T_INT, member.p_Type, 0 });
-						struct_types.push_back({ member.p_Name + ".y", MemberSpec::T_INT, member.p_Type, -1 });
-						struct_types.push_back({ member.p_Name + ".z", MemberSpec::T_INT, member.p_Type, -2 });
-						struct_types.push_back({ member.p_Name + ".w", MemberSpec::T_INT, member.p_Type, -3 });
-					} else {
-						struct_types.push_back({ member.p_Name, member.p_Type, member.p_Type, 0 });
+					int array_count = member.p_ArrayCount.value_or(1);
+					for (int a = 0; a < array_count; a++) {
+						auto memname = array_count == 1 ? member.p_Name : std::format("{}[{}]", member.p_Name, a);
+						if (member.p_Type == MemberSpec::T_VEC2) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
+						} else if (member.p_Type == MemberSpec::T_VEC3) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
+							struct_types.push_back({ memname + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
+						} else if (member.p_Type == MemberSpec::T_VEC4) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_FLOAT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_FLOAT, member.p_Type, -1 });
+							struct_types.push_back({ memname + ".z", MemberSpec::T_FLOAT, member.p_Type, -2 });
+							struct_types.push_back({ memname + ".w", MemberSpec::T_FLOAT, member.p_Type, -3 });
+						} else if (member.p_Type == MemberSpec::T_IVEC2) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_INT, member.p_Type, -1 });
+						} else if (member.p_Type == MemberSpec::T_IVEC3) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_INT, member.p_Type, -1 });
+							struct_types.push_back({ memname + ".z", MemberSpec::T_INT, member.p_Type, -2 });
+						} else if (member.p_Type == MemberSpec::T_IVEC4) {
+							struct_types.push_back({ memname + ".x", MemberSpec::T_INT, member.p_Type, 0 });
+							struct_types.push_back({ memname + ".y", MemberSpec::T_INT, member.p_Type, -1 });
+							struct_types.push_back({ memname + ".z", MemberSpec::T_INT, member.p_Type, -2 });
+							struct_types.push_back({ memname + ".w", MemberSpec::T_INT, member.p_Type, -3 });
+						} else {
+							struct_types.push_back({ memname, member.p_Type, member.p_Type, 0 });
+						}
 					}
-					accum_size += member.p_Size;
 				}
 				int cycles = (int)struct_types.size();
 
