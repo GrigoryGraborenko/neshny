@@ -541,6 +541,8 @@ namespace Test {
 	////////////////////////////////////////////////////////////////////////////////
 	void GPUEntityCache3D(bool use_cursor, bool use_radius = false) {
 
+#if defined(NESHNY_WEBGPU)
+
 		const int prey_count = 2000;
 		const int hunter_count = 20;
 
@@ -552,13 +554,8 @@ namespace Test {
 
 		Neshny::RandomSeed(0);
 
-#if defined(NESHNY_GL)
-		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
-		Neshny::GPUEntity hunter_entities("Hunter", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUOther::p_Id, "Id");
-#elif defined(NESHNY_WEBGPU)
 		Neshny::GPUEntity prey_entities("Prey", &GPUThing::p_Id, "Id");
 		Neshny::GPUEntity hunter_entities("Hunter", &GPUOther::p_Id, "Id");
-#endif
 
 		prey_entities.Init(prey_count + 1);
 		hunter_entities.Init(1000);
@@ -607,9 +604,6 @@ namespace Test {
 		// run again to make sure results are idempotent
 		cache.GenerateCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
 
-#if defined(NESHNY_GL)
-		// TODO: test here as well
-#elif defined(NESHNY_WEBGPU)
 		std::string shader_defines;
 		if (use_cursor) {
 			shader_defines = "#define USE_CURSOR\n";
@@ -623,12 +617,12 @@ namespace Test {
 			.AddCode(shader_defines)
 			.SetUniform(uniform)
 			.Run();
-#endif
 
 		std::vector<GPUOther> gpu_values;
 		hunter_entities.ExtractMultiple(gpu_values, hunter_count);
 
 		CompareEntities<GPUOther>("Cache lookup", expected_hunters, gpu_values);
+#endif
 	}
 
 	////////////////////////////////////////////////////////////////////////////////

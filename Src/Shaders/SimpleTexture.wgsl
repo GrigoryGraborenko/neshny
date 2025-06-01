@@ -18,6 +18,7 @@ fn vertex_main(input : VertexIn) -> VertexOut {
 	var output : VertexOut;
 	output.Position = uniforms.p_VP * vec4f(input.aPos.xy, 0.0, 1.0);
 	output.vUV = (input.aPos - vec2f(1.0, 1.0)) * 0.5;
+	output.vUV.y = 1.0 - output.vUV.y;
 	return output;
 }
 @fragment

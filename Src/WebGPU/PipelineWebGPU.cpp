@@ -328,9 +328,11 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			if (ssbo.p_Access == BufferAccess::READ_WRITE_ATOMIC) {
 				type_str = std::format("atomic<{}>", type_str);
 			}
-			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<storage, {1}> {2}: array<{3}>;"
+
+			std::string storage = (ssbo.p_Buffer.GetUsageFlags() & WGPUBufferUsage_Uniform) ? "uniform" : (read_only ? "storage, read" : "storage, read_write");
+			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var<{1}> {2}: array<{3}>;"
 				,insertion_buffers.size()
-				,read_only ? "read" : "read_write"
+				,storage
 				,ssbo.p_Name
 				,type_str
 			));
