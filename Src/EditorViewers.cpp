@@ -980,8 +980,9 @@ InterfaceCollapsible* ShaderViewer::RenderShader(InterfaceShaderViewer& data, st
 							ImGui::SameLine();
 							ImGui::SetCursorPosX(number_width);
 
-							auto before_error = lines[line].substr(0, err.m_LinePos + 1);
-							auto after_error = lines[line].substr(err.m_LinePos + 1, lines[line].size() - err.m_LinePos - 1);
+							const auto& line_view = lines[line];
+							auto before_error = line_view.substr(0, err.m_LinePos + 1);
+							auto after_error = (line_view.size() <= (err.m_LinePos + 1)) ? "" : line_view.substr(err.m_LinePos + 1, line_view.size() - err.m_LinePos - 1);
 
 							ImGui::TextUnformatted(before_error.data());
 							ImGui::SameLine(0.0, 0.0);

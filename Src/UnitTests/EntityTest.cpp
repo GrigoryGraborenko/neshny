@@ -475,7 +475,7 @@ namespace Test {
 		prey_entities.Init(1000);
 		hunter_entities.Init(1000);
 
-		Neshny::Grid2DCache cache(prey_entities, "TwoDim");
+		Neshny::GridCache cache(prey_entities, "TwoDim");
 
 		std::vector<GPUThing> expected_prey;
 		for (int i = 0; i < prey_count; i++) {
@@ -512,10 +512,10 @@ namespace Test {
 		}
 
 		// run the generation algorithm
-		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
+		cache.Generate2DCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
 
 		// run again to make sure results are idempotent
-		cache.GenerateCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
+		cache.Generate2DCache(Neshny::iVec2(grids, grids), Neshny::Vec2(-map_radius, -map_radius), Neshny::Vec2(map_radius, map_radius));
 
 #if defined(NESHNY_GL)
 		// TODO: test here as well
@@ -560,7 +560,7 @@ namespace Test {
 		prey_entities.Init(prey_count + 1);
 		hunter_entities.Init(1000);
 
-		Neshny::Grid3DCache cache(prey_entities, "ThreeDim", use_radius ? std::optional<std::string_view>("Float") : std::nullopt);
+		Neshny::GridCache cache(prey_entities, "ThreeDim", use_radius ? std::optional<std::string_view>("Float") : std::nullopt);
 
 		std::vector<GPUThing> expected_prey;
 		for (int i = 0; i < prey_count; i++) {
@@ -599,10 +599,10 @@ namespace Test {
 		}
 
 		// run the generation algorithm
-		cache.GenerateCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
+		cache.Generate3DCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
 
 		// run again to make sure results are idempotent
-		cache.GenerateCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
+		cache.Generate3DCache(Neshny::iVec3(grids, grids, grids), Neshny::Vec3(-map_radius, -map_radius, -map_radius), Neshny::Vec3(map_radius, map_radius, map_radius));
 
 		std::string shader_defines;
 		if (use_cursor) {

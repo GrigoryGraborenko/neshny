@@ -197,22 +197,97 @@ public:
 
 private:
 
-	iVec2	GetGridPos		( Vec2 pos ) {
+	iVec2				GetGridPos			( Vec2 pos ) {
 		return iVec2::Max(iVec2(0, 0), iVec2::Min(p_GridRange + iVec2(-1, -1), iVec2(((pos - p_MinPos) * p_InvCellSize).Floor())));
 	}
 
-	std::vector<T*>&	GetCell	( Vec2 pos ) {
-		auto gpos = GetGridPos(pos);
+	std::vector<T*>&	GetCellFromGridPos	( iVec2 gpos ) {
 		int index = gpos.y * p_GridRange.x + gpos.x;
 		return p_Cells[index];
 	}
 
+	std::vector<T*>&	GetCell				( Vec2 pos ) {
+		return GetCellFromGridPos(GetGridPos(pos));
+	}
+
 	Vec2							p_MinPos;
-	double							p_CellSize;
 	double							p_InvCellSize;
 	iVec2							p_GridRange;
 	std::function<Vec2(const T&)>	p_GetPosFunc;
 	std::vector<std::vector<T*>>	p_Cells;
+};
+
+template<typename T>
+class Grid2DBoxCPUCache {
+
+public:
+
+	Grid2DBoxCPUCache	( Vec2 min_pos, Vec2 max_pos, double cell_size, std::function<std::pair<Vec2, Vec2>(const T& item)> get_bounds ) :
+		p_MinPos		( min_pos )
+		,p_InvCellSize	( 1.0 / cell_size )
+		,p_GridRange	( ((max_pos - min_pos) * p_InvCellSize).Ceil() )
+		,p_GetBoundFunc	( get_bounds )
+	{
+		p_Cells.resize(p_GridRange.x * p_GridRange.y);
+	}
+
+	void	AddItem			( T& item ) {
+		auto bounds = p_GetBoundFunc(item);
+		iVec2 min_grid = GetGridPos(bounds.first);
+		iVec2 max_grid = GetGridPos(bounds.second);
+		for (int y = min_grid.y; y <= max_grid.y; y++) {
+			for (int x = min_grid.x; x <= max_grid.x; x++) {
+				GetCellFromGridPos(iVec2(x, y)).push_back(&item);
+			}
+		}
+	}
+
+	void	AddItems		( std::vector<T>& items ) {
+		for (auto& item : items) {
+			AddItem(item);
+		}
+	}
+
+	void	Reset			( void ) { for(auto& cell: p_Cells) { cell.clear(); } }
+
+	void	Iterate			( Vec2 from_pos, Vec2 to_pos, std::function<void(T* item)> item_callback ) {
+		auto min_g = GetGridPos(from_pos);
+		auto max_g = GetGridPos(to_pos);
+		std::set<T*> found;
+		for (int x = min_g.x; x <= max_g.x; x++) {
+			for (int y = min_g.y; y <= max_g.y; y++) {
+				int index = y * p_GridRange.x + x;
+				auto& cell = p_Cells[index];
+				for (T* item : cell) {
+					found.insert(item);
+				}
+			}
+		}
+		for (T* item : found) {
+			item_callback(item);
+		}
+	}
+
+private:
+
+	iVec2				GetGridPos			( Vec2 pos ) {
+		return iVec2::Max(iVec2(0, 0), iVec2::Min(p_GridRange + iVec2(-1, -1), iVec2(((pos - p_MinPos) * p_InvCellSize).Floor())));
+	}
+
+	std::vector<T*>&	GetCellFromGridPos	( iVec2 gpos ) {
+		int index = gpos.y * p_GridRange.x + gpos.x;
+		return p_Cells[index];
+	}
+
+	std::vector<T*>&	GetCell				( Vec2 pos ) {
+		return GetCellFromGridPos(GetGridPos(pos));
+	}
+
+	Vec2											p_MinPos;
+	double											p_InvCellSize;
+	iVec2											p_GridRange;
+	std::function<std::pair<Vec2, Vec2>(const T&)>	p_GetBoundFunc;
+	std::vector<std::vector<T*>>					p_Cells;
 };
 
 } // namespace Neshny

@@ -18,6 +18,8 @@ struct BaseVec3 {
 						BaseVec3		( void ) : x(0), y(0), z(0) {}
 						BaseVec3		( T e0, T e1, T e2 ) : x(e0), y(e1), z(e2) {}
 						BaseVec3		( const BaseVec3<int>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
+						BaseVec3		( const BaseVec3<float>& t2 ) : x((T)t2.x), y((T)t2.y), z((T)t2.z) {}
+
 						BaseVec3		( Axis ax, T v ) : x(ax == Axis::X ? v : 0), y(ax == Axis::Y ? v : 0), z(ax == Axis::Z ? v : 0) {}
 
 	inline BaseVec3<float>	ToFloat3( void ) const { return BaseVec3<float>(float(x), float(y), float(z)); }
@@ -520,6 +522,7 @@ struct BaseMatrix3 {
 		return ta;
 	}
 
+	// Transpose
 	BaseMatrix3<T>	operator~		( void ) const {
 		BaseMatrix3<T> ma;
 		for (int i = 0; i < 3; i++) {

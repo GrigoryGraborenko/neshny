@@ -35,8 +35,8 @@ public:
 	static EntityPipeline ModifyEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
 		return EntityPipeline(RunType::ENTITY_PROCESS, &entity, nullptr, cache, shader_name, replace_main, identifier);
 	}
-	static EntityPipeline RenderEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params) {
-		return EntityPipeline(RunType::ENTITY_RENDER, &entity, buffer, nullptr, shader_name, replace_main, identifier, nullptr, 0, render_params);
+	static EntityPipeline RenderEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, RenderableBuffer* buffer, WebGPUPipeline::RenderParams render_params, class BaseCache* cache = nullptr) {
+		return EntityPipeline(RunType::ENTITY_RENDER, &entity, buffer, cache, shader_name, replace_main, identifier, nullptr, 0, render_params);
 	}
 	static EntityPipeline IterateEntity(std::string_view identifier, GPUEntity& entity, std::string_view shader_name, bool replace_main, class BaseCache* cache = nullptr) {
 		return EntityPipeline(RunType::ENTITY_ITERATE, &entity, nullptr, cache, shader_name, replace_main, identifier);
@@ -259,45 +259,23 @@ struct GridCacheUniform {
 	fVec4	p_GridMax;
 };
 
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////
-class Grid2DCache : public BaseCache {
+class GridCache : public BaseCache {
 
 public:
 
-								Grid2DCache		( GPUEntity& entity, std::string_view pos_name );
-	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
+								GridCache		( GPUEntity& entity, std::string_view pos_name, std::optional<std::string_view> radius_name = std::nullopt );
+	void						Generate2DCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
+	void						Generate3DCache	( iVec3 grid_size, Vec3 grid_min, Vec3 grid_max );
 
 	virtual void				Bind			( EntityPipeline& target_stage, bool initial_creation ) override;
 
 private:
 
-	GPUEntity&					m_Entity;
-	std::string					m_PosName;
-
-	SSBO						m_GridIndices;
-	SSBO						m_GridItems;
-	SSBO						m_Uniform;
-
-	iVec2						m_GridSize;
-	Vec2						m_GridMin;
-	Vec2						m_GridMax;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
-class Grid3DCache : public BaseCache {
-
-public:
-
-								Grid3DCache		( GPUEntity& entity, std::string_view pos_name, std::optional<std::string_view> radius_name = std::nullopt );
-	void						GenerateCache	( iVec3 grid_size, Vec3 grid_min, Vec3 grid_max );
-
-	virtual void				Bind			( EntityPipeline& target_stage, bool initial_creation ) override;
-
-private:
+	void						GenerateCache	( void );
 
 	GPUEntity&					m_Entity;
 	std::string					m_PosName;
@@ -312,6 +290,7 @@ private:
 	Vec3						m_GridMax;
 	int							m_RequiredItemCacheSize = 0;
 	bool						m_InitialRun = true;
+	bool						m_Is3D = false;
 };
 
 } // namespace Neshny

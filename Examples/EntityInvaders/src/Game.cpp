@@ -279,8 +279,8 @@ bool Game::Tick(double delta_seconds, int tick) {
 		});
 
 	const int grid_cache_div = 1;
-	m_EnemyCache.GenerateCache(iVec2(m_MapSize.x / grid_cache_div, m_MapSize.y / grid_cache_div), m_MapSize * -0.5, m_MapSize * 0.5);
-	m_DroneCache.GenerateCache(iVec2(m_MapSize.x / grid_cache_div, m_MapSize.y / grid_cache_div), m_MapSize * -0.5, m_MapSize * 0.5);
+	m_EnemyCache.Generate2DCache(iVec2(m_MapSize.x / grid_cache_div, m_MapSize.y / grid_cache_div), m_MapSize * -0.5, m_MapSize * 0.5);
+	m_DroneCache.Generate2DCache(iVec2(m_MapSize.x / grid_cache_div, m_MapSize.y / grid_cache_div), m_MapSize * -0.5, m_MapSize * 0.5);
 
 	Neshny::EntityPipeline::ModifyEntity(SrcStr(), m_EnemyProjectiles, "EnemyProjectileMove", true)
 		.AddEntity(m_PlayerDrones, &m_DroneCache)

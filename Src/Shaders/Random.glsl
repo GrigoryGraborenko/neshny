@@ -74,6 +74,13 @@ uint GetPCGRandom(inout uvec2 seed) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+float GetNextRandom(float min_val, float max_val, inout uvec2 seed) {
+	uint value = GetPCGRandom(seed);
+	float zero_to_one = float(value) * 0.0000000002328306437;
+	return zero_to_one * (max_val - min_val) + min_val;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 float GetRandom(float min_val, float max_val, uint seed) {
 	uint value = GetHash(AdvanceSeedState(uvec2(0x4d595df4, seed)));
 	float zero_to_one = float(value) * 0.0000000002328306437;

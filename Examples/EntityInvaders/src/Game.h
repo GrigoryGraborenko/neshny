@@ -179,8 +179,8 @@ private:
 	GPUEntity									m_Debris;
 
 	Vec2										m_MapSize = Vec2(MAP_BASE_SIZE * ASPECT_RATIO, MAP_BASE_SIZE);
-	Grid2DCache									m_EnemyCache;
-	Grid2DCache									m_DroneCache;
+	GridCache									m_EnemyCache;
+	GridCache									m_DroneCache;
 
 	std::vector<GPUProjectileSpec>				m_ProjectileSpecs;
 	std::vector<GPUDroneSpec>					m_WeaponSpecs;
