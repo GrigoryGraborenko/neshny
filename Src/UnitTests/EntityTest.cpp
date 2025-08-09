@@ -467,15 +467,16 @@ namespace Test {
 #if defined(NESHNY_GL)
 		Neshny::GPUEntity prey_entities("Prey", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUThing::p_Id, "Id");
 		Neshny::GPUEntity hunter_entities("Hunter", Neshny::GPUEntity::DeleteMode::STABLE_WITH_GAPS, &GPUOther::p_Id, "Id");
+		prey_entities.Init(1000);
+		hunter_entities.Init(1000);
+		Neshny::Grid2DCache cache(prey_entities, "TwoDim");
 #elif defined(NESHNY_WEBGPU)
 		Neshny::GPUEntity prey_entities("Prey", &GPUThing::p_Id, "Id");
 		Neshny::GPUEntity hunter_entities("Hunter", &GPUOther::p_Id, "Id");
-#endif
-
 		prey_entities.Init(1000);
 		hunter_entities.Init(1000);
-
 		Neshny::GridCache cache(prey_entities, "TwoDim");
+#endif
 
 		std::vector<GPUThing> expected_prey;
 		for (int i = 0; i < prey_count; i++) {

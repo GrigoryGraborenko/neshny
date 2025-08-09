@@ -517,7 +517,7 @@ Grid2DCache::Grid2DCache(GPUEntity& entity, std::string_view pos_name) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Grid2DCache::GenerateCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
+void Grid2DCache::Generate2DCache(iVec2 grid_size, Vec2 grid_min, Vec2 grid_max) {
 
 	m_GridSize = grid_size;
 	m_GridMin = grid_min;

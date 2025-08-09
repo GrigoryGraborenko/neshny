@@ -202,7 +202,7 @@ class Grid2DCache : public BaseCache {
 public:
 
 								Grid2DCache		( GPUEntity& entity, std::string_view pos_name );
-	void						GenerateCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
+	void						Generate2DCache	( iVec2 grid_size, Vec2 grid_min, Vec2 grid_max );
 
 	virtual void				Bind			( EntityPipeline& target_stage ) override;
 
