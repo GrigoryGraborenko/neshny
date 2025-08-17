@@ -156,8 +156,12 @@ class GPUEntity {
 
 public:
 
-	// TODO: figure out better way of passing in T, perhaps template entire class
+	struct PlacementInfo {
+		int		p_Index;
+		int		p_Id;
+	};
 
+	// TODO: figure out better way of passing in T, perhaps template entire class
 	template <typename T> GPUEntity(std::string name, int T::* id_ptr, std::string id_name, bool double_buffer = true) :
 			m_Name(name)
 			,m_NumDataFloats(sizeof(T) / sizeof(float))
@@ -225,67 +229,70 @@ public:
 		m_SSBO->SetSingleValue<T>(index, item);
 	}
 
-	bool						Init					( int expected_max_count = 100000 );
-	void						Clear					( void );
+	bool												Init					( int expected_max_count = 100000 );
+	void												Clear					( void );
 
 	// will add instances in random order, no need to set IDs, they will be overwritten
-	template <typename T> void	AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
+	template <typename T> void							AddInstances			( std::vector<T>& items ) { AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T), nullptr ); }
+
+	// will add instances in random order, no need to set IDs, they will be overwritten
+	template <typename T> std::vector<PlacementInfo>	AddInstancesSync		( std::vector<T>& items ) { std::vector<PlacementInfo> placements; AddInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T), &placements); return placements; }
 
 	// this version preserves the ordering, but you must set the IDs correctly yourself, and will delete all prior instances
-	template <typename T> void	SetInstances			( std::vector<T>& items ) { SetInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
+	template <typename T> void							SetInstances			( std::vector<T>& items ) { SetInstancesInternal((unsigned char*)items.data(), items.size(), sizeof(T) ); }
 
-	void						DeleteInstance			( int index );
+	void												DeleteInstance			( int index );
 
-	std::shared_ptr<unsigned char[]> MakeCopySync		( void );
-	void						AccessData				( std::function<void(unsigned char* data, int size_bytes, EntityInfo item_info)>&& callback);
-	void						QueueInfoRead			( void );
-	inline int					GetLastKnownCount		( void ) const { return m_LastKnownInfo.p_Count; }
-	inline int					GetCountSync			( void ) { SyncInfo(); return m_LastKnownInfo.p_Count; }
+	std::shared_ptr<unsigned char[]>					MakeCopySync			( void );
+	void												AccessData				( std::function<void(unsigned char* data, int size_bytes, EntityInfo item_info)>&& callback);
+	void												QueueInfoRead			( void );
+	inline int											GetLastKnownCount		( void ) const { return m_LastKnownInfo.p_Count; }
+	inline int											GetCountSync			( void ) { SyncInfo(); return m_LastKnownInfo.p_Count; }
 
-	inline std::string_view		GetName					( void ) const { return m_Name; }
-	inline SSBO*				GetSSBO					( void ) const { return m_SSBO; }
-	inline SSBO*				GetOuputSSBO			( void ) const { return m_OutputSSBO; }
-	inline SSBO*				GetControlSSBO			( void ) const { return m_ControlSSBO; }
-	inline SSBO*				GetFreeListSSBO			( void ) const { return m_FreeList; }
-	inline int					GetMaxCount				( void ) const { return m_MaxItems; }
+	inline std::string_view								GetName					( void ) const { return m_Name; }
+	inline SSBO*										GetSSBO					( void ) const { return m_SSBO; }
+	inline SSBO*										GetOuputSSBO			( void ) const { return m_OutputSSBO; }
+	inline SSBO*										GetControlSSBO			( void ) const { return m_ControlSSBO; }
+	inline SSBO*										GetFreeListSSBO			( void ) const { return m_FreeList; }
+	inline int											GetMaxCount				( void ) const { return m_MaxItems; }
 
-	inline int					GetFloatsPer			( void ) const { return m_NumDataFloats; }
-	inline const StructInfo&	GetSpecs				( void ) const { return m_Specs; }
-	inline std::string_view		GetGPUInsertion			( void ) const { return m_GPUInsertion; }
-	inline std::string_view		GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
-	inline std::string_view		GetIDName				( void ) const { return m_IDName; }
-	inline bool					IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
+	inline int											GetFloatsPer			( void ) const { return m_NumDataFloats; }
+	inline const StructInfo&							GetSpecs				( void ) const { return m_Specs; }
+	inline std::string_view								GetGPUInsertion			( void ) const { return m_GPUInsertion; }
+	inline std::string_view								GetDoubleBufferGPUInsertion	( void ) const { return m_GPUInsertionDoubleBuffer; }
+	inline std::string_view								GetIDName				( void ) const { return m_IDName; }
+	inline bool											IsDoubleBuffering		( void ) const { return m_DoubleBuffering; };
 
-	void						SwapInputOutputSSBOs	( void );
+	void												SwapInputOutputSSBOs	( void );
 
 protected:
 
-	void						AddInstancesInternal	( unsigned char* data, int item_count, int item_size );
-	void						SetInstancesInternal	( unsigned char* data, int item_count, int item_size );
-	void						MakeCopyIn				( unsigned char* ptr, int offset, int size );
-	void						Destroy					( void );
+	void												AddInstancesInternal	( unsigned char* data, int item_count, int item_size, std::vector<PlacementInfo>* sync_placements );
+	void												SetInstancesInternal	( unsigned char* data, int item_count, int item_size );
+	void												MakeCopyIn				( unsigned char* ptr, int offset, int size );
+	void												Destroy					( void );
 
-	void						SyncInfo				( void );
+	void												SyncInfo				( void );
 
-	std::string					m_Name;
-	StructInfo					m_Specs;
-	std::string					m_GPUInsertion;
-	std::string					m_GPUInsertionDoubleBuffer;
-	std::string					m_IDName;
-	int							m_MaxItems;
-	int							m_IdOffset = -1;
-	int							m_NumDataFloats = 0;
+	std::string											m_Name;
+	StructInfo											m_Specs;
+	std::string											m_GPUInsertion;
+	std::string											m_GPUInsertionDoubleBuffer;
+	std::string											m_IDName;
+	int													m_MaxItems;
+	int													m_IdOffset = -1;
+	int													m_NumDataFloats = 0;
 
-	bool						m_DoubleBuffering = true;
-	SSBO*						m_SSBO = nullptr;
-	SSBO*						m_OutputSSBO = nullptr;
+	bool												m_DoubleBuffering = true;
+	SSBO*												m_SSBO = nullptr;
+	SSBO*												m_OutputSSBO = nullptr;
 
-	SSBO*						m_ControlSSBO = nullptr;
-	SSBO*						m_FreeList = nullptr;
-	SSBO*						m_CopyBuffer = nullptr;
+	SSBO*												m_ControlSSBO = nullptr;
+	SSBO*												m_FreeList = nullptr;
+	SSBO*												m_CopyBuffer = nullptr;
 
-	EntityInfo					m_LastKnownInfo;
-	std::deque<WebGPUBuffer::AsyncToken<EntityInfo>> m_Pending;
+	EntityInfo											m_LastKnownInfo;
+	std::deque<WebGPUBuffer::AsyncToken<EntityInfo>>	m_Pending;
 };
 
 } // namespace Neshny

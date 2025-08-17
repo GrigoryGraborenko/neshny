@@ -3,6 +3,7 @@
 @group(0) @binding(0) var<storage, read_write> b_Entity: array<atomic<i32>>;
 @group(0) @binding(1) var<storage, read> b_FreeList: array<i32>;
 @group(0) @binding(2) var<storage, read> b_Data: array<i32>;
+@group(0) @binding(3) var<storage, read_write> b_IndexIdData: array<i32>;
 
 @compute @workgroup_size(256)
 
@@ -27,6 +28,12 @@ fn main(@builtin(global_invocation_id) global_id: vec3u) {
         creation_index = b_FreeList[prev_free_count - 1];
     } else {
         creation_index = atomicAdd(&b_Entity[3], 1); //ioMaxIndex
+    }
+
+    {
+        let base_ind = comp_index * 2;
+        b_IndexIdData[base_ind] = creation_index;
+        b_IndexIdData[base_ind + 1] = new_id;
     }
 
     let in_offset: i32 = comp_index * item_size + 3;

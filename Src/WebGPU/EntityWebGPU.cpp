@@ -59,14 +59,16 @@ void GPUEntity::Destroy(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size) {
+void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int item_size, std::vector<PlacementInfo>* sync_placements) {
 
 	int data_size = item_count * item_size;
+	int index_id_size = sizeof(PlacementInfo) * item_count;
 
 	struct CreatePipeObjects {
-		CreatePipeObjects(int size) : p_Data(WGPUBufferUsage_Storage, size) {}
+		CreatePipeObjects(int size) : p_Data(WGPUBufferUsage_Storage, size), p_IndexIdData(WGPUBufferUsage_Storage) {}
 		WebGPUPipeline	p_Pipe;
 		WebGPUBuffer	p_Data;
+		WebGPUBuffer	p_IndexIdData;
 	};
 
 	// global per-thread object since this will get reused many times
@@ -77,6 +79,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 			.AddBuffer(*m_SSBO, WGPUShaderStage_Compute, false)
 			.AddBuffer(*m_FreeList, WGPUShaderStage_Compute, true)
 			.AddBuffer(create_obj->p_Data, WGPUShaderStage_Compute, true)
+			.AddBuffer(create_obj->p_IndexIdData, WGPUShaderStage_Compute, false)
 			.FinalizeCompute("EntityCreation", std::format("#define ENTITY_OFFSET_INTS {}\n", ENTITY_OFFSET_INTS));
 	}
 
@@ -92,6 +95,7 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	};
 
 	create_obj->p_Data.EnsureSizeBytes(sizeof(Info) + data_size, false);
+	create_obj->p_IndexIdData.EnsureSizeBytes(index_id_size, false);
 
 	// TODO: collapse to one write command
 	create_obj->p_Data.Write((unsigned char*)&info, 0, sizeof(Info));
@@ -100,10 +104,17 @@ void GPUEntity::AddInstancesInternal(unsigned char* data, int item_count, int it
 	create_obj->p_Pipe.ReplaceBuffer(0, *m_SSBO);
 	create_obj->p_Pipe.ReplaceBuffer(1, *m_FreeList);
 	create_obj->p_Pipe.ReplaceBuffer(2, create_obj->p_Data);
+	create_obj->p_Pipe.ReplaceBuffer(3, create_obj->p_IndexIdData);
+#pragma msg("does this work for large numbers?")
 
 	create_obj->p_Pipe.Compute(item_count, iVec3(256, 1, 1));
 
 	m_LastKnownInfo.p_Count += item_count;
+
+	if (sync_placements && (item_count > 0)) {
+		sync_placements->resize(item_count);
+		create_obj->p_IndexIdData.ReadSync((unsigned char*)sync_placements->data(), 0, index_id_size);
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
