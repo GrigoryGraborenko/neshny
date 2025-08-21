@@ -94,6 +94,99 @@ fn NearestToLine2D(point: vec2f, start: vec2f, end: vec2f, clamp_line: bool, fra
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+fn Cross2D(a: vec2f, b: vec2f) -> f32 {
+	return (a.x * b.y) - (a.y * b.x);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn LineLineIntersect2D(a0: vec2f, a1: vec2f, b0: vec2f, b1: vec2f, result: ptr<function, vec2f>, frac_a: ptr<function, f32>, frac_b: ptr<function, f32>) -> bool {
+
+	let r = a0 - a1;
+	let s = b0 - b1;
+
+	let denominator = Cross2D(r, s);
+	if (denominator == 0) {
+		return false;
+	}
+	let a_cross = Cross2D(a0, a1);
+	let b_cross = Cross2D(b0, b1);
+
+	let x_numer = a_cross * s.x - r.x * b_cross;
+	let y_numer = a_cross * s.y - r.y * b_cross;
+
+	let res = vec2f(x_numer, y_numer) / denominator;
+	(*result) = res;
+	if (r.x > 0) {
+		(*frac_a) = (res.x - a0.x) / -r.x;
+	} else {
+		(*frac_a) = (res.y - a0.y) / -r.y;
+	}
+
+	if (s.x > 0) {
+		(*frac_b) = (res.x - b0.x) / -s.x;
+	} else {
+		(*frac_b) = (res.y - b0.y) / -s.y;
+	}
+	return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+fn DistanceBetweenTwoSegments2D(a0: vec2f, a1: vec2f, b0: vec2f, b1: vec2f, nearest_a: ptr<function, vec2f>, nearest_b: ptr<function, vec2f>) -> f32 {
+
+	var intersect: vec2f;
+	var frac_a: f32;
+	var frac_b : f32;
+	if (!LineLineIntersect2D(a0, a1, b0, b1, &intersect, &frac_a, &frac_b)) {
+		return -1;
+	}
+	let inside_a = (frac_a > 0.0) && (frac_a < 1.0);
+	let inside_b = (frac_b > 0.0) && (frac_b < 1.0);
+	if (inside_a && inside_b) {
+		(*nearest_a) = intersect;
+		(*nearest_b) = intersect;
+		return 0.0;
+	}
+	var best_dist: f32 = -1.0;
+	for (var i : i32 = 0; i < 4; i++) {
+
+		var line_a: vec2f;
+		var line_b: vec2f;
+
+		var frac: f32;
+		var dist: f32;
+		switch i {
+			case 0: {
+				dist = length(NearestToLine2D(a0, b0, b1, true, &frac) - a0);
+				line_a = a0;
+				line_b = (b1 - b0) * frac + b0;
+			}
+			case 1: {
+				dist = length(NearestToLine2D(a1, b0, b1, true, &frac) - a1);
+				line_a = a1;
+				line_b = (b1 - b0) * frac + b0;
+			}
+			case 2: {
+				dist = length(NearestToLine2D(b0, a0, a1, true, &frac) - b0);
+				line_a = (a1 - a0) * frac + a0;
+				line_b = b0;
+			}
+			default: {
+				dist = length(NearestToLine2D(b1, a0, a1, true, &frac) - b1);
+				line_a = (a1 - a0) * frac + a0;
+				line_b = b1;
+			}
+		}
+		if ((best_dist < 0.0) || (dist < best_dist)) {
+			best_dist = dist;
+			(*nearest_a) = line_a;
+			(*nearest_b) = line_b;
+		}
+	}
+
+	return best_dist;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 fn GetInterceptPosition(target_pos: vec2f, target_vel: vec2f, start_pos: vec2f, intercept_speed: f32, intercept_pos: ptr<function, vec2f>, time_mult: ptr<function, f32>) -> bool {
 	let delta = start_pos - target_pos;
 
