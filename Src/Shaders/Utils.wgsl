@@ -136,16 +136,17 @@ fn DistanceBetweenTwoSegments2D(a0: vec2f, a1: vec2f, b0: vec2f, b1: vec2f, near
 	var intersect: vec2f;
 	var frac_a: f32;
 	var frac_b : f32;
-	if (!LineLineIntersect2D(a0, a1, b0, b1, &intersect, &frac_a, &frac_b)) {
-		return -1;
+
+	if (LineLineIntersect2D(a0, a1, b0, b1, &intersect, &frac_a, &frac_b)) {
+		let inside_a = (frac_a > 0.0) && (frac_a < 1.0);
+		let inside_b = (frac_b > 0.0) && (frac_b < 1.0);
+		if (inside_a && inside_b) {
+			(*nearest_a) = intersect;
+			(*nearest_b) = intersect;
+			return 0.0;
+		}
 	}
-	let inside_a = (frac_a > 0.0) && (frac_a < 1.0);
-	let inside_b = (frac_b > 0.0) && (frac_b < 1.0);
-	if (inside_a && inside_b) {
-		(*nearest_a) = intersect;
-		(*nearest_b) = intersect;
-		return 0.0;
-	}
+
 	var best_dist: f32 = -1.0;
 	for (var i : i32 = 0; i < 4; i++) {
 

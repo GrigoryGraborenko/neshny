@@ -214,6 +214,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 				break;
 			}
 		}
+		m_Vars.push_back({ "ioEngineTick", false, Core::GetTicks() });
 	}
 
 	if(!m_Uniform.p_Spec.empty()) { // uniform
@@ -616,7 +617,7 @@ EntityPipeline::AsyncOutputResults EntityPipeline::RunInternal(int iterations, R
 
 	auto fill_var_data = [this, prepared](std::string_view name, int& value) {
 		for (const auto& var: m_Vars) {
-			if (var.p_Name== name) {
+			if (var.p_Name == name) {
 				value = var.p_Input;
 				return;
 			}

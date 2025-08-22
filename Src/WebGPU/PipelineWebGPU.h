@@ -27,6 +27,14 @@ public:
 
 	struct OutputResults {
 		bool GetValue(std::string_view name, int& value) const;
+		int GetEngineTicks() const {
+			for (const auto& res: p_Results) {
+				if (res.first == "ioEngineTick") {
+					return res.second;
+				}
+			}
+			return 0; // should not be possible
+		}
 		std::vector<std::pair<std::string, int>> p_Results;
 	};
 
