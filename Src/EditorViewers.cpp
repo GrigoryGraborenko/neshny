@@ -129,6 +129,11 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 	rtt.Render(&m_TrianglePipline);
 	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
 
+	for (auto& text: m_Texts) {
+		ImGui::SetCursorPos(ImVec2(text.p_Pos.x, text.p_Pos.y));
+		ImGuiTextColoredUnformatted(text.p_Text, ImVec4(text.p_Col.x, text.p_Col.y, text.p_Col.z, text.p_Col.w));
+	}
+
 	// TODO: sort by texture name and render in batches
 	for (const auto& tex : m_Textures) {
 		const WebGPUTexture* texture = nullptr;
@@ -1262,13 +1267,6 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 	} else {
 		m_LastMousePos = std::nullopt;
 	}
-
-	for (auto& text : m_Texts) {
-		auto screen_pos = data.p_Cam.WorldToScreen(text.p_Pos, m_Width, m_Height);
-		ImGui::SetCursorPos(ImVec2(screen_pos.x + im_pos.x, screen_pos.y + im_pos.y));
-		ImGuiTextColoredUnformatted(text.p_Text, ImVec4(text.p_Col.x, text.p_Col.y, text.p_Col.z, text.p_Col.w));
-	}
-	m_Texts.clear();
 
 	ImGui::End();
 }

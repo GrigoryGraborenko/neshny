@@ -24,6 +24,7 @@ public:
 #if defined(NESHNY_WEBGPU)
     inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, WebGPUTexture* texture ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, texture }); }
 #endif
+	void										AddText				( std::string_view text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ std::string(text), pos, color }); }
 
 protected:
 
@@ -78,7 +79,7 @@ protected:
 #elif defined(NESHNY_GL)
 	void										IRender				( const Matrix4& view_perspective, int width, int height, Vec3 offset, double scale, double point_size = 1.0 );
 #endif
-	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); m_Textures.clear(); }
+	inline void									IClear		        ( void ) { m_Lines.clear(); m_Points.clear(); m_Triangles.clear(); m_Circles.clear(); m_Squares.clear(); m_Textures.clear(); m_Texts.clear(); }
 
 												BaseSimpleRender	( void );
 												~BaseSimpleRender	( void );
@@ -89,6 +90,7 @@ protected:
 	std::vector<SimpleCircle>					m_Circles;
 	std::vector<SimpleSquare>					m_Squares;
 	std::vector<SimpleTexture>					m_Textures;
+	std::vector<SimpleText>						m_Texts;
 	
 #if defined(NESHNY_WEBGPU)
 	WebGPUBuffer*								m_Uniforms = nullptr;
@@ -131,6 +133,7 @@ public:
 	static inline void                          Circle				( Vec2 pos, double radius, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddCircle(pos.ToVec3(z_order), radius, color, filled); }
 	static inline void                          Square				( Vec2 min_pos, Vec2 max_pos, Vec4 color, bool filled = false, double z_order = 0.0 ) { Singleton().AddSquare(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), color, filled); }
 	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, std::string_view filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
+	static inline void                          Text				( std::string_view text, Vec2 pos, Vec4 color) { Singleton().AddText(text, pos, color); }
 #if defined(NESHNY_WEBGPU)
 	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, WebGPUTexture* texture, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), texture); }
 #endif
@@ -330,7 +333,6 @@ public:
 
 private:
 
-	void						AddText					( std::string_view text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ std::string(text), pos, color }); }
 	void						IRenderImGui			( InterfaceScrapbook2D& data );
 
 	RTT							m_RTT;
@@ -342,7 +344,6 @@ private:
 	Matrix4						m_CachedViewPerspective;
 
 	std::vector<std::function<void(int width, int height)>>		m_Controls;
-	std::vector<SimpleText>										m_Texts;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
