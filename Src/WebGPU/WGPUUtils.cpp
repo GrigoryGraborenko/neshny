@@ -518,10 +518,26 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	tex_extent.height = hei;
 	tex_extent.depthOrArrayLayers = 1;
 
+	// TODO: is this still required?
 	std::ignore = std::format("Adding this line changes the way emscripten compiles in such a way as to prevent wgpuQueueWriteTexture from crashing :)");
 
 	wgpuQueueWriteTexture(Core::Singleton().GetWebGPUQueue(), &tex_cpy, data, bytes_per_row * hei, &tex_layout, &tex_extent);
 }
+
+#ifndef __EMSCRIPTEN__
+////////////////////////////////////////////////////////////////////////////////
+void WebGPUTexture::CopyTextureToBuffer(WGPUTexelCopyTextureInfo& source_info, WGPUTexelCopyBufferInfo& destination_info, WGPUExtent3D& size_info, WGPUCommandEncoder existing_encoder) {
+	WGPUCommandEncoder encoder = existing_encoder ? existing_encoder : wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
+
+	wgpuCommandEncoderCopyTextureToBuffer(encoder, &source_info, &destination_info, &size_info);
+	if (!existing_encoder) {
+		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(encoder, nullptr);
+		wgpuCommandEncoderRelease(encoder);
+		wgpuQueueSubmit(Core::Singleton().GetWebGPUQueue(), 1, &commands);
+		wgpuCommandBufferRelease(commands);
+	}
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1068,7 +1084,7 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 
 		for (int i = 0; i < num_color_tex; i++) {
 			WebGPUTexture* tex = new WebGPUTexture();
-			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding), 1);
+			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc), 1);
 			m_ColorTextures.push_back(tex);
 		}
 		if (m_CaptureDepthStencil && (existing_depth_tex == nullptr)) {

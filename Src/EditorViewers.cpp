@@ -117,7 +117,8 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 		m_TexturePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddTexture(WGPUTextureViewDimension_2D, nullptr)
-			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
+			//.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
+			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat, WGPUFilterMode_Nearest))
 			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {});
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)simple_circles.size() * sizeof(RenderPoint));

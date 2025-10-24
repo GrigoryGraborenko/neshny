@@ -68,7 +68,7 @@ public:
 		std::shared_ptr<T> GetPayload(void) { return m_Internals ? (m_Internals->m_Payload ? m_Internals->m_Payload : nullptr) : nullptr; }
 		AsyncToken(const AsyncToken& other): m_Internals(other.m_Internals) {}
 		bool operator==(const AsyncToken& other) const { return other.m_Internals.get() == m_Internals.get(); }
-		void Wait() {
+		AsyncToken& Wait() {
 			while (!m_Internals->m_Finished) {
 #ifndef __EMSCRIPTEN__
 				wgpuDeviceTick(GlobalWebGPUDevice());
@@ -77,6 +77,7 @@ public:
 				emscripten_sleep(0);
 #endif
 			}
+			return *this;
 		}
 	private:
 		struct Internals {
@@ -99,23 +100,9 @@ public:
 
 	static void										CopyBufferToBuffer		( WGPUBuffer source, WGPUBuffer destination, int source_offset_bytes, int dest_offset_bytes, int size, WGPUCommandEncoder existing_encoder = nullptr );
 
+	// this buffer MUST have usage type WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead
 	template<typename T>
-	AsyncToken<T>									Read					( int offset, int size, std::function<std::shared_ptr<T>(unsigned char* data, int size, AsyncToken<T> token)>&& callback ) {
-		if ((offset + size) > m_Size) {
-			throw std::invalid_argument("Attempt to read past end of buffer");
-		}
-		WGPUBufferDescriptor desc = {};
-		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
-		desc.size = size;
-		desc.nextInChain = nullptr;
-#ifdef __EMSCRIPTEN__
-		desc.label = nullptr;
-#else
-		desc.label = WGPUStringView{ nullptr, 0 };
-#endif
-		desc.mappedAtCreation = false;
-		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
-		CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
+	static AsyncToken<T>							ReadFrom				( WGPUBuffer buffer, int offset, int size, std::function<std::shared_ptr<T>(unsigned char* data, int size, AsyncToken<T> token)>&& callback ) {
 
 		struct AsyncInfo {
 			WGPUBuffer p_Buffer;
@@ -125,7 +112,7 @@ public:
 		};
 		AsyncToken<T> token;
 		AsyncInfo* info = new AsyncInfo{
-			copy_buffer,
+			buffer,
 			std::move(callback),
 			size,
 			token
@@ -134,7 +121,7 @@ public:
 #ifdef __EMSCRIPTEN__
 
 		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
-		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size,
+		wgpuBufferMapAsync(buffer, WGPUMapMode_Read, 0, size,
 			[](WGPUMapAsyncStatus status, void* userdata) {
 				auto info = (AsyncInfo*)userdata;
 				if (status == WGPUBufferMapAsyncStatus_Success) {
@@ -167,10 +154,33 @@ public:
 		};
 
 		// since you are copying from a temp buffer that already took the offset into account, offset must be set to zero
-		wgpuBufferMapAsync(copy_buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
+		wgpuBufferMapAsync(buffer, WGPUMapMode_Read, 0, size, std::move(callback_info));
 #endif
 		return std::move(token);
 	}
+
+	template<typename T>
+	AsyncToken<T>									Read					( int offset, int size, std::function<std::shared_ptr<T>(unsigned char* data, int size, AsyncToken<T> token)>&& callback ) {
+		if ((offset + size) > m_Size) {
+			throw std::invalid_argument("Attempt to read past end of buffer");
+		}
+
+		WGPUBufferDescriptor desc = {};
+		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+		desc.size = size;
+		desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+		desc.label = nullptr;
+#else
+		desc.label = WGPUStringView{ nullptr, 0 };
+#endif
+		desc.mappedAtCreation = false;
+		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
+		CopyBufferToBuffer(m_Buffer, copy_buffer, offset, 0, size);
+
+		return ReadFrom(copy_buffer, offset, size, std::move(callback));
+	}
+
 	void											Write					( unsigned char* buffer, int offset, int size );
 	std::shared_ptr<unsigned char[]>				MakeCopy				( int max_size = -1 );
 
@@ -277,13 +287,13 @@ public:
 	void											Init2D				(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	void											InitCubeMap			(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
 																			int mip_maps = 1
 																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 	inline void										InitDepth			( int width, int height ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, WGPUTextureUsage_RenderAttachment, WGPUTextureAspect_DepthOnly, 1); }
@@ -292,7 +302,7 @@ public:
 																			int height,
 																			int layers,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
-																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst),
+																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
 																			int mip_maps = AUTO_MIPMAPS
 																		) { Init(width, height, layers, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2DArray, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
 
@@ -307,6 +317,54 @@ public:
 	inline void										CopyData2D			( unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true ) { CopyDataLayer(0, data, bytes_per_pixel, bytes_per_row, auto_mipmap); }
 	void											CopyDataLayer		( int layer, unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true );
 	void											CopyDataLayerMipMap	( int layer, int mip_map, unsigned char* data, int bytes_per_pixel, int bytes_per_row );
+
+// TODO: get this working for WASM
+#ifndef __EMSCRIPTEN__
+	static void										CopyTextureToBuffer	( WGPUTexelCopyTextureInfo& source_info, WGPUTexelCopyBufferInfo& destination_info, WGPUExtent3D& size_info, WGPUCommandEncoder existing_encoder = nullptr );
+
+	template<typename T>
+	WebGPUBuffer::AsyncToken<T>						Read				( std::function<std::shared_ptr<T>(unsigned char* data, int size, WebGPUBuffer::AsyncToken<T> token)>&& callback ) {
+
+		uint32_t bytes_per_row = m_Width * m_DepthBytes;
+		uint32_t size_bytes = bytes_per_row * m_Height * m_Layers;
+
+		WGPUBufferDescriptor desc = {};
+		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
+		desc.size = size_bytes;
+		desc.nextInChain = nullptr;
+#ifdef __EMSCRIPTEN__
+		desc.label = nullptr;
+#else
+		desc.label = WGPUStringView{ nullptr, 0 };
+#endif
+		desc.mappedAtCreation = false;
+		WGPUBuffer copy_buffer = wgpuDeviceCreateBuffer(GlobalWebGPUDevice(), &desc);
+
+		WGPUTexelCopyTextureInfo source_info {
+			m_Texture,
+			0,
+			WGPUOrigin3D{ 0, 0, 0},
+			WGPUTextureAspect_All
+		};
+		WGPUTexelCopyBufferInfo dest_info {
+			WGPUTexelCopyBufferLayout {
+				0,					// offset
+				bytes_per_row,		// bytesPerRow
+				(uint32_t)m_Height	// rowsPerImage
+			},
+			copy_buffer
+		};
+		WGPUExtent3D size_info {
+			(uint32_t)m_Width,
+			(uint32_t)m_Height,
+			(uint32_t)m_Layers
+		};
+
+		CopyTextureToBuffer(source_info, dest_info, size_info);
+
+		return WebGPUBuffer::ReadFrom(copy_buffer, 0, size_bytes, std::move(callback));
+	}
+#endif
 
 	inline WGPUTexture								GetTexture			( void ) const { return m_Texture; }
 	inline WGPUTextureView							GetTextureView		( void ) const { return m_View; }
