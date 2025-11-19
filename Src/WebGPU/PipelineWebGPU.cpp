@@ -346,7 +346,11 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		if (create_new) {
 			std::vector<std::string> members;
 			for (const auto& member : ssbo_spec.p_Members) {
-				members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+				if (member.p_ArrayCount) {
+					members.push_back(std::format("\t{}: array<{},{}>", member.p_Name, MemberSpec::GetGPUType(member.p_Type), *member.p_ArrayCount));
+				} else {
+					members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+				}
 			}
 			immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
 			immediate_insertion.push_back(JoinStrings(members, ",\n"));
