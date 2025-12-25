@@ -184,6 +184,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	std::list<std::string> insertion;
 	std::vector<std::string> end_insertion;
 	std::vector<std::string> insertion_buffers;
+	std::vector<std::string> defined_structs;
 	bool entity_processing = m_Entity && (m_RunType == RunType::ENTITY_PROCESS);
 	bool is_render = ((m_RunType == RunType::ENTITY_RENDER) || (m_RunType == RunType::BASIC_RENDER));
 	bool control_readonly = is_render && (!m_UsingRandom);
@@ -344,17 +345,27 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 	for (const auto& ssbo_spec : m_StructBuffers) {
 		bool read_only = ssbo_spec.p_Access == BufferAccess::READ_ONLY;
 		if (create_new) {
-			std::vector<std::string> members;
-			for (const auto& member : ssbo_spec.p_Members) {
-				if (member.p_ArrayCount) {
-					members.push_back(std::format("\t{}: array<{},{}>", member.p_Name, MemberSpec::GetGPUType(member.p_Type), *member.p_ArrayCount));
-				} else {
-					members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+			bool alread_defined = false;
+			for (const std::string& struct_name : defined_structs) {
+				if (struct_name.compare(ssbo_spec.p_StructName) == 0) {
+					alread_defined = true;
+					break;
 				}
 			}
-			immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
-			immediate_insertion.push_back(JoinStrings(members, ",\n"));
-			immediate_insertion.push_back("};");
+			if (!alread_defined) {
+				std::vector<std::string> members;
+				for (const auto& member : ssbo_spec.p_Members) {
+					if (member.p_ArrayCount) {
+						members.push_back(std::format("\t{}: array<{},{}>", member.p_Name, MemberSpec::GetGPUType(member.p_Type), *member.p_ArrayCount));
+					} else {
+						members.push_back(std::format("\t{}: {}", member.p_Name, MemberSpec::GetGPUType(member.p_Type)));
+					}
+				}
+				immediate_insertion.push_back(std::format("struct {0} {{", ssbo_spec.p_StructName));
+				immediate_insertion.push_back(JoinStrings(members, ",\n"));
+				immediate_insertion.push_back("};");
+				defined_structs.push_back(ssbo_spec.p_StructName);
+			}
 
 			int buffer_index = insertion_buffers.size();
 			auto type_str = ssbo_spec.p_StructName;

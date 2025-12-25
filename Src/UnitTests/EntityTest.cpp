@@ -19,6 +19,8 @@ namespace Test {
 		Neshny::iVec2	p_IntTwoDim;
 		Neshny::iVec3	p_IntThreeDim;
 		Neshny::iVec4	p_IntFourDim;
+
+		//std::array<unsigned int, NUM_ITEMS>	p_Items;
 	};
 
 	struct GPUThing {

@@ -32,6 +32,7 @@
 
 #include "NeshnyUtils.h"
 #include "LinearAlgebra.h"
+#include "NeshnyDebugUtils.h"
 #include "Preprocessor.h"
 #ifdef NESHNY_WEBGPU
     #include "WebGPU/WGPUUtils.h"

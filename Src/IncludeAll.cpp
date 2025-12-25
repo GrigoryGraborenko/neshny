@@ -11,6 +11,7 @@
 #include "LinearAlgebra.cpp"
 #include "Preprocessor.cpp"
 #include "NeshnyUtils.cpp"
+#include "NeshnyDebugUtils.cpp"
 #ifdef NESHNY_WEBGPU
     #include "WebGPU/WGPUUtils.cpp"
     #include "WebGPU/EntityWebGPU.cpp"
