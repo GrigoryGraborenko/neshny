@@ -469,24 +469,52 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 
 		for (const auto& tex : m_Textures) {
 
-	#pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern")
+	#pragma msg("fix pipeline API to only require dimension on init, then use withTexture pattern, allowing you to init pipelines before textures have been initialized")
 			auto dim = tex.p_Tex->GetViewDimension();
+			auto tex_format = tex.p_Tex->GetFormat();
+
 			std::string tex_spec;
-			if (dim == WGPUTextureViewDimension_1D) {
-				tex_spec = "texture_1d<f32>";
-			} else if (dim == WGPUTextureViewDimension_2D) {
-				tex_spec = "texture_2d<f32>";
-			} else if (dim == WGPUTextureViewDimension_2DArray) {
-				tex_spec = "texture_2d_array<f32>";
-			} else if (dim == WGPUTextureViewDimension_Cube) {
-				tex_spec = "texture_cube<f32>";
-			} else if (dim == WGPUTextureViewDimension_CubeArray) {
-				tex_spec = "texture_cube_array<f32>";
-			} else if (dim == WGPUTextureViewDimension_3D) {
-				tex_spec = "texture_3d<f32>";
+			if (tex.p_ReadOnly) {
+				auto sample_type = tex.p_Tex->GetSampleType();
+				std::string format_spec = "f32";
+				if (sample_type == WGPUTextureSampleType_Uint) {
+					format_spec = "u32";
+				} else if (sample_type == WGPUTextureSampleType_Sint) {
+					format_spec = "i32";
+				}
+				std::string dim_spec;
+				if (dim == WGPUTextureViewDimension_1D) {
+					dim_spec = "texture_1d";
+				} else if (dim == WGPUTextureViewDimension_2D) {
+					dim_spec = "texture_2d";
+				} else if (dim == WGPUTextureViewDimension_2DArray) {
+					dim_spec = "texture_2d_array";
+				} else if (dim == WGPUTextureViewDimension_Cube) {
+					dim_spec = "texture_cube";
+				} else if (dim == WGPUTextureViewDimension_CubeArray) {
+					dim_spec = "texture_cube_array";
+				} else if (dim == WGPUTextureViewDimension_3D) {
+					dim_spec = "texture_3d";
+				}
+
+				tex_spec = std::format("{}<{}>", dim_spec, format_spec);
+				result->m_Pipeline->AddViewTexture(tex.p_Tex->GetTextureView(), tex.p_Tex->GetViewDimension(), sample_type);
+			} else {
+				std::string dim_spec;
+				if (dim == WGPUTextureViewDimension_1D) {
+					dim_spec = "texture_storage_1d";
+				} else if (dim == WGPUTextureViewDimension_2D) {
+					dim_spec = "texture_storage_2d";
+				} else if (dim == WGPUTextureViewDimension_2DArray) {
+					dim_spec = "texture_storage_2d_array";
+				} else if (dim == WGPUTextureViewDimension_3D) {
+					dim_spec = "texture_storage_3d";
+				}
+
+				tex_spec = std::format("{}<{}, read_write>", dim_spec, tex.p_Tex->GetTexelFormat());
+				result->m_Pipeline->AddStorageTexture(tex.p_Tex->GetTextureView(), tex.p_Tex->GetViewDimension(), tex_format, WGPUStorageTextureAccess_ReadWrite);
 			}
 			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: {2};", insertion_buffers.size(), tex.p_Name, tex_spec));
-			result->m_Pipeline->AddTexture(tex.p_Tex->GetViewDimension(), tex.p_Tex->GetTextureView());
 		}
 		for (const auto& sampler : m_Samplers) {
 			insertion_buffers.push_back(std::format("@group(0) @binding({0}) var {1}: sampler;", insertion_buffers.size(), sampler.p_Name));

@@ -64,7 +64,7 @@ public:
 
 	EntityPipeline&				AddInputOutputVar	( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), true, value }); return *this; }
 	EntityPipeline&				AddInputVar			( std::string_view name, int value ) { m_Vars.push_back({ std::string(name), false, value }); return *this; }
-	EntityPipeline&				AddTexture			( std::string_view name, const WebGPUTexture* texture ) { m_Textures.push_back({ std::string(name), texture }); return *this; }
+	EntityPipeline&				AddTexture			( std::string_view name, const WebGPUTexture* texture, bool read_only = true ) { m_Textures.push_back({ std::string(name), texture, read_only }); return *this; }
 	EntityPipeline&				AddSampler			( std::string_view name, const WebGPUSampler* sampler ) { m_Samplers.push_back({ std::string(name), sampler }); return *this; }
 	EntityPipeline&				SetUsingRandom		( bool using_random = true ) { m_UsingRandom = using_random; return *this; }
 
@@ -144,6 +144,7 @@ protected:
 	struct AddedTexture {
 		std::string					p_Name;
 		const WebGPUTexture*		p_Tex;
+		bool						p_ReadOnly;
 	};
 	struct AddedSampler {
 		std::string					p_Name;

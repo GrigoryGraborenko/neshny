@@ -380,6 +380,86 @@ WebGPUTexture::~WebGPUTexture(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+WGPUTextureSampleType WebGPUTexture::GetSampleType(void) const {
+
+	if ((m_Format == WGPUTextureFormat_R8Uint) ||
+		(m_Format == WGPUTextureFormat_R16Uint) ||
+		(m_Format == WGPUTextureFormat_RG8Uint) ||
+		(m_Format == WGPUTextureFormat_R32Uint) ||
+		(m_Format == WGPUTextureFormat_RG16Uint) ||
+		(m_Format == WGPUTextureFormat_RGB10A2Uint) ||
+		(m_Format == WGPUTextureFormat_RG32Uint) ||
+		(m_Format == WGPUTextureFormat_RGBA16Uint) ||
+		(m_Format == WGPUTextureFormat_RGBA32Uint)) {
+		return WGPUTextureSampleType_Uint;
+	}
+
+	if ((m_Format == WGPUTextureFormat_R8Sint) ||
+		(m_Format == WGPUTextureFormat_R16Sint) ||
+		(m_Format == WGPUTextureFormat_RG8Sint) ||
+		(m_Format == WGPUTextureFormat_R32Sint) ||
+		(m_Format == WGPUTextureFormat_RG16Sint) ||
+		(m_Format == WGPUTextureFormat_RGBA8Sint) ||
+		(m_Format == WGPUTextureFormat_RG32Sint) ||
+		(m_Format == WGPUTextureFormat_RGBA16Sint) ||
+		(m_Format == WGPUTextureFormat_RGBA32Sint)) {
+		return WGPUTextureSampleType_Sint;
+	}
+	return WGPUTextureSampleType_Float;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string WebGPUTexture::GetTexelFormat(void) const {
+
+	switch (m_Format) {
+		case WGPUTextureFormat_R8Unorm: return "r8unorm";
+		case WGPUTextureFormat_R8Snorm: return "r8snorm";
+		case WGPUTextureFormat_R8Uint: return "r8uint";
+		case WGPUTextureFormat_R8Sint: return "r8sint";
+		case WGPUTextureFormat_R16Uint: return "r16uint";
+		case WGPUTextureFormat_R16Sint: return "r16sint";
+		case WGPUTextureFormat_R16Float: return "r16float";
+		case WGPUTextureFormat_RG8Unorm: return "rg8unorm";
+		case WGPUTextureFormat_RG8Snorm: return "rg8snorm";
+		case WGPUTextureFormat_RG8Uint: return "rg8uint";
+		case WGPUTextureFormat_RG8Sint: return "rg8sint";
+		case WGPUTextureFormat_R32Float: return "r32float"; // unsupported for storage tex
+		case WGPUTextureFormat_R32Uint: return "r32uint";
+		case WGPUTextureFormat_R32Sint: return "r32sint"; // unsupported for storage tex
+		case WGPUTextureFormat_RG16Uint: return "rg16uint";
+		case WGPUTextureFormat_RG16Sint: return "rg16sint";
+		case WGPUTextureFormat_RG16Float: return "rg16float";
+		case WGPUTextureFormat_RGBA8Unorm: return "rgba8unorm";
+		case WGPUTextureFormat_RGBA8UnormSrgb: return "rgba8unormsrgb"; // unsupported for storage tex
+		case WGPUTextureFormat_RGBA8Snorm: return "rgba8snorm";
+		case WGPUTextureFormat_RGBA8Uint: return "rgba8uint";
+		case WGPUTextureFormat_RGBA8Sint: return "rgba8sint";
+		case WGPUTextureFormat_BGRA8Unorm: return "bgra8unorm";
+		case WGPUTextureFormat_BGRA8UnormSrgb: return "bgra8unormsrgb"; // unsupported for storage tex
+		case WGPUTextureFormat_RGB10A2Uint: return "rgb10a2uint";
+		case WGPUTextureFormat_RGB10A2Unorm: return "rgb10a2unorm";
+		case WGPUTextureFormat_RG11B10Ufloat: return "rg11b10ufloat";
+		case WGPUTextureFormat_RGB9E5Ufloat: return "rgb9e5ufloat"; // unsupported for storage tex
+		case WGPUTextureFormat_RG32Float: return "rg32float"; // unsupported for storage tex
+		case WGPUTextureFormat_RG32Uint: return "rg32uint"; // unsupported for storage tex
+		case WGPUTextureFormat_RG32Sint: return "rg32sint"; // unsupported for storage tex
+		case WGPUTextureFormat_RGBA16Uint: return "rgba16uint";
+		case WGPUTextureFormat_RGBA16Sint: return "rgba16sint";
+		case WGPUTextureFormat_RGBA16Float: return "rgba16float";
+		case WGPUTextureFormat_RGBA32Float: return "rgba32float";
+		case WGPUTextureFormat_RGBA32Uint: return "rgba32uint"; // unsupported for storage tex
+		case WGPUTextureFormat_RGBA32Sint: return "rgba32sint";
+		case WGPUTextureFormat_R16Unorm: return "r16unorm";
+		case WGPUTextureFormat_RG16Unorm: return "rg16unorm";
+		case WGPUTextureFormat_RGBA16Unorm: return "rgba16unorm";
+		case WGPUTextureFormat_R16Snorm: return "r16snorm";
+		case WGPUTextureFormat_RG16Snorm: return "rg16snorm";
+		case WGPUTextureFormat_RGBA16Snorm: return "rgba16snorm";
+	};
+	return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int WebGPUTexture::GetMipMaps(int width, int height, int mip_maps) {
 	if (mip_maps == AUTO_MIPMAPS) {
 		double two_power = log(double(std::min(width, height))) / log(2.0);
@@ -671,13 +751,21 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 		layout_entry.binding = binding_num;
 		layout_entry.visibility = m_Type == Type::COMPUTE ? WGPUShaderStage_Compute : WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
 
-		WGPUTextureBindingLayout buff_texture;
-		buff_texture.nextInChain = nullptr;
-		buff_texture.multisampled = false;
-		buff_texture.viewDimension = tex.p_Dimensions;
-		buff_texture.sampleType = WGPUTextureSampleType_Float;
-
-		layout_entry.texture = buff_texture;
+		if (auto* view_info = std::get_if<ViewTexture>(&tex.p_Info)) {
+			WGPUTextureBindingLayout buff_texture;
+			buff_texture.nextInChain = nullptr;
+			buff_texture.multisampled = false;
+			buff_texture.viewDimension = tex.p_Dimensions;
+			buff_texture.sampleType = view_info->p_SampleType;
+			layout_entry.texture = buff_texture;
+		} else if (auto* store_info = std::get_if<StorageTexture>(&tex.p_Info)) {
+			WGPUStorageTextureBindingLayout buff_texture;
+			buff_texture.nextInChain = nullptr;
+			buff_texture.viewDimension = tex.p_Dimensions;
+			buff_texture.format = store_info->p_Format;
+			buff_texture.access = store_info->p_Access;
+			layout_entry.storageTexture = buff_texture;
+		}
 		binding_num++;
 	}
 	for (auto sampler : m_Samplers) {

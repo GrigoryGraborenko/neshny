@@ -116,7 +116,7 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 			.FinalizeRender("SimplePoint", m_TriangleBuffer);
 		m_TexturePipline
 			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.AddTexture(WGPUTextureViewDimension_2D, nullptr)
+			.AddViewTexture(nullptr, WGPUTextureViewDimension_2D)
 			//.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
 			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat, WGPUFilterMode_Nearest))
 			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {});

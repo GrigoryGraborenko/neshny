@@ -376,6 +376,9 @@ public:
 	inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
 	inline WGPUTextureViewDimension					GetViewDimension	( void ) const { return m_ViewDimension; }
 
+	WGPUTextureSampleType							GetSampleType		( void ) const;
+	std::string										GetTexelFormat		( void ) const;
+
 protected:
 
 	int												GetMipMaps			( int width, int height, int mip_maps );
@@ -446,11 +449,22 @@ class WebGPUPipeline {
 		WGPUBuffer				p_LastSeenBuffer = nullptr;
 	};
 
-	struct Texture {
-		WGPUTextureViewDimension	p_Dimensions;
-		WGPUTextureView				p_TextureView = nullptr;
-		WGPUTextureView				p_LastSeenTextureView = nullptr;
+	struct ViewTexture {
+		WGPUTextureSampleType				p_SampleType;
 	};
+
+	struct StorageTexture {
+		WGPUTextureFormat					p_Format;
+		WGPUStorageTextureAccess			p_Access;
+	};
+
+	struct Texture {
+		WGPUTextureViewDimension					p_Dimensions;
+		std::variant<ViewTexture, StorageTexture>	p_Info;
+		WGPUTextureView								p_TextureView = nullptr;
+		WGPUTextureView								p_LastSeenTextureView = nullptr;
+	};
+
 
 public:
 
@@ -493,7 +507,8 @@ public:
 	void						Reset					( void );
 
 	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStage visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
-	WebGPUPipeline&				AddTexture				( WGPUTextureViewDimension texture_dimension, WGPUTextureView view ) { m_Textures.push_back({ texture_dimension, view }); return *this; }
+	WebGPUPipeline&				AddViewTexture			( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureSampleType type = WGPUTextureSampleType_Float ) { m_Textures.push_back({ texture_dimension, ViewTexture{ type }, view }); return *this; }
+	WebGPUPipeline&				AddStorageTexture		( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureFormat format, WGPUStorageTextureAccess access ) { m_Textures.push_back({ texture_dimension, StorageTexture{ format, access }, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
 	void						FinalizeRender			( std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
