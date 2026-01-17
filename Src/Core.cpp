@@ -1234,6 +1234,12 @@ WebGPURenderBuffer* Core::IGetBuffer(std::string name) {
 			0, 1, 2,
 			0, 3, 1
 		});
+	} else if(name == "Line") {
+		std::vector<float> vertices = { 0.0, 1.0 };
+		new_buffer->Init(WGPUVertexFormat_Float32, WGPUPrimitiveTopology_LineList, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float));
+	} else if(name == "Triangle") {
+		std::vector<float> vertices = { 0.0, 1.0, 2.0 };
+		new_buffer->Init(WGPUVertexFormat_Float32, WGPUPrimitiveTopology_TriangleList, (unsigned char*)vertices.data(), (int)vertices.size() * sizeof(float));
 	} else if(name == "Cube") {
 
 		const float S = 0.5;

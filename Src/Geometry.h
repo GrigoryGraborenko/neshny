@@ -218,6 +218,93 @@ private:
 };
 
 template<typename T>
+class Grid3DCPUCache {
+
+public:
+
+	Grid3DCPUCache		( Vec3 min_pos, Vec3 max_pos, double cell_size, std::function<Vec3(const T& item)> get_position ) :
+		p_MinPos		( min_pos )
+		,p_InvCellSize	( 1.0 / cell_size )
+		,p_GridRange	( ((max_pos - min_pos) * p_InvCellSize).Ceil() )
+		,p_GetPosFunc	( get_position )
+	{
+		p_Cells.resize(p_GridRange.x * p_GridRange.y * p_GridRange.z);
+	}
+
+	void	AddItem			( T& item ) {
+		GetCell(p_GetPosFunc(item)).push_back(&item);
+	}
+
+	void	AddItems		( std::vector<T>& items ) {
+		for (auto& item : items) {
+			AddItem(item);
+		}
+	}
+
+	void	Reset			( void ) { for(auto& cell: p_Cells) { cell.clear(); } }
+
+	bool	AnyWithin		( Vec3 pos, double radius ) {
+		auto min_g = GetGridPos(pos - Vec3(radius, radius, radius));
+		auto max_g = GetGridPos(pos + Vec3(radius, radius, radius));
+		double rad_sqr = radius * radius;
+		for (int x = min_g.x; x <= max_g.x; x++) {
+			for (int y = min_g.y; y <= max_g.y; y++) {
+				for (int z = min_g.z; y <= max_g.z; z++) {
+					auto& cell = GetCellFromGridPos(iVec3(x, y, z));
+					for (auto& item : cell) {
+						Vec3 item_pos = p_GetPosFunc(*item);
+						double dist_sqr = (pos - item_pos).LengthSquared();
+						if (dist_sqr < rad_sqr) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	void	Iterate			( Vec3 from_pos, Vec3 to_pos, std::function<void(T* item)> item_callback ) {
+		auto min_g = GetGridPos(from_pos);
+		auto max_g = GetGridPos(to_pos);
+		for (int x = min_g.x; x <= max_g.x; x++) {
+			for (int y = min_g.y; y <= max_g.y; y++) {
+				for (int z = min_g.z; y <= max_g.z; z++) {
+					auto& cell = GetCellFromGridPos(iVec3(x, y, z));
+					int index = (z * p_GridRange.y + y) * p_GridRange.x + x;
+					auto& cell = p_Cells[index];
+					for (auto& item : cell) {
+						item_callback(item);
+					}
+				}
+			}
+		}
+	}
+
+private:
+
+	iVec3				GetGridPos			( Vec3 pos ) {
+		return iVec3::Max(iVec3(0, 0, 0), iVec3::Min(p_GridRange + iVec3(-1, -1, -1), iVec3(((pos - p_MinPos) * p_InvCellSize).Floor())));
+	}
+
+	std::vector<T*>&	GetCellFromGridPos	( iVec3 gpos ) {
+		int index = (z * p_GridRange.y + y) * p_GridRange.x + x;
+		return p_Cells[index];
+	}
+
+	std::vector<T*>&	GetCell				( Vec3 pos ) {
+		return GetCellFromGridPos(GetGridPos(pos));
+	}
+
+	Vec3							p_MinPos;
+	double							p_InvCellSize;
+	iVec3							p_GridRange;
+	std::function<Vec3(const T&)>	p_GetPosFunc;
+	std::vector<std::vector<T*>>	p_Cells;
+};
+
+
+template<typename T>
 class Grid2DBoxCPUCache {
 
 public:
