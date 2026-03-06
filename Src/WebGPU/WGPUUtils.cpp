@@ -449,12 +449,14 @@ std::string WebGPUTexture::GetTexelFormat(void) const {
 		case WGPUTextureFormat_RGBA32Float: return "rgba32float";
 		case WGPUTextureFormat_RGBA32Uint: return "rgba32uint"; // unsupported for storage tex
 		case WGPUTextureFormat_RGBA32Sint: return "rgba32sint";
+#ifndef __EMSCRIPTEN__
 		case WGPUTextureFormat_R16Unorm: return "r16unorm";
 		case WGPUTextureFormat_RG16Unorm: return "rg16unorm";
 		case WGPUTextureFormat_RGBA16Unorm: return "rgba16unorm";
 		case WGPUTextureFormat_R16Snorm: return "r16snorm";
 		case WGPUTextureFormat_RG16Snorm: return "rg16snorm";
 		case WGPUTextureFormat_RGBA16Snorm: return "rgba16snorm";
+#endif
 	};
 	return "";
 }
