@@ -73,8 +73,15 @@ struct Camera3DOrbit {
 		return viewMatrix;
 	}
 	Matrix4 GetViewPerspectiveMatrix(int width, int height) const {
-		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (float)width / height, p_NearPlane, p_FarPlane);
+		Matrix4 perspectiveMatrix = Matrix4::Perspective(p_FovDegrees, (double)width / height, p_NearPlane, p_FarPlane);
 		return perspectiveMatrix * GetViewMatrix();
+	}
+	Matrix4 GetViewOrthoMatrix(int width, int height, double vertical_size) const {
+
+		double aspect = (double)width / height;
+		double horizontal_size = vertical_size * aspect;
+		Matrix4 orthoMatrix = Matrix4::Ortho(-horizontal_size, horizontal_size, -vertical_size, vertical_size, -p_FarPlane, p_FarPlane);
+		return orthoMatrix * GetViewMatrix();
 	}
 	Vec3 GetCamRealPos(void) const {
 		return (GetViewMatrix().Inverse() * Vec4(0, 0, 0, 1)).ToVec3();

@@ -405,6 +405,10 @@ WGPUTextureSampleType WebGPUTexture::GetSampleType(void) const {
 		(m_Format == WGPUTextureFormat_RGBA32Sint)) {
 		return WGPUTextureSampleType_Sint;
 	}
+	if ((m_Format == WGPUTextureFormat_RG32Float)) {
+		return WGPUTextureSampleType_UnfilterableFloat;
+	}
+
 	return WGPUTextureSampleType_Float;
 }
 
@@ -778,7 +782,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 
 		WGPUSamplerBindingLayout buff_sampler;
 		buff_sampler.nextInChain = nullptr;
-		buff_sampler.type = WGPUSamplerBindingType_Filtering;
+		buff_sampler.type = sampler->GetFilter() == WGPUFilterMode_Linear ? WGPUSamplerBindingType_Filtering : WGPUSamplerBindingType_NonFiltering;
 
 		layout_entry.sampler = buff_sampler;
 		binding_num++;
