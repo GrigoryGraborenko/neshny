@@ -408,6 +408,13 @@ WGPUTextureSampleType WebGPUTexture::GetSampleType(void) const {
 	if ((m_Format == WGPUTextureFormat_RG32Float)) {
 		return WGPUTextureSampleType_UnfilterableFloat;
 	}
+	if ((m_Format == WGPUTextureFormat_Depth16Unorm) ||
+		(m_Format == WGPUTextureFormat_Depth24Plus) ||
+		(m_Format == WGPUTextureFormat_Depth24PlusStencil8) ||
+		(m_Format == WGPUTextureFormat_Depth32Float) ||
+		(m_Format == WGPUTextureFormat_Depth32FloatStencil8)) {
+		return WGPUTextureSampleType_Depth;
+	}
 
 	return WGPUTextureSampleType_Float;
 }
@@ -1242,7 +1249,9 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 	}
 
 	m_PassDescriptor.colorAttachmentCount = num_color_tex;
-	m_PassDescriptor.colorAttachments = &m_ColorDescriptors[0];
+	if (num_color_tex > 0) {
+		m_PassDescriptor.colorAttachments = &m_ColorDescriptors[0];
+	}
 
 	if (depth_tex) {
 		m_DepthDesc.view = depth_tex;

@@ -476,28 +476,43 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 			std::string tex_spec;
 			if (tex.p_ReadOnly) {
 				auto sample_type = tex.p_Tex->GetSampleType();
-				std::string format_spec = "f32";
-				if (sample_type == WGPUTextureSampleType_Uint) {
-					format_spec = "u32";
-				} else if (sample_type == WGPUTextureSampleType_Sint) {
-					format_spec = "i32";
-				}
-				std::string dim_spec;
-				if (dim == WGPUTextureViewDimension_1D) {
-					dim_spec = "texture_1d";
-				} else if (dim == WGPUTextureViewDimension_2D) {
-					dim_spec = "texture_2d";
-				} else if (dim == WGPUTextureViewDimension_2DArray) {
-					dim_spec = "texture_2d_array";
-				} else if (dim == WGPUTextureViewDimension_Cube) {
-					dim_spec = "texture_cube";
-				} else if (dim == WGPUTextureViewDimension_CubeArray) {
-					dim_spec = "texture_cube_array";
-				} else if (dim == WGPUTextureViewDimension_3D) {
-					dim_spec = "texture_3d";
+
+				if (sample_type == WGPUTextureSampleType_Depth) {
+
+					if (dim == WGPUTextureViewDimension_2D) {
+						tex_spec = "texture_depth_2d";
+					} else if (dim == WGPUTextureViewDimension_2DArray) {
+						tex_spec = "texture_depth_2d_array";
+					} else if (dim == WGPUTextureViewDimension_Cube) {
+						tex_spec = "texture_depth_cube";
+					} else if (dim == WGPUTextureViewDimension_CubeArray) {
+						tex_spec = "texture_depth_cube_array";
+					}
+				} else {
+					std::string format_spec = "f32";
+					if (sample_type == WGPUTextureSampleType_Uint) {
+						format_spec = "u32";
+					} else if (sample_type == WGPUTextureSampleType_Sint) {
+						format_spec = "i32";
+					}
+					std::string dim_spec;
+					if (dim == WGPUTextureViewDimension_1D) {
+						dim_spec = "texture_1d";
+					} else if (dim == WGPUTextureViewDimension_2D) {
+						dim_spec = "texture_2d";
+					} else if (dim == WGPUTextureViewDimension_2DArray) {
+						dim_spec = "texture_2d_array";
+					} else if (dim == WGPUTextureViewDimension_Cube) {
+						dim_spec = "texture_cube";
+					} else if (dim == WGPUTextureViewDimension_CubeArray) {
+						dim_spec = "texture_cube_array";
+					} else if (dim == WGPUTextureViewDimension_3D) {
+						dim_spec = "texture_3d";
+					}
+
+					tex_spec = std::format("{}<{}>", dim_spec, format_spec);
 				}
 
-				tex_spec = std::format("{}<{}>", dim_spec, format_spec);
 				result->m_Pipeline->AddViewTexture(tex.p_Tex->GetTextureView(), tex.p_Tex->GetViewDimension(), sample_type);
 			} else {
 				std::string dim_spec;
