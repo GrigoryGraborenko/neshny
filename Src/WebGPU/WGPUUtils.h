@@ -514,6 +514,7 @@ public:
 	void						FinalizeRender			( std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
 	void						FinalizeCompute			( std::string_view shader_name, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
 	void						RefreshBindings			( void );
+	void						ReplaceRenderBuffer		( WebGPURenderBuffer& render_buffer );
 	void						ReplaceBuffer			( WebGPUBuffer& original, WebGPUBuffer& replacement );
 	void						ReplaceBuffer			( int index, WebGPUBuffer& replacement );
 	void						ReplaceTexture			( WGPUTextureView original, WGPUTextureView replacement );

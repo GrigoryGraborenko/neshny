@@ -1043,6 +1043,11 @@ void WebGPUPipeline::CheckBuffersUpToDate(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void WebGPUPipeline::ReplaceRenderBuffer(WebGPURenderBuffer& render_buffer) {
+	m_RenderBuffer = &render_buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void WebGPUPipeline::ReplaceBuffer(WebGPUBuffer& original, WebGPUBuffer& replacement) {
 	for (auto& buff : m_Buffers) {
 		if ((&original) == buff.p_Buffer) {

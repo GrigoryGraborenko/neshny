@@ -626,6 +626,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		}
 		Core::Singleton().CachePreparedPipeline(result);
 	} else {
+		result->m_Pipeline->ReplaceRenderBuffer(*m_Buffer);
 		for (int i = 0; i < pipeline_buffers.size(); i++) {
 			result->m_Pipeline->ReplaceBuffer(i, pipeline_buffers[i].p_Buffer);
 		}
