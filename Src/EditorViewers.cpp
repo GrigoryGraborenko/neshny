@@ -30,6 +30,11 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 		delete prev_buffer;
 	}
 	m_PreviousFrameBuffers.clear();
+	int msaa_samples = rtt.GetMSAASamples();
+	if (m_MSAASamples != msaa_samples) {
+		m_MSAASamples = msaa_samples;
+		m_LinePipeline = nullptr;
+	}
 
 	auto gpu_vp = view_perspective.ToGPU();
 
@@ -104,31 +109,38 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 		// TODO: this throws an error for one frame due to buffers being empty at first
 		m_Uniforms = new WebGPUBuffer(WGPUBufferUsage_Uniform, nullptr, sizeof(fMatrix4));
 		m_CircleBuffer = new WebGPUBuffer(WGPUBufferUsage_Storage);
-		m_LinePipline
-			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.FinalizeRender("SimplePoint", m_LineBuffer);
-		m_CirclePipline
-			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+	}
+	if (!m_LinePipeline) {
+		m_LinePipeline = std::make_unique<WebGPUPipeline>();
+		m_CirclePipeline = std::make_unique<WebGPUPipeline>();
+		m_TrianglePipeline = std::make_unique<WebGPUPipeline>();
+		m_TexturePipeline = std::make_unique<WebGPUPipeline>();
+
+		m_LinePipeline
+			->AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.FinalizeRender("SimplePoint", m_LineBuffer, {}, msaa_samples);
+		m_CirclePipeline
+			->AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddBuffer(*m_CircleBuffer, WGPUShaderStage_Vertex, true)
-			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("Circle"));
-		m_TrianglePipline
-			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
-			.FinalizeRender("SimplePoint", m_TriangleBuffer);
-		m_TexturePipline
-			.AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.FinalizeRender("DebugCircle", *Core::Singleton().GetBuffer("Circle"), {}, msaa_samples);
+		m_TrianglePipeline
+			->AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
+			.FinalizeRender("SimplePoint", m_TriangleBuffer, {}, msaa_samples);
+		m_TexturePipeline
+			->AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddViewTexture(nullptr, WGPUTextureViewDimension_2D)
 			//.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
 			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat, WGPUFilterMode_Nearest))
-			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {});
+			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {}, msaa_samples);
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)simple_circles.size() * sizeof(RenderPoint));
 	m_CircleBuffer->SetValues(simple_circles);
 
 	wgpuQueueWriteBuffer(Core::Singleton().GetWebGPUQueue(), m_Uniforms->Get(), 0, &gpu_vp, sizeof(fMatrix4));
 
-	rtt.Render(&m_LinePipline);
-	rtt.Render(&m_TrianglePipline);
-	rtt.Render(&m_CirclePipline, (int)m_Circles.size());
+	rtt.Render(m_LinePipeline.get());
+	rtt.Render(m_TrianglePipeline.get());
+	rtt.Render(m_CirclePipeline.get(), (int)m_Circles.size());
 
 	for (auto& text: m_Texts) {
 		ImGui::SetCursorPos(ImVec2(text.p_Pos.x, text.p_Pos.y));
@@ -163,9 +175,9 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 
 		m_PreviousFrameBuffers.push_back(uniform_mat);
 
-		m_TexturePipline.ReplaceTexture(0, texture->GetTextureView());
-		m_TexturePipline.ReplaceBuffer(0, *uniform_mat);
-		rtt.Render(&m_TexturePipline);
+		m_TexturePipeline->ReplaceTexture(0, texture->GetTextureView());
+		m_TexturePipeline->ReplaceBuffer(0, *uniform_mat);
+		rtt.Render(m_TexturePipeline.get());
 	}
 }
 

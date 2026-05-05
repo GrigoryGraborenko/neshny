@@ -618,8 +618,13 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 ////////////////////////////////////////////////////////////////////////////////
 void Core::SyncResolution(void) {
 
-	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight)) {
+	if ((m_CurrentWidth == m_RequestedWidth) && (m_CurrentHeight == m_RequestedHeight) && (m_CurrentMSAASamples == m_RequestedMSAASamples)) {
 		return;
+	}
+
+	if (m_ImGuiInitialized && (m_CurrentMSAASamples != m_RequestedMSAASamples)) {
+		ImGui_ImplWGPU_Shutdown();
+		m_ImGuiInitialized = false;
 	}
 
 	WGPUSurfaceConfiguration config;
@@ -637,10 +642,20 @@ void Core::SyncResolution(void) {
 
 	delete m_DepthTex;
 	m_DepthTex = new WebGPUTexture();
-	m_DepthTex->InitDepth(m_RequestedWidth, m_RequestedHeight);
+	m_DepthTex->InitDepth(m_RequestedWidth, m_RequestedHeight, WGPUTextureUsage_RenderAttachment, m_RequestedMSAASamples);
+
+	delete m_MSAATex;
+	m_MSAATex = nullptr;
+	if (m_RequestedMSAASamples > 1) {
+		m_MSAATex = new WebGPUTexture();
+		m_MSAATex->Init(m_RequestedWidth, m_RequestedHeight, 1, WGPUTextureFormat_BGRA8Unorm, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D
+			,WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc | WGPUTextureUsage_RenderAttachment)
+			,WGPUTextureAspect_All, 1, m_RequestedMSAASamples);
+	}
 
 	m_CurrentWidth = m_RequestedWidth;
 	m_CurrentHeight = m_RequestedHeight;
+	m_CurrentMSAASamples = m_RequestedMSAASamples;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,6 +726,17 @@ void Core::SDLLoopInner() {
 
 	///////////////////////////////////////////// render engine
 
+	if (!m_ImGuiInitialized) {
+		ImGui_ImplWGPU_InitInfo imgui_info;
+		imgui_info.Device = m_Device;
+		imgui_info.NumFramesInFlight = 3;
+		imgui_info.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
+		imgui_info.DepthStencilFormat = WGPUTextureFormat_Depth24Plus;
+		imgui_info.PipelineMultisampleState.count = m_CurrentMSAASamples;
+		ImGui_ImplWGPU_Init(&imgui_info);
+		m_ImGuiInitialized = true;
+	}
+
 	// Start the Dear ImGui frame
 	ImGui_ImplWGPU_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
@@ -724,7 +750,12 @@ void Core::SDLLoopInner() {
 #ifdef NESHNY_WEBGPU
 
 	WGPURenderPassColorAttachment color_desc = {};
-	color_desc.view = m_SurfaceTextureView;
+	if (m_CurrentMSAASamples > 1) {
+		color_desc.view = m_MSAATex->GetTextureView();
+		color_desc.resolveTarget = m_SurfaceTextureView;
+	} else {
+		color_desc.view = m_SurfaceTextureView;
+	}
 	//color_desc.loadOp = WGPULoadOp_Clear;
 	color_desc.loadOp = WGPULoadOp_Load;
 	color_desc.storeOp = WGPUStoreOp_Store;
@@ -745,6 +776,7 @@ void Core::SDLLoopInner() {
 	depth_desc.stencilReadOnly = true;
 
 	WGPURenderPassDescriptor render_pass = {};
+	render_pass.label = { "CoreSurface", WGPU_STRLEN };
 	render_pass.colorAttachmentCount = 1;
 	render_pass.colorAttachments = &color_desc;
 	render_pass.depthStencilAttachment = &depth_desc;
@@ -803,13 +835,6 @@ bool Core::WebGPUSDLLoop(WebGPUNativeBackend backend, SDL_Window* window, IEngin
 		return false;
 	}
 #endif
-
-	ImGui_ImplWGPU_InitInfo imgui_info;
-	imgui_info.Device = m_Device;
-	imgui_info.NumFramesInFlight = 3;
-	imgui_info.RenderTargetFormat = WGPUTextureFormat_BGRA8Unorm;
-	imgui_info.DepthStencilFormat = WGPUTextureFormat_Depth24Plus;
-	ImGui_ImplWGPU_Init(&imgui_info);
 
 	SDL_SetRelativeMouseMode(SDL_FALSE);
 

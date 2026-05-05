@@ -288,23 +288,23 @@ public:
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
 																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
-																			int mip_maps = AUTO_MIPMAPS
-																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
+																			int mip_maps = AUTO_MIPMAPS, int sample_count = 1
+																		) { Init(width, height, 1, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps), sample_count); }
 	void											InitCubeMap			(	int width,
 																			int height,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
 																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
 																			int mip_maps = 1
-																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
-	inline void										InitDepth			( int width, int height, WGPUTextureUsage usage = WGPUTextureUsage_RenderAttachment ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_DepthOnly, 1); }
-	inline void										InitDepthStencil	( int width, int height, WGPUTextureUsage usage = WGPUTextureUsage_RenderAttachment ) { Init(width, height, 1, WGPUTextureFormat_Depth24PlusStencil8, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, 1); }
+																		) { Init(width, height, 6, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_Cube, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps), 1); }
+	inline void										InitDepth			( int width, int height, WGPUTextureUsage usage = WGPUTextureUsage_RenderAttachment, int sample_count = 1 ) { Init(width, height, 1, WGPUTextureFormat_Depth24Plus, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_DepthOnly, 1, sample_count); }
+	inline void										InitDepthStencil	( int width, int height, WGPUTextureUsage usage = WGPUTextureUsage_RenderAttachment, int sample_count = 1 ) { Init(width, height, 1, WGPUTextureFormat_Depth24PlusStencil8, WGPUTextureDimension_2D, WGPUTextureViewDimension_2D, usage, WGPUTextureAspect_All, 1, sample_count); }
 	void											Init2DArray			(	int width,
 																			int height,
 																			int layers,
 																			WGPUTextureFormat format = WGPUTextureFormat_BGRA8Unorm,
 																			WGPUTextureUsage usage = WGPUTextureUsage(WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst | WGPUTextureUsage_CopySrc),
 																			int mip_maps = AUTO_MIPMAPS
-																		) { Init(width, height, layers, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2DArray, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps)); }
+																		) { Init(width, height, layers, format, WGPUTextureDimension_2D, WGPUTextureViewDimension_2DArray, usage, WGPUTextureAspect_All, GetMipMaps(width, height, mip_maps), 1); }
 
 	void											Init				(	int width, int height, int depth,
 																			WGPUTextureFormat format,
@@ -312,7 +312,8 @@ public:
 																			WGPUTextureViewDimension view_dimension,
 																			WGPUTextureUsage usage,
 																			WGPUTextureAspect aspect,
-																			int mip_maps );
+																			int mip_maps,
+																			int sample_count );
 
 	inline void										CopyData2D			( unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true ) { CopyDataLayer(0, data, bytes_per_pixel, bytes_per_row, auto_mipmap); }
 	void											CopyDataLayer		( int layer, unsigned char* data, int bytes_per_pixel, int bytes_per_row, bool auto_mipmap = true );
@@ -511,7 +512,7 @@ public:
 	WebGPUPipeline&				AddStorageTexture		( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureFormat format, WGPUStorageTextureAccess access ) { m_Textures.push_back({ texture_dimension, StorageTexture{ format, access }, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
-	void						FinalizeRender			( std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
+	void						FinalizeRender			( std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params = {}, int msaa_samples = 1, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
 	void						FinalizeCompute			( std::string_view shader_name, std::string_view insertion = std::string_view(), std::string_view end_insertion = std::string_view() );
 	void						RefreshBindings			( void );
 	void						ReplaceRenderBuffer		( WebGPURenderBuffer& render_buffer );
@@ -525,6 +526,7 @@ public:
 	inline Type					GetType					( void ) { return m_Type; }
 	inline WGPURenderPipeline	GetRenderPipeline		( void ) { return m_RenderPipeline; }
 	inline WGPUBindGroup		GetBindGroup			( void ) { return m_BindGroup; }
+	inline int					GetMSAASamples			( void ) { return m_MSAASamples; }
 
 protected:
 
@@ -537,6 +539,7 @@ protected:
 	std::vector<Texture>		m_Textures;
 	
 	std::vector<const WebGPUSampler*>	m_Samplers;
+	int									m_MSAASamples = 0;
 
 	WGPURenderPipeline			m_RenderPipeline = nullptr;
 	WGPUComputePipeline			m_ComputePipeline = nullptr;
@@ -554,8 +557,8 @@ public:
 									WebGPURTT		( void );
 									~WebGPURTT		( void ) { Destroy(); }
 
-	Token							Activate		( std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear = true, WGPUTextureView existing_depth_tex = nullptr );
-	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, bool clear = true );
+	Token							Activate		( std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear = true, WGPUTextureView existing_depth_tex = nullptr );
+	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, int msaa_samples, bool clear = true );
 
 	void							Render			( WebGPUPipeline* pipeline, int instances = 1 );
 	Token							RenderPassToken	( WGPURenderPassEncoder& pass );
@@ -566,6 +569,7 @@ public:
 	inline WGPUTextureView			GetColorTexView			( int index ) { return index >= m_ColorTextures.size() ? nullptr : m_ColorTextures[index]->GetTextureView(); }
 	inline WGPUTextureView			GetDepthTexView			( void ) { return m_DepthTex ? m_DepthTex->GetTextureView() : nullptr; }
 	inline auto						GetAttachmentModes		( void ) { return m_Modes; }
+	inline int						GetMSAASamples			( void ) { return m_MSAASamples; }
 
 private:
 
@@ -574,6 +578,7 @@ private:
 	bool							m_CaptureDepthStencil = false;
 	int								m_Width = 0;
 	int								m_Height = 0;
+	int								m_MSAASamples = 0;
 	std::vector<WebGPUTexture*>		m_ColorTextures;
 	WebGPUTexture*					m_DepthTex = nullptr;
 

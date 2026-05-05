@@ -147,20 +147,8 @@ std::string EntityPipeline::GetDataVectorStructCode(const AddedDataVector& data_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<Core::CachedPipeline> EntityPipeline::GetCachedPipeline(void) {
-	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
-	for (auto& existing : existing_pipelines) {
-		if (existing->m_Identifier == m_Identifier) {
-			return existing;
-		}
-	}
-	return nullptr;
-}
+std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(std::shared_ptr<Core::CachedPipeline> result) {
 
-////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
-
-	auto result = GetCachedPipeline();
 	bool create_new = false;
 	if (!result) {
 		result = std::make_shared<Core::CachedPipeline>();
@@ -620,7 +608,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 		}
 
 		if (is_render) {
-			result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, insertion_str, end_insertion_str);
+			result->m_Pipeline->FinalizeRender(m_ShaderName, *m_Buffer, m_RenderParams, m_MSAASamples, insertion_str, end_insertion_str);
 		} else {
 			result->m_Pipeline->FinalizeCompute(m_ShaderName, insertion_str, end_insertion_str);
 		}
@@ -641,7 +629,25 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(void) {
 ////////////////////////////////////////////////////////////////////////////////
 EntityPipeline::AsyncOutputResults EntityPipeline::RunInternal(int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback) {
 
-	auto prepared = Prepare();
+	auto existing_pipelines = Core::Singleton().GetPreparedPipelines();
+	std::shared_ptr<Core::CachedPipeline> cached = nullptr;
+	for (auto& existing: existing_pipelines) {
+		if (existing->m_Identifier == m_Identifier) {
+			cached = existing;
+			break;
+		}
+	}
+	if (rtt) { // reset pipeline if the MSAA sample count changes
+		m_MSAASamples = rtt->GetMSAASamples();
+		if (cached && (cached->GetPipeline()->GetMSAASamples() != m_MSAASamples)) {
+			Core::Singleton().UnloadPipeline(m_Identifier);
+			cached = nullptr;
+		}
+	} else {
+		m_MSAASamples = 0;
+	}
+
+	auto prepared = Prepare(cached);
 	if (Core::Singleton().GetPipelinePrepareOnlyMode()) {
 		return AsyncOutputResults::Empty();
 	}

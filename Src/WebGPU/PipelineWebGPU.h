@@ -174,8 +174,7 @@ protected:
 																		WebGPUPipeline::RenderParams render_params = {} );
 
 	static std::string						GetDataVectorStructCode	( const AddedDataVector& data_vect, bool read_only );
-	std::shared_ptr<Core::CachedPipeline>	GetCachedPipeline		( void );
-	std::shared_ptr<Core::CachedPipeline>	Prepare					( void );
+	std::shared_ptr<Core::CachedPipeline>	Prepare					( std::shared_ptr<Core::CachedPipeline> result );
 	AsyncOutputResults						RunInternal				( int iterations, RTT* rtt, std::optional<std::function<void(const OutputResults& results)>>&& callback );
 
 
@@ -193,6 +192,7 @@ protected:
 	std::string								m_ImmediateExtraCode;
 	std::string								m_ExtraCode;
 	WebGPUPipeline::RenderParams			m_RenderParams;
+	int										m_MSAASamples = 0;
 
 	AddedUniform							m_Uniform;
 	std::vector<BaseCache*>					m_CachesToBind;

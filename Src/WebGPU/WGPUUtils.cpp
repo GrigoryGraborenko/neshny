@@ -482,7 +482,7 @@ int WebGPUTexture::GetMipMaps(int width, int height, int mip_maps) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat format, WGPUTextureDimension dimension, WGPUTextureViewDimension view_dimension, WGPUTextureUsage usage, WGPUTextureAspect aspect, int mip_maps) {
+void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat format, WGPUTextureDimension dimension, WGPUTextureViewDimension view_dimension, WGPUTextureUsage usage, WGPUTextureAspect aspect, int mip_maps, int sample_count) {
 
 	if (m_Texture) {
 		throw "Cannot init texture more than once";
@@ -509,7 +509,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	descriptor.size.width = width;
 	descriptor.size.height = height;
 	descriptor.size.depthOrArrayLayers = depth;
-	descriptor.sampleCount = 1;
+	descriptor.sampleCount = sample_count;
 	descriptor.format = format;
 	descriptor.mipLevelCount = mip_maps;
 	descriptor.usage = usage;
@@ -803,7 +803,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, std::string_view insertion, std::string_view end_insertion) {
+void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBuffer& render_buffer, RenderParams params, int msaa_samples, std::string_view insertion, std::string_view end_insertion) {
 #ifdef NESHNY_WEBGPU_PROFILE
 	DebugTiming dt0("WebGPURenderPipeline::FinalizeRender");
 #endif
@@ -812,6 +812,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 	}
 	m_Type = Type::RENDER;
 	m_RenderBuffer = &render_buffer;
+	m_MSAASamples = msaa_samples;
 
 	WGPUShaderModule shader = Core::GetShader(shader_name, insertion, end_insertion)->Get();
 	if (shader == nullptr) {
@@ -912,7 +913,7 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 		desc.vertex.bufferCount = 1;
 		desc.vertex.buffers = &vertex_buffer_layout;
 
-		desc.multisample.count = 1;
+		desc.multisample.count = msaa_samples;
 		desc.multisample.mask = 0xFFFFFFFF;
 		desc.multisample.alphaToCoverageEnabled = false;
 
@@ -1167,21 +1168,21 @@ WebGPURTT::WebGPURTT(void) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, bool clear, WGPUTextureView existing_depth_tex) {
+Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear, WGPUTextureView existing_depth_tex) {
 
 	int num_color_tex = (int)color_attachments.size();
 	bool modes_same = color_attachments.size() == m_Modes.size();
 	for (int i = 0; modes_same && (i < num_color_tex); i++) {
 		modes_same = modes_same && (m_Modes[i] == color_attachments[i]);
 	}
-
 	// set up the stuff if it doesn't exist
-	if ((!modes_same) || (capture_depth_stencil != m_CaptureDepthStencil) || (m_Width != width) || (m_Height != height)) {
+	if ((!modes_same) || (capture_depth_stencil != m_CaptureDepthStencil) || (m_Width != width) || (m_Height != height) || (m_MSAASamples != msaa_samples)) {
 
 		Destroy();
 		m_Modes = color_attachments;
 		m_Width = width;
 		m_Height = height;
+		m_MSAASamples = msaa_samples;
 		m_CaptureDepthStencil = capture_depth_stencil;
 		if (m_Modes.empty()) {
 			return Token([]() {});
@@ -1211,7 +1212,6 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 			color_desc.clearValue.a = 1.0f;
 			color_desc.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
 		}
-
 		m_PassDescriptor.colorAttachmentCount = num_color_tex;
 		m_PassDescriptor.colorAttachments = &m_ColorDescriptors[0];
 
@@ -1236,10 +1236,11 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, bool clear) {
+Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, int msaa_samples, bool clear) {
 
 	int num_color_tex = (int)color_attachments.size();
 	m_ColorDescriptors.resize(num_color_tex);
+	m_MSAASamples = msaa_samples;
 
 	for (int i = 0; i < num_color_tex; i++) {
 		WGPURenderPassColorAttachment& color_desc = m_ColorDescriptors[i];

@@ -536,12 +536,13 @@ public:
 	public:
 										~CachedPipeline	( void ) { delete m_Pipeline; delete m_UniformBuffer; }
 
-		std::string_view				GetIdentifier	( void) const { return m_Identifier; }
+		std::string_view				GetIdentifier	( void ) const { return m_Identifier; }
+		WebGPUPipeline*					GetPipeline		( void ) const { return m_Pipeline; }
 	};
 
 	void								SDLLoopInner				( void );
 	bool								WebGPUSDLLoop				( WebGPUNativeBackend backend, SDL_Window* window, IEngine* engine, int width, int height, void* layer = nullptr );
-	void								SetResolution				( int width, int height ) { m_RequestedWidth = width; m_RequestedHeight = height; };
+	void								SetResolution				( int width, int height, int msaa_samples = 1 ) { m_RequestedWidth = width; m_RequestedHeight = height; m_RequestedMSAASamples = msaa_samples; };
 	void								SyncResolution				( void );
 
 	void								InitWebGPU					( WebGPUNativeBackend backend, SDL_Window* window, int width, int height, void* layer );
@@ -553,7 +554,7 @@ public:
 	inline WGPUSurface					GetWebGPUSurface			( void ) { return m_Surface; }
 	inline const WGPULimits&			GetLimits					( void ) { return m_Limits; }
 	WGPULimits							GetDefaultLimits			( void );
-	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return m_SurfaceTextureView; }
+	inline WGPUTextureView				GetCurrentSwapTextureView	( void ) { return m_CurrentMSAASamples > 1 ? m_MSAATex->GetTextureView() : m_SurfaceTextureView; }
 	static WebGPUShader*				GetShader					( std::string_view name, std::string_view start_insert = std::string_view(), std::string_view end_insert = std::string_view()) { return Singleton().IGetShader(name, start_insert, end_insert); }
 	static WebGPURenderBuffer*			GetBuffer					( std::string_view name ) { return Singleton().IGetBuffer(std::string(name)); }
 	static WebGPUSampler*				GetSampler					( WGPUAddressMode mode, WGPUFilterMode filter = WGPUFilterMode_Linear, bool linear_mipmaps = true, unsigned int max_anisotropy = 1 ) { return Singleton().IGetSampler(mode, filter, linear_mipmaps, max_anisotropy); }
@@ -816,9 +817,13 @@ private:
 	WGPULimits										m_Limits;
 	int												m_CurrentWidth = -1;
 	int												m_CurrentHeight = -1;
+	int												m_CurrentMSAASamples = 1;
 	int												m_RequestedWidth = -1;
 	int												m_RequestedHeight = -1;
+	int												m_RequestedMSAASamples = 1;
 	WebGPUTexture*									m_DepthTex = nullptr;
+	WebGPUTexture*									m_MSAATex = nullptr;
+	bool											m_ImGuiInitialized = false;
 #endif
 
 };
