@@ -464,10 +464,12 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(std::shared_ptr<Co
 			std::string tex_spec;
 			if (tex.p_ReadOnly) {
 				auto sample_type = tex.p_Tex->GetSampleType();
+				bool is_multi_sampled = tex.p_Tex->GetSampleCount() > 1;
 
 				if (sample_type == WGPUTextureSampleType_Depth) {
-
-					if (dim == WGPUTextureViewDimension_2D) {
+					if (is_multi_sampled) {
+						tex_spec = "texture_depth_multisampled_2d";
+					} else if (dim == WGPUTextureViewDimension_2D) {
 						tex_spec = "texture_depth_2d";
 					} else if (dim == WGPUTextureViewDimension_2DArray) {
 						tex_spec = "texture_depth_2d_array";
@@ -484,7 +486,9 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(std::shared_ptr<Co
 						format_spec = "i32";
 					}
 					std::string dim_spec;
-					if (dim == WGPUTextureViewDimension_1D) {
+					if (is_multi_sampled) {
+						dim_spec = "texture_multisampled_2d";
+					} else if (dim == WGPUTextureViewDimension_1D) {
 						dim_spec = "texture_1d";
 					} else if (dim == WGPUTextureViewDimension_2D) {
 						dim_spec = "texture_2d";
@@ -501,7 +505,7 @@ std::shared_ptr<Core::CachedPipeline> EntityPipeline::Prepare(std::shared_ptr<Co
 					tex_spec = std::format("{}<{}>", dim_spec, format_spec);
 				}
 
-				result->m_Pipeline->AddViewTexture(tex.p_Tex->GetTextureView(), tex.p_Tex->GetViewDimension(), sample_type);
+				result->m_Pipeline->AddViewTexture(tex.p_Tex->GetTextureView(), tex.p_Tex->GetViewDimension(), sample_type, is_multi_sampled);
 			} else {
 				std::string dim_spec;
 				if (dim == WGPUTextureViewDimension_1D) {

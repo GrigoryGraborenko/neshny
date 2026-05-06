@@ -776,7 +776,11 @@ void Core::SDLLoopInner() {
 	depth_desc.stencilReadOnly = true;
 
 	WGPURenderPassDescriptor render_pass = {};
+#ifndef __EMSCRIPTEN__
 	render_pass.label = { "CoreSurface", WGPU_STRLEN };
+#else
+	render_pass.label = "CoreSurface";
+#endif
 	render_pass.colorAttachmentCount = 1;
 	render_pass.colorAttachments = &color_desc;
 	render_pass.depthStencilAttachment = &depth_desc;

@@ -493,6 +493,7 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_MipMaps = mip_maps;
 	m_Format = format;
 	m_ViewDimension = view_dimension;
+	m_SampleCount = sample_count;
 
 	m_DepthBytes = 4; // TODO: support other formats
 
@@ -767,7 +768,7 @@ void WebGPUPipeline::CreateBindGroupLayout(void) {
 		if (auto* view_info = std::get_if<ViewTexture>(&tex.p_Info)) {
 			WGPUTextureBindingLayout buff_texture;
 			buff_texture.nextInChain = nullptr;
-			buff_texture.multisampled = false;
+			buff_texture.multisampled = view_info->p_IsMultiSampled;
 			buff_texture.viewDimension = tex.p_Dimensions;
 			buff_texture.sampleType = view_info->p_SampleType;
 			layout_entry.texture = buff_texture;
@@ -1191,7 +1192,7 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 
 		for (int i = 0; i < num_color_tex; i++) {
 			WebGPUTexture* tex = new WebGPUTexture();
-			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc), 1);
+			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc), 1, msaa_samples);
 			m_ColorTextures.push_back(tex);
 		}
 		if (m_CaptureDepthStencil && (existing_depth_tex == nullptr)) {

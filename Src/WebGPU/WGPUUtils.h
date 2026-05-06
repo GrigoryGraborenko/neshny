@@ -375,6 +375,7 @@ public:
 	inline int										GetMipMaps			( void ) const { return m_MipMaps; }
 	inline WGPUTextureFormat						GetFormat			( void ) const { return m_Format; }
 	inline int										GetDepthBytes		( void ) const { return m_DepthBytes; }
+	inline int										GetSampleCount		( void ) const { return m_SampleCount; }
 	inline WGPUTextureViewDimension					GetViewDimension	( void ) const { return m_ViewDimension; }
 
 	WGPUTextureSampleType							GetSampleType		( void ) const;
@@ -393,6 +394,7 @@ protected:
 	int												m_Layers = 1;
 	int												m_MipMaps = 1;
 	int												m_DepthBytes = 0;
+	int												m_SampleCount = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -452,6 +454,7 @@ class WebGPUPipeline {
 
 	struct ViewTexture {
 		WGPUTextureSampleType				p_SampleType;
+		bool								p_IsMultiSampled;
 	};
 
 	struct StorageTexture {
@@ -508,7 +511,7 @@ public:
 	void						Reset					( void );
 
 	WebGPUPipeline&				AddBuffer				( WebGPUBuffer& buffer, WGPUShaderStage visibility_flags, bool read_only ) { m_Buffers.push_back({ &buffer, visibility_flags, read_only, buffer.Get() }); return *this; }
-	WebGPUPipeline&				AddViewTexture			( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureSampleType type = WGPUTextureSampleType_Float ) { m_Textures.push_back({ texture_dimension, ViewTexture{ type }, view }); return *this; }
+	WebGPUPipeline&				AddViewTexture			( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureSampleType type = WGPUTextureSampleType_Float, bool is_multisampled = false ) { m_Textures.push_back({ texture_dimension, ViewTexture{ type, is_multisampled }, view }); return *this; }
 	WebGPUPipeline&				AddStorageTexture		( WGPUTextureView view, WGPUTextureViewDimension texture_dimension, WGPUTextureFormat format, WGPUStorageTextureAccess access ) { m_Textures.push_back({ texture_dimension, StorageTexture{ format, access }, view }); return *this; }
 	WebGPUPipeline&				AddSampler				( const WebGPUSampler& sampler ) { m_Samplers.push_back(&sampler); return *this; }
 
