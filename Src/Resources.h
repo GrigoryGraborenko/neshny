@@ -160,7 +160,7 @@ public:
 	virtual uint64_t		GetGPUMemoryEstimate	( void ) const { return m_Texture.GetWidth() * m_Texture.GetHeight() * m_Texture.GetDepthBytes() * 6; }
 
 protected:
-	WebGPUTexture	m_Texture;
+	WebGPUTexture			m_Texture;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,60 +174,31 @@ public:
 		int		p_TileHeight;
 		int		p_TileWidth;
 		bool	p_Mipmaps;
+		bool	p_GenerateNormalTexture;
 	};
 #pragma pack(pop)
 
-	virtual				~TextureTileset(void) {}
+	virtual						~TextureTileset			( void ) {}
 
-	virtual uint64_t	GetMemoryEstimate		( void ) const { return 0; }
-	virtual uint64_t	GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
+	virtual uint64_t			GetMemoryEstimate		( void ) const { return 0; }
+	virtual uint64_t			GetGPUMemoryEstimate	( void ) const { return m_FullWidth * m_FullHeight * m_Texture.GetDepthBytes(); }
 
-	bool				Init(std::string_view path, Params params, std::string& err) {
-		m_Params = params;
+	bool						Init					( std::string_view path, Params params, std::string& err );
 
-		SDL_Surface* surface = IMG_Load(path.data());
-		if (!surface) {
-			err = std::format("Could not load image {}", path);
-			return false;
-		}
-
-		if (surface->format->format != g_CorrectSDLFormat) {
-			SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
-			SDL_FreeSurface(surface);
-			surface = converted_surface;
-		}
-
-		m_FullWidth = surface->w;
-		m_FullHeight = surface->h;
-		int depth = surface->format->BytesPerPixel;
-		int num_wid = m_FullWidth / m_Params.p_TileWidth;
-		int num_hei = m_FullHeight / m_Params.p_TileHeight;
-		m_TileCount = num_wid * num_hei;
-
-		m_Texture.Init2DArray(m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
-
-		auto sync_token = Core::Singleton().SyncWithMainThread();
-		for (int i = 0; i < m_TileCount; i++) {
-			int x = (i % num_wid) * m_Params.p_TileWidth;
-			int y = (i / num_hei) * m_Params.p_TileHeight;
-			unsigned char* data = (unsigned char*)surface->pixels;
-			m_Texture.CopyDataLayer(i, data + ((y * m_FullWidth + x) * depth), depth, surface->pitch, params.p_Mipmaps);
-		}
-		return true;
-	};
-
-	const WebGPUTexture&		Get				( void ) const { return m_Texture; }
-	WGPUTextureView				GetTextureView	( void ) const { return m_Texture.GetTextureView(); }
-	inline const int			GetFullWidth	( void ) const { return m_FullWidth; }
-	inline const int			GetFullHeight	( void ) const { return m_FullHeight; }
+	inline const WebGPUTexture&	Get						( void ) const { return m_Texture; }
+	inline WGPUTextureView		GetTextureView			( void ) const { return m_Texture.GetTextureView(); }
+	inline const int			GetFullWidth			( void ) const { return m_FullWidth; }
+	inline const int			GetFullHeight			( void ) const { return m_FullHeight; }
+	inline const WebGPUTexture*	GetNormalMap			( void ) const { return m_NormalTexture.has_value() ? &m_NormalTexture.value() : nullptr; }
 
 protected:
 
-	Params			m_Params;
-	WebGPUTexture	m_Texture;
-	int				m_TileCount = 0;
-	int				m_FullWidth = 0;
-	int				m_FullHeight = 0;
+	Params							m_Params;
+	WebGPUTexture					m_Texture;
+	std::optional<WebGPUTexture>	m_NormalTexture;
+	int								m_TileCount = 0;
+	int								m_FullWidth = 0;
+	int								m_FullHeight = 0;
 };
 
 #endif

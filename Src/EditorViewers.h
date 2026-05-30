@@ -22,7 +22,7 @@ public:
     inline void									AddSquare			( Vec3 min_pos, Vec3 max_pos, Vec4 color, bool filled = false ) { m_Squares.push_back(SimpleSquare{min_pos, max_pos, color, filled}); }
     inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, std::string_view filename ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, std::string(filename) }); }
 #if defined(NESHNY_WEBGPU)
-    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, WebGPUTexture* texture ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, texture }); }
+    inline void									AddTexture			( Vec3 min_pos, Vec3 max_pos, const WebGPUTexture* texture ) { m_Textures.push_back(SimpleTexture{min_pos, max_pos, texture }); }
 #endif
 	void										AddText				( std::string_view text, Vec2 pos, Vec4 color ) { m_Texts.push_back(SimpleText{ std::string(text), pos, color }); }
 
@@ -68,7 +68,7 @@ protected:
 		Vec3 p_MinPos;
 		Vec3 p_MaxPos;
 #if defined(NESHNY_WEBGPU)
-		std::variant<std::string, WebGPUTexture*> p_Texture;
+		std::variant<std::string, const WebGPUTexture*> p_Texture;
 #else
 		std::string p_Filename;
 #endif
@@ -137,7 +137,7 @@ public:
 	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, std::string_view filename, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), filename); }
 	static inline void                          Text				( std::string_view text, Vec2 pos, Vec4 color) { Singleton().AddText(text, pos, color); }
 #if defined(NESHNY_WEBGPU)
-	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, WebGPUTexture* texture, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), texture); }
+	static inline void                          Texture				( Vec2 min_pos, Vec2 max_pos, const WebGPUTexture* texture, double z_order = 0.0 ) { Singleton().AddTexture(min_pos.ToVec3(z_order), max_pos.ToVec3(z_order), texture); }
 #endif
 protected:
 												SimpleRender2D		( void ) {}

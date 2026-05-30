@@ -129,8 +129,8 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 		m_TexturePipeline
 			->AddBuffer(*m_Uniforms, WGPUShaderStage_Vertex, true)
 			.AddViewTexture(nullptr, WGPUTextureViewDimension_2D)
-			//.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
-			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat, WGPUFilterMode_Nearest))
+			.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat))
+			//.AddSampler(*Core::GetSampler(WGPUAddressMode_Repeat, WGPUFilterMode_Nearest))
 			.FinalizeRender("SimpleTexture", *Core::GetBuffer("Square"), {}, msaa_samples);
 	}
 	m_CircleBuffer->EnsureSizeBytes((int)simple_circles.size() * sizeof(RenderPoint));
@@ -157,7 +157,7 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 			}
 			texture = &(texture_res->Get());
 		} else {
-			texture = std::get<WebGPUTexture*>(tex.p_Texture);
+			texture = std::get<const WebGPUTexture*>(tex.p_Texture);
 		}
 		Matrix4 modded = Matrix4::Identity();
 

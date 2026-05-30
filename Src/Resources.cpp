@@ -48,6 +48,77 @@ void TextureSkybox::Render(WebGPURTT& rtt, const Matrix4& inverse_view_perspecti
         .Render(&rtt);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+bool TextureTileset::Init(std::string_view path, Params params, std::string& err) {
+	m_Params = params;
+
+	SDL_Surface* surface = IMG_Load(path.data());
+	if (!surface) {
+		err = std::format("Could not load image {}", path);
+		return false;
+	}
+
+	if (surface->format->format != g_CorrectSDLFormat) {
+		SDL_Surface* converted_surface = SDL_ConvertSurfaceFormat(surface, g_CorrectSDLFormat, 0);
+		SDL_FreeSurface(surface);
+		surface = converted_surface;
+	}
+
+	m_FullWidth = surface->w;
+	m_FullHeight = surface->h;
+	int depth = surface->format->BytesPerPixel;
+	int num_wid = m_FullWidth / m_Params.p_TileWidth;
+	int num_hei = m_FullHeight / m_Params.p_TileHeight;
+	m_TileCount = num_wid * num_hei;
+
+	m_Texture.Init2DArray(m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
+	std::vector<unsigned char> normal_data;
+	if (params.p_GenerateNormalTexture) {
+		m_NormalTexture = WebGPUTexture();
+		m_NormalTexture->Init2DArray(m_Params.p_TileWidth, m_Params.p_TileHeight, m_TileCount);
+		normal_data.resize(m_Params.p_TileWidth * m_Params.p_TileHeight * 4);
+	}
+	auto sync_token = Core::Singleton().SyncWithMainThread();
+	for (int i = 0; i < m_TileCount; i++) {
+		int x = (i % num_wid) * m_Params.p_TileWidth;
+		int y = (i / num_hei) * m_Params.p_TileHeight;
+		unsigned char* data = (unsigned char*)surface->pixels;
+		m_Texture.CopyDataLayer(i, data + ((y * m_FullWidth + x) * depth), depth, surface->pitch, params.p_Mipmaps);
+
+		if (params.p_GenerateNormalTexture) {
+			for (int tx = 0; tx < m_Params.p_TileWidth; tx++) {
+				for (int ty = 0; ty < m_Params.p_TileHeight; ty++) {
+
+					int ind = 0;
+					float intensities[9];
+					for (int dy = -1; dy <= 1; dy++) {
+						for (int dx = -1; dx <= 1; dx++) {
+							int final_x = (tx + m_Params.p_TileWidth + dx) % m_Params.p_TileWidth;
+							int final_y = (ty + m_Params.p_TileHeight + dy) % m_Params.p_TileHeight;
+							unsigned char* pixel = data + (((y + final_y) * m_FullWidth + x + final_x) * depth);
+							float intensity = pixel[0] * 0.299 + pixel[1] * 0.587 + pixel[2] * 0.114;
+							intensities[ind++] = intensity;
+						}
+					}
+
+					float dx = intensities[0] - intensities[2] + 2.0 * intensities[3] - 2.0 * intensities[5] + intensities[6] - intensities[8];
+					float dy = -intensities[0] - 2.0 * intensities[1] - intensities[2] + intensities[6] + 2.0 * intensities[7] + intensities[8];
+					fVec3 normal(-dx, dy, 64);
+					normal.Normalize();
+
+					unsigned char* output_pix = normal_data.data() + (ty * m_Params.p_TileWidth + tx) * 4;
+					output_pix[0] = (unsigned char)std::max(0.0, std::min(255.0, normal.z * 255.0));
+					output_pix[1] = (unsigned char)std::max(0.0, std::min(255.0, (normal.y + 0.5) * 255));
+					output_pix[2] = (unsigned char)std::max(0.0, std::min(255.0, (normal.x + 0.5) * 255));
+					output_pix[3] = 255;
+				}
+			}
+			m_NormalTexture->CopyDataLayer(i, normal_data.data(), 4, m_Params.p_TileWidth * 4, params.p_Mipmaps);
+		}
+	}
+	return true;
+};
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
