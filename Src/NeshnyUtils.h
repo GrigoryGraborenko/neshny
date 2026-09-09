@@ -24,6 +24,7 @@ constexpr double TWOPI = 2.0 * PI;
 #define ALMOST_ZERO 0.0000001
 constexpr double ONE_THIRD = 1.0 / 3.0;
 constexpr double INV_255 = 1.0 / 255.0;
+constexpr double INV_256 = 1.0 / 256.0;
 constexpr double INV_UINT = 1.0 / std::numeric_limits<unsigned int>::max();
 
 #define GIGA_CONVERT 1000000000

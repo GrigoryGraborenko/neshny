@@ -591,7 +591,7 @@ void WebGPUTexture::CopyDataLayerMipMap(int layer, int mip_map, unsigned char* d
 	int wid = m_Width / mip_div;
 	int hei = m_Height / mip_div;
 
-	WGPUImageCopyTexture tex_cpy;
+	WGPUTexelCopyTextureInfo tex_cpy;
 	tex_cpy.mipLevel = mip_map;
 	tex_cpy.origin.x = 0;
 	tex_cpy.origin.y = 0;

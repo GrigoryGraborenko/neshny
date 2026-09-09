@@ -4,7 +4,7 @@ const fs = require('fs');
 const exec = util.promisify(require('child_process').exec);
 const os = require('os');
 
-const DAWN_VERSION = `chromium/7000`;
+const DAWN_VERSION = `chromium/7500`;
 const DAWN_URL = `https://dawn.googlesource.com/dawn`;
 const search_str = "DAWN_PATH";
 
@@ -123,7 +123,11 @@ function crawlExtensionFiles(file_list, ext, dir, root_dir = undefined) {
     }
     fs.readdirSync(dir).forEach(function(filename) {
         var filepath = dir + "/" + filename;
-        var stats = fs.statSync(filepath);
+        try {
+            var stats = fs.statSync(filepath);
+        } catch {
+            return;
+        }
         if(!stats.isDirectory()) {
             if (filename.substring(filename.lastIndexOf(".")) === ext) {
                 file_list.push({ name: filename, path: filepath, dir: dir, reldir: dir.replaceAll(root_dir, "") });
@@ -237,6 +241,7 @@ async function run(all_libs, update_existing, only_copy) {
     let release_lib_list = [];
 
     fs.copyFileSync(`${dawn_path}/src/utils/compiler.h`, "./external/WebGPU/dawn/common/src/utils/compiler.h"); // weird structure just for this file
+    fs.copyFileSync(`${dawn_path}/build-debug/Debug/d3dcompiler_47.dll`, "./external/WebGPU/d3dcompiler_47.dll"); // required dll
 
     if (all_libs) {
         console.log("Copying all lib files...");
@@ -257,6 +262,10 @@ async function run(all_libs, update_existing, only_copy) {
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/src`);
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/include`);
     crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/build-debug/gen/include`);
+
+    crawlExtensionFiles(all_header_list, ".h", `${dawn_path}/third_party/abseil-cpp/absl`, `${dawn_path}/third_party/abseil-cpp`);
+    crawlExtensionFiles(all_header_list, ".inc", `${dawn_path}/third_party/abseil-cpp/absl`, `${dawn_path}/third_party/abseil-cpp`);
+
     copyAllFilesStructureTo(all_header_list, "./external/WebGPU");
 }
 

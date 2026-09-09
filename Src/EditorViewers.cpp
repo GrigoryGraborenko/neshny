@@ -42,8 +42,8 @@ void BaseSimpleRender::IRender(WebGPURTT& rtt, const Matrix4& view_perspective, 
 	simple_circles.reserve(m_Circles.size());
 	Vec2 offset2d(offset.x, offset.y);
 	for (const auto& line : m_Lines) {
-		simple_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
-		simple_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), 1.0), line.p_Col.ToFloat4() });
+		simple_lines.push_back({ fVec4(((line.p_A - offset) * scale).ToFloat3(), line.p_OnTop ? 1 : 0), line.p_Col.ToFloat4() });
+		simple_lines.push_back({ fVec4(((line.p_B - offset) * scale).ToFloat3(), line.p_OnTop ? 1 : 0), line.p_Col.ToFloat4() });
 	}
 	for (const auto& circle : m_Circles) {
 		simple_circles.push_back({ fVec4((circle.p_Pos.x - offset.x) * scale, (circle.p_Pos.y - offset.y) * scale, circle.p_Radius * scale, circle.p_Radius * scale), circle.p_Col.ToFloat4() });
@@ -1244,7 +1244,6 @@ void Scrapbook2D::IRenderImGui(InterfaceScrapbook2D& data) {
 #else
 		IRender(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0, data.p_Cam.p_Zoom * 0.02);
 #endif
-		IClear();
 		m_NeedsReset = true;
 	}
 
@@ -1350,8 +1349,6 @@ void Scrapbook3D::IRenderImGui(InterfaceScrapbook3D& data) {
 #else
 		IRender(m_CachedViewPerspective, m_Width, m_Height, Vec3(0, 0, 0), 1.0);
 #endif
-
-		IClear();
 		m_NeedsReset = true;
 	}
 

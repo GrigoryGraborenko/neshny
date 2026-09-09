@@ -443,6 +443,7 @@ void Core::WebGPUErrorCallback(WGPUErrorType type, std::string message) {
 WGPULimits Core::GetDefaultLimits(void) {
 	WGPULimits limits;
 
+	limits.nextInChain = nullptr;
 	limits.maxTextureDimension1D = 8192;
 	limits.maxTextureDimension2D = 8192;
 	limits.maxTextureDimension3D = 2048;
@@ -463,7 +464,6 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxVertexBuffers = 8;
 	limits.maxVertexAttributes = 16;
 	limits.maxVertexBufferArrayStride = 2048;
-	limits.maxInterStageShaderComponents = 60;
 	limits.maxInterStageShaderVariables = 16;
 	limits.maxColorAttachments = 8;
 	limits.maxComputeWorkgroupStorageSize = 16384;
@@ -475,12 +475,7 @@ WGPULimits Core::GetDefaultLimits(void) {
 	limits.maxBindingsPerBindGroup = 1000;
 	limits.maxBufferSize = 268435456;
 	limits.maxColorAttachmentBytesPerSample = 32;
-#ifndef __EMSCRIPTEN__
-	limits.maxStorageBuffersInVertexStage = 10;
-	limits.maxStorageTexturesInVertexStage = 8;
-	limits.maxStorageBuffersInFragmentStage = 10;
-	limits.maxStorageTexturesInFragmentStage = 8;
-#endif
+	limits.maxImmediateSize = 0;
 	return limits;
 }
 
@@ -509,9 +504,9 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 #else
 
 	WGPUInstanceDescriptor instanceDescriptor{};
-	instanceDescriptor.features.timedWaitAnyEnable = true;
 	instanceDescriptor.nextInChain = nullptr;
-	instanceDescriptor.features.nextInChain = nullptr;
+	instanceDescriptor.requiredFeatureCount = 0;
+	instanceDescriptor.requiredFeatures = nullptr;
 
 	dawn::native::Instance instance(&instanceDescriptor);
 	m_Instance = instance.Get();
@@ -564,10 +559,6 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 		Core::Log(std::format("Device lost error {}", std::string(message.data, message.length)), ImVec4(1.0, 0.25f, 0.25f, 1.0));
 	};
 
-	WGPURequiredLimits requiredLimits;
-	requiredLimits.nextInChain = nullptr;
-	requiredLimits.limits = m_Limits;
-
 	WGPUDeviceDescriptor deviceDesc = {};
 	deviceDesc.nextInChain = reinterpret_cast<WGPUChainedStruct*>(&toggles);
 	deviceDesc.uncapturedErrorCallbackInfo = { nullptr, cCallback, nullptr, nullptr };
@@ -575,7 +566,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	deviceDesc.requiredFeatures = nullptr;
 	deviceDesc.requiredFeatureCount = 0;
 	deviceDesc.label = { nullptr, 0 };
-	deviceDesc.requiredLimits = &requiredLimits;
+	deviceDesc.requiredLimits = &m_Limits;
 
 	m_Device = backendAdapter.CreateDevice(&deviceDesc);
 	DawnProcTable backendProcs = dawn::native::GetProcs();
@@ -593,7 +584,7 @@ void Core::InitWebGPU(WebGPUNativeBackend backend, SDL_Window* window, int width
 	SDL_GetWindowWMInfo(window, &wmInfo);
 
 	HWND hwnd = wmInfo.info.win.window;
-	std::unique_ptr<wgpu::SurfaceDescriptorFromWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceDescriptorFromWindowsHWND>();
+	std::unique_ptr<wgpu::SurfaceSourceWindowsHWND> surfaceChainedDesc = std::make_unique<wgpu::SurfaceSourceWindowsHWND>();
 	surfaceChainedDesc->hwnd = hwnd;
 	surfaceChainedDesc->hinstance = GetModuleHandle(nullptr);
 
@@ -928,9 +919,6 @@ void Core::IRenderEditor(void) {
 	ResourceViewer::RenderImGui(m_Interface.p_ResourceView);
 	Scrapbook2D::RenderImGui(m_Interface.p_Scrapbook2D);
 	Scrapbook3D::RenderImGui(m_Interface.p_Scrapbook3D);
-
-	Scrapbook2D::Clear();
-	Scrapbook3D::Clear();
 #endif
 
 #ifdef NESHNY_TESTING
@@ -1420,7 +1408,7 @@ void Core::WaitForCommandsToFinish(void) {
 
 	WGPUQueueWorkDoneCallbackInfo callback_info = {
 		nullptr, DEFAULT_CALLBACK_MODE,
-		[](WGPUQueueWorkDoneStatus status, void* user_data1, void* user_data2) {
+		[](WGPUQueueWorkDoneStatus status, WGPUStringView message, void* user_data1, void* user_data2) {
 			auto info = (std::optional<WGPUQueueWorkDoneStatus>*)user_data1;
 			*info = status;
 		}, &status_result, nullptr
