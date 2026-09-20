@@ -865,10 +865,26 @@ void WebGPUPipeline::FinalizeRender(std::string_view shader_name, WebGPURenderBu
 		color_target.nextInChain = nullptr;
 		if (attach == AttachmentMode::RGBA) {
 			color_target.format = WGPUTextureFormat_BGRA8Unorm;
+		} else if (attach == AttachmentMode::R_FLOAT16) {
+			color_target.format = WGPUTextureFormat_R16Float;
+		} else if (attach == AttachmentMode::R_FLOAT32) {
+			color_target.format = WGPUTextureFormat_R32Float;
+		} else if (attach == AttachmentMode::RG_FLOAT16) {
+			color_target.format = WGPUTextureFormat_RG16Float;
+		} else if (attach == AttachmentMode::RG_FLOAT32) {
+			color_target.format = WGPUTextureFormat_RG32Float;
+		} else if (attach == AttachmentMode::RGBA_FLOAT16) {
+			color_target.format = WGPUTextureFormat_RGBA16Float;
+		} else if (attach == AttachmentMode::RGBA_FLOAT32) {
+			color_target.format = WGPUTextureFormat_RGBA32Float;
 		} else {
 			throw "Non-RGBA attachment modes not implemented yet";
 		}
-		color_target.blend = &blend;
+		if (params.p_BlendingEnabled) {
+			color_target.blend = &blend;
+		} else {
+			color_target.blend = nullptr;
+		}
 		color_target.writeMask = WGPUColorWriteMask_All;
 		color_targets.push_back(color_target);
 	}
@@ -1169,7 +1185,7 @@ WebGPURTT::WebGPURTT(void) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear, WGPUTextureView existing_depth_tex) {
+Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear, WGPUTextureView existing_depth_tex, bool clear_depth) {
 
 	int num_color_tex = (int)color_attachments.size();
 	bool modes_same = color_attachments.size() == m_Modes.size();
@@ -1189,10 +1205,31 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 			return Token([]() {});
 		}
 		clear = true;
+		clear_depth = true;
 
-		for (int i = 0; i < num_color_tex; i++) {
+		for (WebGPUPipeline::AttachmentMode attach : m_Modes) {
 			WebGPUTexture* tex = new WebGPUTexture();
-			tex->Init2D(m_Width, m_Height, WGPUTextureFormat_BGRA8Unorm, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc), 1, msaa_samples);
+
+			WGPUTextureFormat format;
+			if (attach == WebGPUPipeline::AttachmentMode::RGBA) {
+				format = WGPUTextureFormat_BGRA8Unorm;
+			} else if (attach == WebGPUPipeline::AttachmentMode::R_FLOAT16) {
+				format = WGPUTextureFormat_R16Float;
+			} else if (attach == WebGPUPipeline::AttachmentMode::R_FLOAT32) {
+				format = WGPUTextureFormat_R32Float;
+			} else if (attach == WebGPUPipeline::AttachmentMode::RG_FLOAT16) {
+				format = WGPUTextureFormat_RG16Float;
+			} else if (attach == WebGPUPipeline::AttachmentMode::RG_FLOAT32) {
+				format = WGPUTextureFormat_RG32Float;
+			} else if (attach == WebGPUPipeline::AttachmentMode::RGBA_FLOAT16) {
+				format = WGPUTextureFormat_RGBA16Float;
+			} else if (attach == WebGPUPipeline::AttachmentMode::RGBA_FLOAT32) {
+				format = WGPUTextureFormat_RGBA32Float;
+			} else {
+				throw "Attachment mode not implemented yet";
+			}
+
+			tex->Init2D(m_Width, m_Height, format, WGPUTextureUsage(WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc), 1, msaa_samples);
 			m_ColorTextures.push_back(tex);
 		}
 		if (m_CaptureDepthStencil && (existing_depth_tex == nullptr)) {
@@ -1226,6 +1263,7 @@ Token WebGPURTT::Activate(std::vector<WebGPUPipeline::AttachmentMode> color_atta
 
 	m_ActiveEncoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	m_ClearNext = clear;
+	m_ClearNextDepth = clear_depth;
 
 	return Token([this]() {
 		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_ActiveEncoder, nullptr);
@@ -1262,7 +1300,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 
 	if (depth_tex) {
 		m_DepthDesc.view = depth_tex;
-		m_DepthDesc.depthLoadOp = WGPULoadOp_Clear;
+		m_DepthDesc.depthLoadOp = clear ? WGPULoadOp_Clear : WGPULoadOp_Load;
 		m_PassDescriptor.depthStencilAttachment = &m_DepthDesc;
 	} else {
 		m_PassDescriptor.depthStencilAttachment = nullptr;
@@ -1270,6 +1308,7 @@ Token WebGPURTT::Activate(std::vector<WGPUTextureView> color_attachments, WGPUTe
 
 	m_ActiveEncoder = wgpuDeviceCreateCommandEncoder(Core::Singleton().GetWebGPUDevice(), nullptr);
 	m_ClearNext = clear;
+	m_ClearNextDepth = clear;
 
 	return Token([this]() {
 		WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_ActiveEncoder, nullptr);
@@ -1286,8 +1325,9 @@ void WebGPURTT::Render(WebGPUPipeline* pipeline, int instances) {
 	for (auto& color_desc : m_ColorDescriptors) {
 		color_desc.loadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
 	}
-	m_DepthDesc.depthLoadOp = m_ClearNext ? WGPULoadOp_Clear : WGPULoadOp_Load;
+	m_DepthDesc.depthLoadOp = m_ClearNextDepth ? WGPULoadOp_Clear : WGPULoadOp_Load;
 	m_ClearNext = false;
+	m_ClearNextDepth = false;
 
 	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_ActiveEncoder, &m_PassDescriptor);
 	if (pipeline) {

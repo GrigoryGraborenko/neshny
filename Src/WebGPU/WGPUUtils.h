@@ -480,8 +480,12 @@ public:
 
 	enum class AttachmentMode {
 		RGBA
-		//,RGBA_FLOAT32
-		//,RGBA_FLOAT16
+		,R_FLOAT16
+		,R_FLOAT32
+		,RG_FLOAT16
+		,RG_FLOAT32
+		,RGBA_FLOAT16
+		,RGBA_FLOAT32
 	};
 
 	struct RenderParams {
@@ -489,6 +493,7 @@ public:
 
 		WGPUBlendComponent		p_ColorBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
 		WGPUBlendComponent		p_AlphaBlend = { WGPUBlendOperation_Add, WGPUBlendFactor_SrcAlpha, WGPUBlendFactor_OneMinusSrcAlpha };
+		bool					p_BlendingEnabled = true;
 		bool					p_DepthWriteEnabled = true;
 
 		WGPUCompareFunction		p_DepthCompare = WGPUCompareFunction_Less;
@@ -560,7 +565,7 @@ public:
 									WebGPURTT		( void );
 									~WebGPURTT		( void ) { Destroy(); }
 
-	Token							Activate		( std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear = true, WGPUTextureView existing_depth_tex = nullptr );
+	Token							Activate		( std::vector<WebGPUPipeline::AttachmentMode> color_attachments, bool capture_depth_stencil, int width, int height, int msaa_samples, bool clear = true, WGPUTextureView existing_depth_tex = nullptr, bool clear_depth = true );
 	Token							Activate		( std::vector<WGPUTextureView> color_attachments, WGPUTextureView depth_tex, int msaa_samples, bool clear = true );
 
 	void							Render			( WebGPUPipeline* pipeline, int instances = 1 );
@@ -591,6 +596,7 @@ private:
 	WGPURenderPassDescriptor		m_PassDescriptor;
 	WGPUCommandEncoder				m_ActiveEncoder = nullptr;
 	bool							m_ClearNext = true;
+	bool							m_ClearNextDepth = true;
 };
 
 typedef WebGPUShader Shader;
