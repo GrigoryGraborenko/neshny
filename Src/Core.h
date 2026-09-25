@@ -602,13 +602,14 @@ public:
 	template <class T>
 	static bool							LoadBinary					( T& item, std::string_view filename ) {
 
-		std::ifstream file(std::string(filename), std::ios::in | std::ios::binary);
+		std::ifstream file(std::string(filename), std::ios::in | std::ios::binary | std::ios::ate);
 		if (!file.is_open()) {
 			return false;
 		}
-		std::ostringstream data_stream;
-		data_stream << file.rdbuf();
-		std::string data = data_stream.str();
+		const auto size = file.tellg();
+		std::string data(static_cast<size_t>(size), '\0');
+		file.seekg(0);
+		file.read(data.data(), size);
 
 		Binary::ParseError err;
 		Binary::FromBinary<T>(data, item, err);
@@ -617,13 +618,14 @@ public:
 
 	template <class T>
 	static bool							LoadJSON					( std::vector<T>& items, std::string_view filename ) {
-		std::ifstream file(std::string(filename), std::ios::in);
+		std::ifstream file(std::string(filename), std::ios::in | std::ios::ate);
 		if (!file.is_open()) {
 			return false;
 		}
-		std::ostringstream data_stream;
-		data_stream << file.rdbuf();
-		std::string data = data_stream.str();
+		const auto size = file.tellg();
+		std::string data(static_cast<size_t>(size), '\0');
+		file.seekg(0);
+		file.read(data.data(), size);
 
 		Json::ParseError err;
 		Json::FromJson<T>(data, items, err);
@@ -631,13 +633,14 @@ public:
 	}
 	template <class T>
 	static bool							LoadJSON					( T& item, std::string_view filename ) {
-		std::ifstream file(std::string(filename), std::ios::in);
+		std::ifstream file(std::string(filename), std::ios::in | std::ios::ate);
 		if (!file.is_open()) {
 			return false;
 		}
-		std::ostringstream data_stream;
-		data_stream << file.rdbuf();
-		std::string data = data_stream.str();
+		const auto size = file.tellg();
+		std::string data(static_cast<size_t>(size), '\0');
+		file.seekg(0);
+		file.read(data.data(), size);
 
 		Json::ParseError err;
 		Json::FromJson<T>(data, item, err);

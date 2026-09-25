@@ -533,13 +533,18 @@ template <typename T>
 inline void SerialiseByType(const std::vector<T>& obj, std::stringstream& stream, ParseError& err) {
     int32_t size = (int32_t)obj.size();
     Serialise(size, stream, err);
-    int i = 0;
-    for (const auto& elem: obj) {
-        Serialise(elem, stream, err);
-        if (err) {
-            return err.AddMessage(std::format("Parsing element at index {} in array", i));
+
+    if constexpr ((!std::is_same_v<T, bool>) && std::is_trivially_copyable_v<T>) {
+        stream.write((char const*)obj.data(), sizeof(T) * obj.size());
+    } else {
+        int i = 0;
+        for (const auto& elem: obj) {
+            Serialise(elem, stream, err);
+            if (err) {
+                return err.AddMessage(std::format("Parsing element at index {} in array", i));
+            }
+            i++;
         }
-        i++;
     }
 }
 
@@ -686,13 +691,20 @@ template <typename T>
 inline void DeserialiseByType(std::vector<T>& result, std::stringstream& stream, ParseError &err) {
     int32_t size;
     Deserialise(size, stream, err);
-    for (int i = 0; i < size; i++) {
-        T elem;
-        Deserialise(elem, stream, err);
-        if (err) {
-            return err.AddMessage(std::format("Deserialising array element {} to std::vector", i));
+
+    if constexpr ((!std::is_same_v<T, bool>) && std::is_trivially_copyable_v<T>) {
+        result.resize(size);
+        stream.read((char*)result.data(), sizeof(T) * size);
+        return;
+    } else {
+        for (int i = 0; i < size; i++) {
+            T elem;
+            Deserialise(elem, stream, err);
+            if (err) {
+                return err.AddMessage(std::format("Deserialising array element {} to std::vector", i));
+            }
+            result.push_back(elem);
         }
-        result.push_back(elem);
     }
 }
 

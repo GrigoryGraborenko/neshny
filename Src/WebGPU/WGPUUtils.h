@@ -324,10 +324,10 @@ public:
 	static void										CopyTextureToBuffer	( WGPUTexelCopyTextureInfo& source_info, WGPUTexelCopyBufferInfo& destination_info, WGPUExtent3D& size_info, WGPUCommandEncoder existing_encoder = nullptr );
 
 	template<typename T>
-	WebGPUBuffer::AsyncToken<T>						Read				( std::function<std::shared_ptr<T>(unsigned char* data, int size, WebGPUBuffer::AsyncToken<T> token)>&& callback ) {
+	WebGPUBuffer::AsyncToken<T>						ReadRegion			( uint32_t x, uint32_t y, uint32_t z, uint32_t width, uint32_t height, uint32_t depth, std::function<std::shared_ptr<T>(unsigned char* data, int size, WebGPUBuffer::AsyncToken<T> token)>&& callback ) {
 
-		uint32_t bytes_per_row = m_Width * m_DepthBytes;
-		uint32_t size_bytes = bytes_per_row * m_Height * m_Layers;
+		uint32_t bytes_per_row = width * m_DepthBytes;
+		uint32_t size_bytes = bytes_per_row * height * depth;
 
 		WGPUBufferDescriptor desc = {};
 		desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_MapRead;
@@ -344,26 +344,31 @@ public:
 		WGPUTexelCopyTextureInfo source_info {
 			m_Texture,
 			0,
-			WGPUOrigin3D{ 0, 0, 0},
+			WGPUOrigin3D{ x, y, z },
 			WGPUTextureAspect_All
 		};
 		WGPUTexelCopyBufferInfo dest_info {
 			WGPUTexelCopyBufferLayout {
 				0,					// offset
 				bytes_per_row,		// bytesPerRow
-				(uint32_t)m_Height	// rowsPerImage
+				height				// rowsPerImage
 			},
 			copy_buffer
 		};
 		WGPUExtent3D size_info {
-			(uint32_t)m_Width,
-			(uint32_t)m_Height,
-			(uint32_t)m_Layers
+			width,
+			height,
+			depth
 		};
 
 		CopyTextureToBuffer(source_info, dest_info, size_info);
 
 		return WebGPUBuffer::ReadFrom(copy_buffer, 0, size_bytes, std::move(callback));
+	}
+
+	template<typename T>
+	WebGPUBuffer::AsyncToken<T>						Read				( std::function<std::shared_ptr<T>(unsigned char* data, int size, WebGPUBuffer::AsyncToken<T> token)>&& callback ) {
+		return ReadRegion(0, 0, 0, m_Width, m_Height, m_Layers, std::move(callback));
 	}
 #endif
 

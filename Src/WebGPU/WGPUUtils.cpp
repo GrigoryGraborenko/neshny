@@ -496,6 +496,13 @@ void WebGPUTexture::Init(int width, int height, int depth, WGPUTextureFormat for
 	m_SampleCount = sample_count;
 
 	m_DepthBytes = 4; // TODO: support other formats
+	if (format == WGPUTextureFormat_R16Float) {
+		m_DepthBytes = 2;
+	} else if ((format == WGPUTextureFormat_RG32Float) || (format == WGPUTextureFormat_RGBA16Float)) {
+		m_DepthBytes = 8;
+	} else if (format == WGPUTextureFormat_RGBA32Float) {
+		m_DepthBytes = 16;
+	}
 
 	WGPUTextureDescriptor descriptor;
 #ifdef __EMSCRIPTEN__
