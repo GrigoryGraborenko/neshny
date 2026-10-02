@@ -86,6 +86,7 @@ struct BaseVec3 {
 	inline bool			Nearby			( const BaseVec3<T>& other, T tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance) && (fabs(other.z - z) < tolerance); };
 	inline T			MinVal			( void ) const { return std::min(x, std::min(y, z)); }
 	inline T			MaxVal			( void ) const { return std::max(x, std::max(y, z)); }
+	inline T			ManhattanDist	( const BaseVec3<T>& A ) const { return std::max(abs(x - A.x), std::max(abs(y - A.y), abs(z - A.z))); }
 
 	BaseVec3<T>			NearestToLine	( BaseVec3<T> start, BaseVec3<T> end, bool clamp, T* frac = nullptr ) const {
 		BaseVec3<T> p_to_lp0 = (*this) - start;
@@ -271,6 +272,7 @@ struct BaseVec2 {
 	inline bool			Nearby			( const BaseVec2<T>& other, T tolerance ) const { return (fabs(other.x - x) < tolerance) && (fabs(other.y - y) < tolerance); };
 	inline T			MinVal			( void ) const { return std::min(x, y); }
 	inline T			MaxVal			( void ) const { return std::max(x, y); }
+	inline T			ManhattanDist	( const BaseVec2<T>& A ) const { return std::max(abs(x - A.x), abs(y - A.y)); }
 
 	BaseVec2<T>			NearestToLine	( BaseVec2<T> A, BaseVec2<T> B, bool clamp, T* frac = nullptr ) const {
 		BaseVec2<T> a_p = *this - A;
